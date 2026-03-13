@@ -11,12 +11,24 @@
   --sh-lg:0 16px 48px rgba(15,23,42,.12),0 4px 16px rgba(15,23,42,.06);
   --t:300ms cubic-bezier(.4,0,.2,1);
 }
-html,body,#root{height:100%}
-body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;overflow:hidden}
+/* --- CODEX CHANGE START --- */
+/* Codex modification - let the document grow taller than the viewport so the
+   landing page can create a real browser scroll area. */
+html,body,#root{min-height:100%}
+/* --- CODEX CHANGE END --- */
+/* --- CODEX CHANGE START --- */
+/* Codex modification - allow normal page scrolling by default and reserve
+   scroll locking for the chat shell container only. */
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;overflow-x:hidden;overflow-y:auto}
+/* --- CODEX CHANGE END --- */
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
 
 /* ── APP ── */
-.app{height:100vh;display:flex;flex-direction:column}
+/* --- CODEX CHANGE START --- */
+/* Codex modification - keep the chat application pinned to the viewport
+   without imposing a global document scroll lock. */
+.app{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+/* --- CODEX CHANGE END --- */
 .topbar{height:54px;flex-shrink:0;background:rgba(255,255,255,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:relative;z-index:50}
 .tb-logo{font-family:'Instrument Serif',serif;font-size:1.2rem;color:var(--text);background:none;border:none;cursor:pointer;padding:0;letter-spacing:-.01em}
 .tb-logo span{color:var(--accent);transition:color var(--t)}
@@ -143,7 +155,11 @@ textarea:disabled{opacity:.5;cursor:not-allowed}
 .mbody{padding:16px 18px;flex:1}
 
 /* ── LANDING ── */
-.land{display:flex;flex-direction:column;background:var(--bg);overflow-y:auto;min-height:100vh}
+/* --- CODEX CHANGE START --- */
+/* Codex modification - use regular document flow for the landing page so all
+   sections participate in normal page scrolling. */
+.land{display:block;background:var(--bg);min-height:100vh;overflow-y:visible}
+/* --- CODEX CHANGE END --- */
 .lnav{height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:rgba(255,255,255,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;flex-shrink:0}
 .llogo{font-family:'Instrument Serif',serif;font-size:1.25rem;color:var(--text)}
 .llogo-a{color:var(--accent);transition:color var(--t)}
