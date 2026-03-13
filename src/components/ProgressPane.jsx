@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { THEMES, STEPS } from "../constants/themes";
 
-const ProgressPane = memo(function ProgressPane({ step, mentalState }) {
+const ProgressPane = memo(function ProgressPane({ step, mentalState, nextAction }) {
   const pct    = Math.max(Math.round(((step+1)/6)*100), 8);
   const clrPct = mentalState==="clarity" ? 72 : mentalState==="exploring" ? 38 : 12;
   return (
@@ -26,6 +26,18 @@ const ProgressPane = memo(function ProgressPane({ step, mentalState }) {
           </div>
         ))}
       </div>
+      {/* --- CODEX CHANGE START --- */}
+      {/* Codex modification - surface the current between-session action in the
+          progression panel without changing the rest of the layout. */}
+      {nextAction && (
+        <div className="pb" style={{marginTop:18}}>
+          <div className="pl">Avant notre prochaine session</div>
+          <div className="ic" style={{marginBottom:0}}>
+            <div className="ic-item" style={{fontSize:".8rem", lineHeight:1.6}}>{nextAction}</div>
+          </div>
+        </div>
+      )}
+      {/* --- CODEX CHANGE END --- */}
     </>
   );
 });

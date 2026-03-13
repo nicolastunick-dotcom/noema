@@ -1,14 +1,19 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { sb, buildSystemPrompt } from "../lib/supabase";
-import { ANTHROPIC_PROXY } from "../constants/config";
+import { useEffect, useRef, useCallback } from "react";
+import { sb } from "../lib/supabase";
 import { QUOTES } from "../constants/prompt";
-import { applyTheme, mapEtat } from "../constants/themes";
-import { getTime, fmt, parseUI, stripUI, trimHistory } from "../utils/helpers";
+import { applyTheme } from "../constants/themes";
+import { getTime, parseUI, stripUI } from "../utils/helpers";
+import { getChatErrorMessage } from "../utils/errors";
 import StateBadge    from "../components/StateBadge";
 import InsightsPane  from "../components/InsightsPane";
 import ProgressPane  from "../components/ProgressPane";
 import IkigaiPane    from "../components/IkigaiPane";
 import { SendSVG }   from "../components/SVGs";
+import RichText      from "../components/RichText";
+import { useNoemaApi } from "../hooks/useNoemaApi";
+import { useNoemaRateLimit } from "../hooks/useNoemaRateLimit";
+import { useNoemaSession } from "../hooks/useNoemaSession";
+import { useNoemaUIState } from "../hooks/useNoemaUIState";
 
 // ─────────────────────────────────────────────────────────────
 // APP SHELL — Composant principal : chat + panneaux latéraux
@@ -26,17 +31,6 @@ import { SendSVG }   from "../components/SVGs";
 // ─────────────────────────────────────────────────────────────
 export default function AppShell({ onNav, user }) {
   // ── 1. STATE & REFS ──────────────────────────────────────────
-  const [msgs,     setMsgs]     = useState([]);
-  const [input,    setInput]    = useState("");
-  const [typing,   setTyping]   = useState(false);
-  const [mstate,   setMstate]   = useState("exploring");
-  const [step,     setStep]     = useState(0);
-  const [sideTab,  setSideTab]  = useState("insights");
-  const [mobTab,   setMobTab]   = useState("chat");
-  const [insights, setInsights] = useState({forces:[],blocages:{racine:"",entretien:"",visible:""},contradictions:[]});
-  const [ikigai,   setIkigai]   = useState({aime:"",excelle:"",monde:"",paie:"",mission:""});
-  const [mode,     setMode]     = useState("accueil");
-
   const history         = useRef([]);
   const lastSessionNote = useRef("");
   const memoryRef       = useRef(null); // toujours à jour même dans les closures async
@@ -44,6 +38,42 @@ export default function AppShell({ onNav, user }) {
   const taRef           = useRef(null);
   const minuteTimestamps = useRef([]);  // rate limiting local (par minute)
   const hasOpened       = useRef(false);
+
+  // --- CODEX CHANGE START ---
+  // Codex modification - extract the AppShell UI state into a dedicated hook
+  // while keeping all rendering and orchestration behavior identical.
+  const {
+    msgs,
+    setMsgs,
+    input,
+    setInput,
+    typing,
+    setTyping,
+    mstate,
+    step,
+    setStep,
+    sideTab,
+    setSideTab,
+    mobTab,
+    setMobTab,
+    insights,
+    setInsights,
+    nextAction,
+    setNextAction,
+    ikigai,
+    setIkigai,
+    mode,
+    applyUI,
+    resetUIState,
+  } = useNoemaUIState({ lastSessionNoteRef: lastSessionNote });
+  // --- CODEX CHANGE END ---
+
+  // --- CODEX CHANGE START ---
+  // Codex modification - Phase 1 extraction keeps API and rate-limit logic in
+  // dedicated hooks while preserving AppShell state flow and visible behavior.
+  const callAPI = useNoemaApi({ historyRef: history, memoryRef });
+  const checkRateLimit = useNoemaRateLimit({ user, minuteTimestampsRef: minuteTimestamps });
+  // --- CODEX CHANGE END ---
 
   // ── 2. OPENING MESSAGE ───────────────────────────────────────
   async function openingMessage() {
@@ -68,29 +98,21 @@ export default function AppShell({ onNav, user }) {
     setTyping(false);
   }
 
-  // ── 3. EFFECTS ───────────────────────────────────────────────
-  useEffect(() => {
-    if (!sb || !user) return;
-    (async () => {
-      const { data: mem, error: memErr } = await sb.from("memory").select("*").eq("user_id", user.id).maybeSingle();
-      if (memErr) console.error("[Noema] Erreur chargement memory:", memErr);
-      if (mem) memoryRef.current = mem;
-
-      const { data: sessions, error: sessErr } = await sb.from("sessions")
-        .select("insights,ikigai,step")
-        .eq("user_id", user.id)
-        .order("ended_at", { ascending: false })
-        .limit(1);
-      if (sessErr) console.error("[Noema] Erreur chargement sessions:", sessErr);
-      const last = sessions?.[0];
-      if (last) {
-        if (last.insights) setInsights(i => ({ ...i, ...last.insights }));
-        if (last.ikigai)   setIkigai(k => ({ ...k, ...last.ikigai }));
-        if (typeof last.step === "number") setStep(last.step);
-      }
-      await openingMessage();
-    })();
-  }, [user]);
+  // --- CODEX CHANGE START ---
+  // Codex modification - Phase 1 session extraction moves Supabase session
+  // hydration and persistence into a dedicated hook without changing flow.
+  const saveSession = useNoemaSession({
+    user,
+    historyRef: history,
+    lastSessionNoteRef: lastSessionNote,
+    memoryRef,
+    setInsights,
+    setIkigai,
+    setNextAction,
+    setStep,
+    openingMessage,
+  });
+  // --- CODEX CHANGE END ---
 
   useEffect(() => {
     if (user) return;
@@ -105,82 +127,7 @@ export default function AppShell({ onNav, user }) {
     });
   }, [msgs, typing]);
 
-  // ── 4. API ───────────────────────────────────────────────────
-  async function callAPI() {
-    const h = trimHistory(history.current);
-    const systemPrompt = buildSystemPrompt(memoryRef.current);
-    const headers = { "Content-Type":"application/json", "anthropic-version":"2023-06-01" };
-    if (import.meta.env.DEV) {
-      headers["x-api-key"] = import.meta.env.VITE_ANTHROPIC_KEY;
-      headers["anthropic-dangerous-direct-browser-access"] = "true";
-    }
-    const res = await fetch(ANTHROPIC_PROXY, {
-      method:"POST", headers,
-      body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:1400, system:systemPrompt, messages:h }),
-    });
-    if (!res.ok) { const e=await res.json().catch(()=>{}); throw new Error(e?.error?.message||`HTTP ${res.status}`); }
-    return (await res.json()).content[0].text;
-  }
-
-  // ── 5. UI HANDLER ────────────────────────────────────────────
-  function applyUI(ui) {
-    if (!ui) return;
-    if (ui.session_note) lastSessionNote.current = ui.session_note;
-    if (ui.etat) setMstate(mapEtat(ui.etat));
-    if (ui.mode) setMode(ui.mode);
-    if (typeof ui.step === "number") setStep(s => Math.max(s, ui.step));
-
-    if (ui.forces?.length || ui.contradictions?.length) {
-      setInsights(p => ({
-        forces: ui.forces?.length ? [...new Set([...p.forces, ...ui.forces])].slice(0, 6) : p.forces,
-        blocages: ui.blocages || p.blocages,
-        contradictions: ui.contradictions?.length ? [...new Set([...p.contradictions, ...ui.contradictions])].slice(0, 4) : p.contradictions,
-      }));
-    }
-    if (ui.blocages) {
-      setInsights(p => ({
-        ...p,
-        blocages: {
-          racine:    ui.blocages.racine    || p.blocages.racine,
-          entretien: ui.blocages.entretien || p.blocages.entretien,
-          visible:   ui.blocages.visible   || p.blocages.visible,
-        }
-      }));
-    }
-    if (ui.ikigai) {
-      setIkigai(p => ({
-        aime:    ui.ikigai.aime    || p.aime,
-        excelle: ui.ikigai.excelle || p.excelle,
-        monde:   ui.ikigai.monde   || p.monde,
-        paie:    ui.ikigai.paie    || p.paie,
-        mission: ui.ikigai.mission || p.mission,
-      }));
-    }
-  }
-
-  // ── 6. RATE LIMIT ────────────────────────────────────────────
-  async function checkRateLimit() {
-    const now = Date.now();
-    minuteTimestamps.current = minuteTimestamps.current.filter(t => now - t < 60_000);
-    if (minuteTimestamps.current.length >= 30) {
-      return "Tu envoies trop de messages. Attends une minute avant de continuer.";
-    }
-    if (sb && user) {
-      const today = new Date().toISOString().slice(0, 10);
-      const { data, error } = await sb.from("rate_limits").select("count").eq("user_id", user.id).eq("date", today).maybeSingle();
-      if (error) console.error("[Noema] Erreur rate_limits lecture:", error);
-      const currentCount = data?.count || 0;
-      if (currentCount >= 100) return "Tu as atteint ta limite pour aujourd'hui. Reviens demain pour continuer.";
-      await sb.from("rate_limits").upsert(
-        { user_id: user.id, date: today, count: currentCount + 1 },
-        { onConflict: "user_id,date" }
-      );
-    }
-    minuteTimestamps.current.push(now);
-    return null;
-  }
-
-  // ── 7. SEND ──────────────────────────────────────────────────
+  // ── 4. SEND ──────────────────────────────────────────────────
   const send = useCallback(async (text) => {
     const t = text.replace(/<[^>]*>/g, "").trim().slice(0, 2000);
     if (!t || typing) return;
@@ -208,65 +155,38 @@ export default function AppShell({ onNav, user }) {
       setMsgs(m => [...m, {role:"noema", text:clean, time:getTime(), hasUpdate}]);
       history.current.push({role:"assistant", content:raw});
     } catch(e) {
-      setMsgs(m => [...m, {role:"noema", text:"Une erreur est survenue. Réessaie dans un instant.", time:getTime(), isErr:true}]);
+      // --- CODEX CHANGE START ---
+      // Codex modification - show a dedicated overload message when the backend
+      // reports Anthropic saturation, otherwise preserve the generic fallback.
+      const errorText = getChatErrorMessage(e);
+      setMsgs(m => [...m, {role:"noema", text:errorText, time:getTime(), isErr:true}]);
+      // --- CODEX CHANGE END ---
       console.error(e);
     }
     setTyping(false);
   }, [typing]);
 
-  // ── 8. SAVE SESSION ──────────────────────────────────────────
-  async function saveSession(currentInsights, currentIkigai, currentStep) {
-    if (!sb || !user) return;
-    if (history.current.length === 0) return;
-
-    const sessionData = {
-      user_id:      user.id,
-      ended_at:     new Date().toISOString(),
-      history:      history.current,
-      insights:     currentInsights,
-      ikigai:       currentIkigai,
-      step:         currentStep,
-      session_note: lastSessionNote.current,
-    };
-    const { error: insErr } = await sb.from("sessions").insert(sessionData);
-    if (insErr) { console.error("[Noema] Erreur insert session:", insErr); return; }
-
-    const { data: mem, error: memErr } = await sb.from("memory").select("*").eq("user_id", user.id).maybeSingle();
-    if (memErr) console.error("[Noema] Erreur lecture memory:", memErr);
-    const notes = [...(mem?.session_notes || []), lastSessionNote.current].filter(Boolean).slice(-10);
-    const newMemory = {
-      user_id:        user.id,
-      updated_at:     new Date().toISOString(),
-      forces:         [...new Set([...(mem?.forces || []), ...currentInsights.forces])],
-      contradictions: [...new Set([...(mem?.contradictions || []), ...currentInsights.contradictions])],
-      blocages:       { ...(mem?.blocages || {}), ...currentInsights.blocages },
-      ikigai:         { ...(mem?.ikigai || {}), ...currentIkigai },
-      session_notes:  notes,
-      session_count:  (mem?.session_count || 0) + 1,
-    };
-    const { error: upsErr } = await sb.from("memory").upsert(newMemory, { onConflict: "user_id" });
-    if (upsErr) console.error("[Noema] Erreur upsert memory:", upsErr);
-    else memoryRef.current = newMemory;
-    lastSessionNote.current = "";
-  }
-
-  // ── 9. ACTIONS ───────────────────────────────────────────────
+  // ── 5. ACTIONS ───────────────────────────────────────────────
   function reset() {
     history.current = [];
-    setMsgs([]); setStep(0); setMstate("exploring"); setMode("accueil");
-    setInsights({forces:[], blocages:{racine:"",entretien:"",visible:""}, contradictions:[]});
-    setIkigai({aime:"", excelle:"", monde:"", paie:"", mission:""});
-    setMobTab("chat");
+    resetUIState();
   }
 
-  async function newSession() { await saveSession(insights, ikigai, step); reset(); }
+  // --- CODEX CHANGE START ---
+  // Codex modification - persist the current session-ending action inside the
+  // existing session insights payload to avoid a schema migration for V1.
+  async function newSession() {
+    await saveSession({ ...insights, next_action: nextAction }, ikigai, step);
+    reset();
+  }
+  // --- CODEX CHANGE END ---
   function genIkigai() { send("Je veux voir mon Ikigai"); }
 
-  // ── 10. RENDER ───────────────────────────────────────────────
+  // ── 6. RENDER ────────────────────────────────────────────────
   if (mobTab !== "chat") {
     const PANEL = {
       insights: <InsightsPane insights={insights}/>,
-      progress: <ProgressPane step={step} mentalState={mstate}/>,
+      progress: <ProgressPane step={step} mentalState={mstate} nextAction={nextAction}/>,
       ikigai:   <IkigaiPane ikigai={ikigai} onGen={()=>{ genIkigai(); setMobTab("chat"); }}/>,
     };
     const TITLES = {insights:"Insights",progress:"Progression",ikigai:"Ikigai"};
@@ -290,7 +210,11 @@ export default function AppShell({ onNav, user }) {
         <StateBadge state={mstate} mode={mode}/>
         <div className="tb-right">
           <button className="btn-sm" onClick={newSession}>Nouvelle session</button>
-          {sb&&<button className="btn-sm" onClick={()=>sb.auth.signOut()}>Déconnexion</button>}
+          {/* --- CODEX CHANGE START --- */}
+          {/* Codex modification - hide logout in demo mode so the auth UI stays
+              coherent when no authenticated user session exists. */}
+          {user&&sb&&<button className="btn-sm" onClick={()=>sb.auth.signOut()}>Déconnexion</button>}
+          {/* --- CODEX CHANGE END --- */}
         </div>
       </div>
 
@@ -316,9 +240,13 @@ export default function AppShell({ onNav, user }) {
                   <div className="mav">{m.role==="noema"?"N":"T"}</div>
                   <div className="mb">
                     <div className="mmeta">{m.role==="noema"?"Noema":"Toi"} · {m.time}</div>
-                    <div className={`bubble${m.isErr?" err":""}`} dangerouslySetInnerHTML={{__html:
-                      m.role==="noema"?fmt(m.text):`<p>${m.text.replace(/\n/g,"<br/>")}</p>`
-                    }}/>
+                    {/* --- CODEX CHANGE START --- */}
+                    {/* Codex modification - render chat text through a controlled
+                        React formatter instead of injecting raw HTML strings. */}
+                    <div className={`bubble${m.isErr?" err":""}`}>
+                      <RichText text={m.text}/>
+                    </div>
+                    {/* --- CODEX CHANGE END --- */}
                     {m.hasUpdate&&(
                       <div className="ins-chip">
                         <div className="ins-chip-lbl">✦ Panneaux mis à jour</div>
@@ -369,7 +297,7 @@ export default function AppShell({ onNav, user }) {
           </div>
           <div className="sc">
             {sideTab==="insights" && <InsightsPane insights={insights}/>}
-            {sideTab==="progress" && <ProgressPane step={step} mentalState={mstate}/>}
+            {sideTab==="progress" && <ProgressPane step={step} mentalState={mstate} nextAction={nextAction}/>}
             {sideTab==="ikigai"   && <IkigaiPane ikigai={ikigai} onGen={genIkigai}/>}
           </div>
         </div>
