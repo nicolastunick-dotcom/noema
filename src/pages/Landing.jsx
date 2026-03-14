@@ -40,8 +40,13 @@ export default function Landing({ onNav }) {
             Tu n'as pas raté ta vie.<br/>
             <em>Tu ne t'es juste jamais<br/>vraiment connu.</em>
           </h1>
+          {/* --- CODEX CHANGE START --- */}
+          <p style={{fontSize:".98rem",maxWidth:560,margin:"0 auto 12px",color:"var(--text2)",lineHeight:1.75}}>
+            Noema est une IA d'accompagnement psychologique qui t'aide à comprendre tes forces, tes blocages et la direction de ta vie.
+          </p>
+          {/* --- CODEX CHANGE END --- */}
           <p className="hsub" style={{fontSize:"1.02rem",maxWidth:520,margin:"0 auto 38px"}}>
-            Noema est un guide psychologique profond propulsé par l'IA. Il pose les bonnes questions, dit la vérité sans filtre — et construit avec toi une carte de qui tu es vraiment.
+            Une conversation profonde pour voir plus clair, sans détour et sans faux-semblants.
           </p>
           <div className="hbtns" style={{marginBottom:52}}>
             <button className="btn-main" onClick={() => onNav("login")}>Commencer maintenant →</button>
@@ -94,6 +99,49 @@ export default function Landing({ onNav }) {
           </div>
         </div>
       </div>
+
+      {/* --- CODEX CHANGE START --- */}
+      {/* Codex modification - add a focused landing section that clarifies the
+          three core layers Noema helps reveal, using the existing visual tone. */}
+      <div style={{padding:"0 28px 80px",background:"var(--bg)"}}>
+        <div style={{maxWidth:960,margin:"0 auto"}}>
+          <div className="ey">Révélations</div>
+          <div className="sttl">Ce que Noema révèle</div>
+          <div className="fg">
+            {[
+              {
+                title:"Forces naturelles",
+                desc:"Ce qui est déjà vivant en toi, même quand tu ne le vois pas encore clairement.",
+              },
+              {
+                title:"Blocages racines",
+                desc:"Ce qui freine en profondeur tes choix, ton élan et ta stabilité intérieure.",
+              },
+              {
+                title:"Contradictions",
+                desc:"L'écart entre ce que tu veux consciemment et ce que tes schémas racontent vraiment.",
+              },
+            ].map((item, index) => (
+              <div
+                className="fc"
+                key={item.title}
+                style={{padding:"24px 22px", background:index===1 ? "linear-gradient(180deg,#FFFFFF 0%,#F8F7FF 100%)" : undefined}}
+              >
+                <div style={{fontSize:".64rem",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase",color:"var(--accent)",marginBottom:14}}>
+                  0{index + 1}
+                </div>
+                <div style={{fontSize:".94rem",fontWeight:600,color:"var(--text)",marginBottom:10,lineHeight:1.35}}>
+                  {item.title}
+                </div>
+                <p style={{fontSize:".8rem",color:"var(--text2)",lineHeight:1.72}}>
+                  {item.desc}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      {/* --- CODEX CHANGE END --- */}
 
       {/* TÉMOIGNAGES */}
       <div style={{background:"linear-gradient(135deg,#F0F1FF 0%,#F7F8FC 50%,#F4F0FF 100%)",padding:"80px 28px",borderTop:"1px solid var(--border)",borderBottom:"1px solid var(--border)"}}>

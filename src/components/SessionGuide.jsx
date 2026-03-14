@@ -4,35 +4,47 @@
 import { memo } from "react";
 
 const JOURNEY_STEPS = [
-  "Session 1 — État actuel",
-  "Session 2 — Histoire personnelle",
-  "Session 3 — Schémas répétitifs",
-  "Session 4 — Valeurs profondes",
-  "Session 5 — Forces naturelles",
-  "Session 6 — Blocages racine",
-  "Session 7 — Repositionnement intérieur",
-  "Session 8 — Révélation de l'Ikigai",
-  "Session 9 — Clarification de direction",
-  "Session 10 — Plan d'action",
+  {
+    session: "Session 1",
+    label: "Comprendre ton état actuel",
+  },
+  {
+    session: "Session 3",
+    label: "Identifier tes schémas répétitifs",
+  },
+  {
+    session: "Session 6",
+    label: "Découvrir ton blocage racine",
+  },
+  {
+    session: "Session 8",
+    label: "Révélation de ton Ikigai",
+  },
 ];
 
 const SessionGuide = memo(function SessionGuide() {
   return (
     <div className="sguide">
       <div className="sguide-card">
-        <div className="sguide-eyebrow">Parcours Noema</div>
-        <h3 className="sguide-title">Une progression pensée pour révéler l'essentiel au bon moment.</h3>
+        {/* --- CODEX CHANGE START --- */}
+        {/* Codex modification - simplify the journey guide into key milestones
+            while preserving the existing modal structure and visual hierarchy. */}
+        <div className="sguide-eyebrow">Un parcours progressif</div>
+        <h3 className="sguide-title">Chaque étape éclaire un niveau plus profond de toi-même.</h3>
         <p className="sguide-copy">
-          Le parcours Noema est un processus progressif.
-          Chaque session révèle progressivement des éléments de ta personnalité, de tes forces et de ton Ikigai.
+          Noema avance par révélations successives, en partant de ton présent pour aller jusqu'à ce qui donne une direction plus juste à ta vie.
         </p>
+        {/* --- CODEX CHANGE END --- */}
       </div>
 
       <div className="sguide-list" role="list" aria-label="Étapes du parcours Noema">
-        {JOURNEY_STEPS.map((label, index) => (
-          <div className="sguide-step" key={label} role="listitem">
+        {JOURNEY_STEPS.map(({ session, label }, index) => (
+          <div className="sguide-step" key={session} role="listitem">
             <div className="sguide-index">{index + 1}</div>
-            <div className="sguide-label">{label}</div>
+            <div>
+              <div className="sguide-eyebrow" style={{marginBottom:4}}>{session}</div>
+              <div className="sguide-label">{label}</div>
+            </div>
           </div>
         ))}
       </div>
