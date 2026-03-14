@@ -7,7 +7,12 @@ const ITEMS = [
   { icon:"💰", label:"Ce pour quoi on te paie",   k:"paie" },
 ];
 
-const IkigaiPane = memo(function IkigaiPane({ ikigai, onGen }) {
+const IkigaiPane = memo(function IkigaiPane({ ikigai, onGen, sessionIndex = 0 }) {
+  // --- CODEX CHANGE START ---
+  // Codex modification - keep the mission hidden until the guided journey has
+  // reached session 8, while leaving the other Ikigai signals visible.
+  const showMission = sessionIndex >= 8 && ikigai.mission;
+  // --- CODEX CHANGE END ---
   return (
     <>
       <div className="ikg">
@@ -19,12 +24,22 @@ const IkigaiPane = memo(function IkigaiPane({ ikigai, onGen }) {
           </div>
         ))}
       </div>
-      {ikigai.mission && (
+      {/* --- CODEX CHANGE START --- */}
+      {showMission ? (
         <div style={{padding:"13px",background:"var(--accent-soft)",border:"1px solid var(--accent-border)",borderRadius:"var(--rs)",marginBottom:14}}>
           <div style={{fontSize:".62rem",fontWeight:700,letterSpacing:".09em",textTransform:"uppercase",color:"var(--accent)",marginBottom:6}}>🌟 Mission de vie</div>
           <div style={{fontSize:".82rem",color:"var(--text2)",lineHeight:1.65,fontStyle:"italic"}}>{ikigai.mission}</div>
         </div>
+      ) : (
+        <div style={{padding:"13px",background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:"var(--rs)",marginBottom:14}}>
+          <div style={{fontSize:".62rem",fontWeight:700,letterSpacing:".09em",textTransform:"uppercase",color:"var(--text3)",marginBottom:6}}>🌟 Mission de vie</div>
+          <div style={{fontSize:".82rem",color:"var(--text2)",lineHeight:1.65}}>
+            🔒 La mission de vie sera révélée autour de la session 8,
+            lorsque la compréhension de ton parcours sera suffisamment solide.
+          </div>
+        </div>
       )}
+      {/* --- CODEX CHANGE END --- */}
       <button className="btn-ikg" onClick={onGen}>✨ Générer mon Ikigai maintenant</button>
     </>
   );

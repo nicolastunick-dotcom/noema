@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { sb } from "../lib/supabase";
 import { QUOTES } from "../constants/prompt";
 import { applyTheme } from "../constants/themes";
@@ -8,6 +8,7 @@ import StateBadge    from "../components/StateBadge";
 import InsightsPane  from "../components/InsightsPane";
 import ProgressPane  from "../components/ProgressPane";
 import IkigaiPane    from "../components/IkigaiPane";
+import SessionGuide  from "../components/SessionGuide";
 import { SendSVG }   from "../components/SVGs";
 import RichText      from "../components/RichText";
 import { useNoemaApi } from "../hooks/useNoemaApi";
@@ -38,6 +39,11 @@ export default function AppShell({ onNav, user }) {
   const taRef           = useRef(null);
   const minuteTimestamps = useRef([]);  // rate limiting local (par minute)
   const hasOpened       = useRef(false);
+  // --- CODEX CHANGE START ---
+  // Codex modification - control the session journey guide from the header
+  // without altering the existing shell/tab structure.
+  const [showSessionGuide, setShowSessionGuide] = useState(false);
+  // --- CODEX CHANGE END ---
 
   // --- CODEX CHANGE START ---
   // Codex modification - extract the AppShell UI state into a dedicated hook
@@ -50,6 +56,7 @@ export default function AppShell({ onNav, user }) {
     typing,
     setTyping,
     mstate,
+    sessionIndex,
     step,
     setStep,
     sideTab,
@@ -187,12 +194,30 @@ export default function AppShell({ onNav, user }) {
   // --- CODEX CHANGE END ---
   function genIkigai() { send("Je veux voir mon Ikigai"); }
 
+  // --- CODEX CHANGE START ---
+  if (showSessionGuide) {
+    return (
+      <div className="app">
+        <div className="modal">
+          <div className="mh">
+            <button className="mb-btn" onClick={() => setShowSessionGuide(false)}>←</button>
+            <h2 className="mt">Parcours Noema</h2>
+          </div>
+          <div className="mbody">
+            <SessionGuide/>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  // --- CODEX CHANGE END ---
+
   // ── 6. RENDER ────────────────────────────────────────────────
   if (mobTab !== "chat") {
     const PANEL = {
       insights: <InsightsPane insights={insights}/>,
       progress: <ProgressPane step={step} mentalState={mstate} nextAction={nextAction}/>,
-      ikigai:   <IkigaiPane ikigai={ikigai} onGen={()=>{ genIkigai(); setMobTab("chat"); }}/>,
+      ikigai:   <IkigaiPane ikigai={ikigai} sessionIndex={sessionIndex} onGen={()=>{ genIkigai(); setMobTab("chat"); }}/>,
     };
     const TITLES = {insights:"Insights",progress:"Progression",ikigai:"Ikigai"};
     return (
@@ -214,6 +239,11 @@ export default function AppShell({ onNav, user }) {
         <button className="tb-logo" onClick={()=>onNav("landing")}>Noema<span>.</span></button>
         <StateBadge state={mstate} mode={mode}/>
         <div className="tb-right">
+          {/* --- CODEX CHANGE START --- */}
+          {/* Codex modification - add a non-disruptive entry point for the
+              guided session overview directly from the AppShell header. */}
+          <button className="btn-sm" onClick={() => setShowSessionGuide(true)}>Voir le parcours</button>
+          {/* --- CODEX CHANGE END --- */}
           <button className="btn-sm" onClick={newSession}>Nouvelle session</button>
           {/* --- CODEX CHANGE START --- */}
           {/* Codex modification - hide logout in demo mode so the auth UI stays
@@ -303,7 +333,7 @@ export default function AppShell({ onNav, user }) {
           <div className="sc">
             {sideTab==="insights" && <InsightsPane insights={insights}/>}
             {sideTab==="progress" && <ProgressPane step={step} mentalState={mstate} nextAction={nextAction}/>}
-            {sideTab==="ikigai"   && <IkigaiPane ikigai={ikigai} onGen={genIkigai}/>}
+            {sideTab==="ikigai"   && <IkigaiPane ikigai={ikigai} sessionIndex={sessionIndex} onGen={genIkigai}/>}
           </div>
         </div>
       </div>

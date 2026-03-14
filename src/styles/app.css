@@ -153,6 +153,19 @@ textarea:disabled{opacity:.5;cursor:not-allowed}
 .mb-btn:hover{border-color:var(--border2)}
 .mt{font-family:'Instrument Serif',serif;font-size:1.2rem}
 .mbody{padding:16px 18px;flex:1}
+/* --- CODEX CHANGE START --- */
+/* Codex modification - style the session journey guide as a compact modal
+   panel that fits inside the existing chat shell presentation. */
+.sguide{display:flex;flex-direction:column;gap:14px;max-width:720px;margin:0 auto}
+.sguide-card{padding:18px;background:linear-gradient(135deg,var(--surface) 0%,rgba(91,108,255,.06) 100%);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm)}
+.sguide-eyebrow{font-size:.66rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+.sguide-title{font-family:'Instrument Serif',serif;font-size:1.4rem;font-weight:400;line-height:1.15;margin-bottom:10px}
+.sguide-copy{font-size:.86rem;color:var(--text2);line-height:1.7;max-width:56ch}
+.sguide-list{display:flex;flex-direction:column;gap:10px}
+.sguide-step{display:flex;align-items:flex-start;gap:12px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--sh-sm)}
+.sguide-index{width:28px;height:28px;border-radius:9px;background:var(--accent-soft);border:1px solid var(--accent-border);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;flex-shrink:0}
+.sguide-label{font-size:.85rem;color:var(--text);line-height:1.5;padding-top:2px}
+/* --- CODEX CHANGE END --- */
 
 /* ── LANDING ── */
 /* --- CODEX CHANGE START --- */
@@ -261,6 +274,14 @@ textarea:disabled{opacity:.5;cursor:not-allowed}
   .side{display:none}.bnav{display:flex}
   .msgs{padding:16px 14px 6px}.inp-area{padding:8px 14px 14px}.topbar{padding:0 14px}
   .mb{max-width:85%}
+  /* --- CODEX CHANGE START --- */
+  /* Codex modification - keep the guide readable and the topbar controls
+     compact on smaller screens. */
+  .tb-right{gap:6px}
+  .btn-sm{padding:6px 10px;font-size:.68rem}
+  .sguide-card,.sguide-step{padding:14px}
+  .sguide-title{font-size:1.22rem}
+  /* --- CODEX CHANGE END --- */
 }
 @media(max-width:640px){
   .fg,.sg{grid-template-columns:1fr}
