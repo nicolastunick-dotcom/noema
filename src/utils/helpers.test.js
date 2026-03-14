@@ -10,6 +10,11 @@ describe("helpers", () => {
     expect(parseUI(raw)).toEqual({ step: 2, forces: ["clarte"] });
   });
 
+  it("parseUI returns null safely when the UI payload is invalid", () => {
+    expect(parseUI('Bonjour<_ui>{invalid}</_ui>')).toBeNull();
+    expect(parseUI(null)).toBeNull();
+  });
+
   it("stripUI removes the hidden UI payload from the visible message", () => {
     const raw = "Salut\n<_ui>{\"step\":1}</_ui>";
     expect(stripUI(raw)).toBe("Salut");

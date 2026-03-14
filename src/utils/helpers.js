@@ -16,13 +16,27 @@ export function fmt(text) {
 }
 
 export function parseUI(raw) {
-  const m = raw.match(/<_ui>([\s\S]*?)<\/_ui>/);
+  // --- CODEX CHANGE START ---
+  // Codex modification - safely parse the optional UI metadata block without
+  // assuming the model response is always a valid string/object payload.
+  const source = typeof raw === "string" ? raw : "";
+  const m = source.match(/<_ui>([\s\S]*?)<\/_ui>/);
   if (!m) return null;
-  try { return JSON.parse(m[1].trim()); } catch { return null; }
+  try {
+    const parsed = JSON.parse(m[1].trim());
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+  // --- CODEX CHANGE END ---
 }
 
 export function stripUI(raw) {
-  return raw.replace(/<_ui>[\s\S]*?<\/_ui>/g, "").trim();
+  // --- CODEX CHANGE START ---
+  // Codex modification - safely remove UI metadata even when the model output
+  // is empty or malformed.
+  return (typeof raw === "string" ? raw : "").replace(/<_ui>[\s\S]*?<\/_ui>/g, "").trim();
+  // --- CODEX CHANGE END ---
 }
 
 export function trimHistory(h) {

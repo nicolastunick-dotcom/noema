@@ -58,11 +58,14 @@ export default function AppShell({ onNav, user }) {
     setMobTab,
     insights,
     setInsights,
+    weeklyMemory,
+    setWeeklyMemory,
     nextAction,
     setNextAction,
     ikigai,
     setIkigai,
     mode,
+    setSessionNote,
     applyUI,
     resetUIState,
   } = useNoemaUIState({ lastSessionNoteRef: lastSessionNote });
@@ -109,6 +112,8 @@ export default function AppShell({ onNav, user }) {
     setInsights,
     setIkigai,
     setNextAction,
+    setSessionNote,
+    setWeeklyMemory,
     setStep,
     openingMessage,
   });
@@ -176,7 +181,7 @@ export default function AppShell({ onNav, user }) {
   // Codex modification - persist the current session-ending action inside the
   // existing session insights payload to avoid a schema migration for V1.
   async function newSession() {
-    await saveSession({ ...insights, next_action: nextAction }, ikigai, step);
+    await saveSession({ ...insights, next_action: nextAction, weekly_memory: weeklyMemory }, ikigai, step);
     reset();
   }
   // --- CODEX CHANGE END ---

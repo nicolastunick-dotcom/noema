@@ -12,6 +12,8 @@ export function useNoemaSession({
   setInsights,
   setIkigai,
   setNextAction,
+  setSessionNote,
+  setWeeklyMemory,
   setStep,
   openingMessage,
 }) {
@@ -24,7 +26,7 @@ export function useNoemaSession({
       if (mem) memoryRef.current = mem;
 
       const { data: sessions, error: sessErr } = await sb.from("sessions")
-        .select("insights,ikigai,step")
+        .select("insights,ikigai,step,session_note")
         .eq("user_id", user.id)
         .order("ended_at", { ascending: false })
         .limit(1);
@@ -34,7 +36,12 @@ export function useNoemaSession({
       if (last) {
         if (last.insights) setInsights(i => ({ ...i, ...last.insights }));
         if (typeof last.insights?.next_action === "string") setNextAction(last.insights.next_action);
+        if (typeof last.insights?.weekly_memory === "string") setWeeklyMemory(last.insights.weekly_memory);
         if (last.ikigai) setIkigai(k => ({ ...k, ...last.ikigai }));
+        if (typeof last.session_note === "string") {
+          lastSessionNoteRef.current = last.session_note;
+          setSessionNote(last.session_note);
+        }
         if (typeof last.step === "number") setStep(last.step);
       }
 

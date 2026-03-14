@@ -23,13 +23,21 @@ export function useNoemaUIState({ lastSessionNoteRef }) {
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const [mstate, setMstate] = useState("exploring");
+  // --- CODEX CHANGE START ---
+  // Codex modification - support the expanded Noema UI metadata block with
+  // safe defaults so missing fields never break the current rendering.
+  const [sessionIndex, setSessionIndex] = useState(0);
+  const [sessionStage, setSessionStage] = useState("");
+  const [messagesToday, setMessagesToday] = useState(0);
+  const [messagesRemaining, setMessagesRemaining] = useState(0);
   const [step, setStep] = useState(0);
+  const [ikigaiRevealed, setIkigaiRevealed] = useState(false);
   const [sideTab, setSideTab] = useState("insights");
   const [mobTab, setMobTab] = useState("chat");
   const [insights, setInsights] = useState(EMPTY_INSIGHTS);
-  // --- CODEX CHANGE START ---
-  // Codex modification - keep the session-ending action as dedicated UI state
-  // while allowing it to be hydrated/persisted through the existing session data.
+  const [subSessionSummary, setSubSessionSummary] = useState("");
+  const [weeklyMemory, setWeeklyMemory] = useState("");
+  const [sessionNote, setSessionNote] = useState("");
   const [nextAction, setNextAction] = useState("");
   // --- CODEX CHANGE END ---
   const [ikigai, setIkigai] = useState(EMPTY_IKIGAI);
@@ -37,10 +45,20 @@ export function useNoemaUIState({ lastSessionNoteRef }) {
 
   function applyUI(ui) {
     if (!ui) return;
-    if (ui.session_note) lastSessionNoteRef.current = ui.session_note;
+    if (typeof ui.session_note === "string") {
+      lastSessionNoteRef.current = ui.session_note;
+      setSessionNote(ui.session_note);
+    }
     if (ui.etat) setMstate(mapEtat(ui.etat));
     if (ui.mode) setMode(ui.mode);
+    if (typeof ui.session_index === "number") setSessionIndex(ui.session_index);
+    if (typeof ui.session_stage === "string") setSessionStage(ui.session_stage);
+    if (typeof ui.messages_today === "number") setMessagesToday(ui.messages_today);
+    if (typeof ui.messages_remaining === "number") setMessagesRemaining(ui.messages_remaining);
     if (typeof ui.step === "number") setStep(s => Math.max(s, ui.step));
+    if (typeof ui.ikigai_revealed === "boolean") setIkigaiRevealed(ui.ikigai_revealed);
+    if (typeof ui.sub_session_summary === "string") setSubSessionSummary(ui.sub_session_summary);
+    if (typeof ui.weekly_memory === "string") setWeeklyMemory(ui.weekly_memory);
 
     if (ui.forces?.length || ui.contradictions?.length) {
       setInsights(p => ({
@@ -81,7 +99,15 @@ export function useNoemaUIState({ lastSessionNoteRef }) {
     setStep(0);
     setMstate("exploring");
     setMode("accueil");
+    setSessionIndex(0);
+    setSessionStage("");
+    setMessagesToday(0);
+    setMessagesRemaining(0);
+    setIkigaiRevealed(false);
     setInsights(EMPTY_INSIGHTS);
+    setSubSessionSummary("");
+    setWeeklyMemory("");
+    setSessionNote("");
     setNextAction("");
     setIkigai(EMPTY_IKIGAI);
     setMobTab("chat");
@@ -96,14 +122,30 @@ export function useNoemaUIState({ lastSessionNoteRef }) {
     setTyping,
     mstate,
     setMstate,
+    sessionIndex,
+    setSessionIndex,
+    sessionStage,
+    setSessionStage,
+    messagesToday,
+    setMessagesToday,
+    messagesRemaining,
+    setMessagesRemaining,
     step,
     setStep,
+    ikigaiRevealed,
+    setIkigaiRevealed,
     sideTab,
     setSideTab,
     mobTab,
     setMobTab,
     insights,
     setInsights,
+    subSessionSummary,
+    setSubSessionSummary,
+    weeklyMemory,
+    setWeeklyMemory,
+    sessionNote,
+    setSessionNote,
     nextAction,
     setNextAction,
     ikigai,
