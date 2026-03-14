@@ -91,7 +91,10 @@ export default function AppShell({ onNav, user }) {
   // --- CODEX CHANGE END ---
 
   // ── 2. OPENING MESSAGE ───────────────────────────────────────
-  async function openingMessage() {
+  // --- CODEX CHANGE START ---
+  // Codex modification - memoize the opening sequence so React hook
+  // dependencies stay accurate without changing chat startup behavior.
+  const openingMessage = useCallback(async () => {
     if (hasOpened.current) return;
     hasOpened.current = true;
     const q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
@@ -111,7 +114,8 @@ export default function AppShell({ onNav, user }) {
       hasOpened.current = false;
     }
     setTyping(false);
-  }
+  }, [applyUI, callAPI, setMsgs, setTyping]);
+  // --- CODEX CHANGE END ---
 
   // --- CODEX CHANGE START ---
   // Codex modification - Phase 1 session extraction moves Supabase session
@@ -134,7 +138,7 @@ export default function AppShell({ onNav, user }) {
   useEffect(() => {
     if (user) return;
     openingMessage();
-  }, []);
+  }, [openingMessage, user]);
 
   useEffect(() => { applyTheme(mstate); }, [mstate]);
 
@@ -181,7 +185,7 @@ export default function AppShell({ onNav, user }) {
       console.error(e);
     }
     setTyping(false);
-  }, [typing]);
+  }, [applyUI, callAPI, checkRateLimit, setInput, setMsgs, setTyping, typing]);
 
   // ── 5. ACTIONS ───────────────────────────────────────────────
   function reset() {

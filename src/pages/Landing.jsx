@@ -17,6 +17,17 @@ export default function Landing({ onNav }) {
     { quote:"Ce n'est pas un chatbot. C'est quelque chose qui te regarde vraiment. Ça m'a dit une vérité que personne n'aurait osé formuler.", name:"Thomas M.", role:"31 ans · Entrepreneur" },
     { quote:"Mon Ikigai, je le cherchais depuis 3 ans. Noema l'a construit en une conversation, depuis ce que j'avais dit naturellement.", name:"Léa K.", role:"24 ans · Étudiante" },
   ];
+  // --- CODEX CHANGE START ---
+  // Codex modification - add a pricing benefits list that matches the product's
+  // actual capabilities and sits beneath the pricing cards.
+  const pricingBenefits = [
+    "Conversations illimitées",
+    "Analyse psychologique",
+    "Détection des blocages racines",
+    "Construction progressive de l'Ikigai",
+    "Mémoire inter-sessions",
+  ];
+  // --- CODEX CHANGE END ---
 
   return (
     <div className="land">
@@ -211,6 +222,21 @@ export default function Landing({ onNav }) {
               <button className="btn-p solid" onClick={() => onNav("login")}>Accès à vie →</button>
             </div>
           </div>
+          {/* --- CODEX CHANGE START --- */}
+          <div style={{marginTop:26,padding:"18px 20px",background:"white",border:"1px solid var(--border)",borderRadius:"var(--r)",boxShadow:"var(--sh-sm)",textAlign:"left"}}>
+            <div style={{fontSize:".68rem",fontWeight:700,letterSpacing:".11em",textTransform:"uppercase",color:"var(--accent)",marginBottom:14,textAlign:"center"}}>
+              Bénéfices inclus
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:"10px 18px"}}>
+              {pricingBenefits.map((benefit) => (
+                <div key={benefit} style={{display:"flex",alignItems:"flex-start",gap:10,fontSize:".8rem",color:"var(--text2)",lineHeight:1.6}}>
+                  <span style={{color:"var(--accent)",fontWeight:700,marginTop:1}}>✓</span>
+                  <span>{benefit}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* --- CODEX CHANGE END --- */}
         </div>
       </div>
 

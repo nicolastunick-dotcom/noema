@@ -47,7 +47,23 @@ export function useNoemaSession({
 
       await openingMessage();
     })();
-  }, [user]);
+  // --- CODEX CHANGE START ---
+  // Codex modification - keep effect dependencies explicit now that AppShell
+  // passes a stable opening callback into the session hook.
+  }, [
+    historyRef,
+    lastSessionNoteRef,
+    memoryRef,
+    openingMessage,
+    setIkigai,
+    setInsights,
+    setNextAction,
+    setSessionNote,
+    setStep,
+    setWeeklyMemory,
+    user,
+  ]);
+  // --- CODEX CHANGE END ---
 
   return useCallback(async (currentInsights, currentIkigai, currentStep) => {
     if (!sb || !user) return;

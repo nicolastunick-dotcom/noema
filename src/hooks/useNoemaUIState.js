@@ -1,7 +1,7 @@
 // --- CODEX CHANGE START ---
 // Codex modification - extract AppShell UI state and UI-only reducers without
 // changing orchestration, API flow, or visible rendering behavior.
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { mapEtat } from "../constants/themes";
 
 const EMPTY_INSIGHTS = {
@@ -43,7 +43,10 @@ export function useNoemaUIState({ lastSessionNoteRef }) {
   const [ikigai, setIkigai] = useState(EMPTY_IKIGAI);
   const [mode, setMode] = useState("accueil");
 
-  function applyUI(ui) {
+  // --- CODEX CHANGE START ---
+  // Codex modification - stabilize UI state reducers so AppShell can depend on
+  // them safely from effects and callbacks without extra re-renders.
+  const applyUI = useCallback((ui) => {
     if (!ui) return;
     if (typeof ui.session_note === "string") {
       lastSessionNoteRef.current = ui.session_note;
@@ -92,9 +95,9 @@ export function useNoemaUIState({ lastSessionNoteRef }) {
         mission: ui.ikigai.mission || p.mission,
       }));
     }
-  }
+  }, [lastSessionNoteRef]);
 
-  function resetUIState() {
+  const resetUIState = useCallback(() => {
     setMsgs([]);
     setStep(0);
     setMstate("exploring");
@@ -111,7 +114,8 @@ export function useNoemaUIState({ lastSessionNoteRef }) {
     setNextAction("");
     setIkigai(EMPTY_IKIGAI);
     setMobTab("chat");
-  }
+  }, []);
+  // --- CODEX CHANGE END ---
 
   return {
     msgs,
