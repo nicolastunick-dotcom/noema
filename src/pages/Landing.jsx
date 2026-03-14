@@ -61,7 +61,7 @@ export default function Landing({ onNav }) {
           </p>
           <div className="hbtns" style={{marginBottom:52}}>
             <button className="btn-main" onClick={() => onNav("login")}>Commencer maintenant →</button>
-            <button className="btn-ol"   onClick={() => onNav("app")}>Voir la démo</button>
+            <button className="btn-ol"   onClick={() => onNav("demo")}>Voir la démo</button>
           </div>
           <div style={{display:"flex",justifyContent:"center",gap:48,flexWrap:"wrap"}}>
             {[{val:"1 session",label:"pour un premier bilan complet"},{val:"100%",label:"construit depuis ta réalité"},{val:"0",label:"question de trop"}].map(s => (

@@ -3,6 +3,7 @@ import { sb } from "./lib/supabase";
 import Landing  from "./pages/Landing";
 import Login    from "./pages/Login";
 import AppShell from "./pages/AppShell";
+import DemoPage from "./pages/DemoPage";
 import "./styles/app.css";
 
 // ─────────────────────────────────────────────────────────────
@@ -25,6 +26,7 @@ export default function App() {
   }, []);
 
   if (page === "landing") return <Landing  onNav={setPage}/>;
+  if (page === "demo")    return <DemoPage onNav={setPage} user={user}/>;
   if (page === "login")   return <Login    onNav={setPage}/>;
   if (page === "app")     return <AppShell onNav={setPage} user={user}/>;
   return null;
