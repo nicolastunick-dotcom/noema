@@ -9,6 +9,7 @@ import InsightsPane  from "../components/InsightsPane";
 import ProgressPane  from "../components/ProgressPane";
 import IkigaiPane    from "../components/IkigaiPane";
 import SessionGuide  from "../components/SessionGuide";
+import SessionProgress from "../components/SessionProgress";
 import { SendSVG }   from "../components/SVGs";
 import RichText      from "../components/RichText";
 import { useNoemaApi } from "../hooks/useNoemaApi";
@@ -57,6 +58,9 @@ export default function AppShell({ onNav, user }) {
     setTyping,
     mstate,
     sessionIndex,
+    sessionStage,
+    messagesToday,
+    messagesRemaining,
     step,
     setStep,
     sideTab,
@@ -65,6 +69,7 @@ export default function AppShell({ onNav, user }) {
     setMobTab,
     insights,
     setInsights,
+    subSessionSummary,
     weeklyMemory,
     setWeeklyMemory,
     nextAction,
@@ -216,7 +221,22 @@ export default function AppShell({ onNav, user }) {
   if (mobTab !== "chat") {
     const PANEL = {
       insights: <InsightsPane insights={insights}/>,
-      progress: <ProgressPane step={step} mentalState={mstate} nextAction={nextAction}/>,
+      // --- CODEX CHANGE START ---
+      // Codex modification - add the UI-only current session and sub-session
+      // tracker beneath the existing progression panel for desktop and mobile.
+      progress: (
+        <>
+          <ProgressPane step={step} mentalState={mstate} nextAction={nextAction}/>
+          <SessionProgress
+            sessionIndex={sessionIndex}
+            sessionStage={sessionStage}
+            messagesToday={messagesToday}
+            messagesRemaining={messagesRemaining}
+            subSessionSummary={subSessionSummary}
+          />
+        </>
+      ),
+      // --- CODEX CHANGE END ---
       ikigai:   <IkigaiPane ikigai={ikigai} sessionIndex={sessionIndex} onGen={()=>{ genIkigai(); setMobTab("chat"); }}/>,
     };
     const TITLES = {insights:"Insights",progress:"Progression",ikigai:"Ikigai"};
@@ -332,7 +352,20 @@ export default function AppShell({ onNav, user }) {
           </div>
           <div className="sc">
             {sideTab==="insights" && <InsightsPane insights={insights}/>}
-            {sideTab==="progress" && <ProgressPane step={step} mentalState={mstate} nextAction={nextAction}/>}
+            {/* --- CODEX CHANGE START --- */}
+            {sideTab==="progress" && (
+              <>
+                <ProgressPane step={step} mentalState={mstate} nextAction={nextAction}/>
+                <SessionProgress
+                  sessionIndex={sessionIndex}
+                  sessionStage={sessionStage}
+                  messagesToday={messagesToday}
+                  messagesRemaining={messagesRemaining}
+                  subSessionSummary={subSessionSummary}
+                />
+              </>
+            )}
+            {/* --- CODEX CHANGE END --- */}
             {sideTab==="ikigai"   && <IkigaiPane ikigai={ikigai} sessionIndex={sessionIndex} onGen={genIkigai}/>}
           </div>
         </div>

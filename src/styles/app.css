@@ -136,6 +136,33 @@ textarea:disabled{opacity:.5;cursor:not-allowed}
 .ike{font-size:.72rem;color:var(--text3);font-style:italic}
 .btn-ikg{width:100%;padding:10px;border-radius:10px;background:var(--accent-soft);border:1px solid var(--accent-border);color:var(--accent);font-size:.82rem;font-weight:500;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all var(--t);text-align:center}
 .btn-ikg:hover{background:var(--accent);color:white;border-color:var(--accent)}
+/* --- CODEX CHANGE START --- */
+/* Codex modification - add compact styles for the current session/sub-session
+   accordion while keeping the existing right rail layout intact. */
+.session-progress{margin-top:18px;padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);box-shadow:var(--sh-sm)}
+.session-progress-head{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.session-progress-eyebrow{font-size:.63rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.session-progress-title{font-size:.9rem;font-weight:600;color:var(--text);line-height:1.4}
+.session-progress-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:.68rem;color:var(--text3)}
+.session-progress-badges{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.session-progress-badge{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;background:var(--accent-soft);border:1px solid var(--accent-border);font-size:.68rem;color:var(--accent);line-height:1.4}
+.session-progress-badge.subtle{background:var(--surface);border-color:var(--border);color:var(--text2)}
+.session-progress-summary{padding:11px 12px;background:var(--surface);border:1px solid var(--border);border-radius:9px;margin-bottom:10px}
+.session-progress-summary-label{font-size:.61rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin-bottom:5px}
+.session-progress-summary p{font-size:.77rem;color:var(--text2);line-height:1.6}
+.session-progress-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:9px;color:var(--text2);cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;font-size:.76rem;font-weight:500;transition:all var(--t)}
+.session-progress-toggle:hover{border-color:var(--accent-border);color:var(--text)}
+.session-progress-list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.session-progress-item{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;padding:10px 11px;background:var(--surface);border:1px solid var(--border);border-radius:9px;transition:all var(--t)}
+.session-progress-item.completed{border-color:rgba(91,108,255,.18)}
+.session-progress-item.current{background:var(--accent-soft);border-color:var(--accent-border)}
+.session-progress-marker{font-size:.85rem;color:var(--text3)}
+.session-progress-item.completed .session-progress-marker,.session-progress-item.current .session-progress-marker{color:var(--accent)}
+.session-progress-label{font-size:.77rem;color:var(--text2);line-height:1.45}
+.session-progress-item.current .session-progress-label{color:var(--text)}
+.session-progress-state{font-size:.66rem;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+.session-progress-item.current .session-progress-state{color:var(--accent)}
+/* --- CODEX CHANGE END --- */
 
 /* Bottom nav */
 .bnav{display:none;height:58px;flex-shrink:0;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-top:1px solid var(--border);align-items:center;justify-content:space-around;padding:0 6px}
@@ -281,6 +308,8 @@ textarea:disabled{opacity:.5;cursor:not-allowed}
   .btn-sm{padding:6px 10px;font-size:.68rem}
   .sguide-card,.sguide-step{padding:14px}
   .sguide-title{font-size:1.22rem}
+  .session-progress-item{grid-template-columns:auto 1fr}
+  .session-progress-state{grid-column:2}
   /* --- CODEX CHANGE END --- */
 }
 @media(max-width:640px){
