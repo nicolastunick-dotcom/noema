@@ -1,7 +1,8 @@
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useCallback, useState } from "react";
 import { sb } from "../lib/supabase";
 import { QUOTES } from "../constants/prompt";
 import { applyTheme } from "../constants/themes";
+import { getUpdateGlowTone, isNearBottom } from "../utils/chatEffects";
 import { getTime, parseUI, stripUI } from "../utils/helpers";
 import { getChatErrorMessage } from "../utils/errors";
 import StateBadge    from "../components/StateBadge";
@@ -16,6 +17,15 @@ import { useNoemaApi } from "../hooks/useNoemaApi";
 import { useNoemaRateLimit } from "../hooks/useNoemaRateLimit";
 import { useNoemaSession } from "../hooks/useNoemaSession";
 import { useNoemaUIState } from "../hooks/useNoemaUIState";
+import {
+  advanceNoemaTestJourney,
+  createNoemaSeededJourney,
+  createNoemaSeedModeReply,
+  createNoemaTestUnavailableReply,
+  isNoemaTestAuthorizedUser,
+  parseNoemaTestCommand,
+  startNoemaTestJourney,
+} from "../lib/testMode/noemaTestMode";
 
 // ─────────────────────────────────────────────────────────────
 // APP SHELL — Composant principal : chat + panneaux latéraux
@@ -31,6 +41,10 @@ import { useNoemaUIState } from "../hooks/useNoemaUIState";
 //   9. ACTIONS (reset, newSession, genIkigai)
 //  10. RENDER
 // ─────────────────────────────────────────────────────────────
+function cloneHistoryEntries(entries = []) {
+  return entries.map((entry) => ({ ...entry }));
+}
+
 export default function AppShell({ onNav, user }) {
   // ── 1. STATE & REFS ──────────────────────────────────────────
   const history         = useRef([]);
@@ -40,6 +54,9 @@ export default function AppShell({ onNav, user }) {
   const taRef           = useRef(null);
   const minuteTimestamps = useRef([]);  // rate limiting local (par minute)
   const hasOpened       = useRef(false);
+  const updateGlowIndex = useRef(0);
+  const stickToBottomRef = useRef(true);
+  const testModeSnapshotRef = useRef(null);
   // --- CODEX CHANGE START ---
   // Codex modification - control the session journey guide from the header
   // without altering the existing shell/tab structure.
@@ -77,6 +94,13 @@ export default function AppShell({ onNav, user }) {
     ikigai,
     setIkigai,
     mode,
+    isTestMode,
+    isSeedMode,
+    testMessageCount,
+    setTestModeState,
+    resetTestModeState,
+    getUIStateSnapshot,
+    restoreUIState,
     setSessionNote,
     applyUI,
     resetUIState,
@@ -91,12 +115,10 @@ export default function AppShell({ onNav, user }) {
   // --- CODEX CHANGE END ---
 
   // ── 2. OPENING MESSAGE ───────────────────────────────────────
-  // --- CODEX CHANGE START ---
-  // Codex modification - memoize the opening sequence so React hook
-  // dependencies stay accurate without changing chat startup behavior.
   const openingMessage = useCallback(async () => {
     if (hasOpened.current) return;
     hasOpened.current = true;
+    stickToBottomRef.current = true;
     const q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
     const trigger = `[SYSTÈME — ne pas afficher] Démarre la session. Ouvre avec cette citation de ${q.author} : "${q.text}" — intègre-la naturellement dans ton message d'accueil en créant un lien personnel avec l'utilisateur. Pose ensuite une première question ouverte pour commencer l'exploration.`;
     history.current.push({ role: "user", content: trigger });
@@ -115,7 +137,6 @@ export default function AppShell({ onNav, user }) {
     }
     setTyping(false);
   }, [applyUI, callAPI, setMsgs, setTyping]);
-  // --- CODEX CHANGE END ---
 
   // --- CODEX CHANGE START ---
   // Codex modification - Phase 1 session extraction moves Supabase session
@@ -142,11 +163,162 @@ export default function AppShell({ onNav, user }) {
 
   useEffect(() => { applyTheme(mstate); }, [mstate]);
 
-  useEffect(() => {
+  const scrollToBottom = useCallback(() => {
+    const node = msgsRef.current;
+    if (!node) return;
+    node.scrollTop = node.scrollHeight;
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!stickToBottomRef.current) return;
+    scrollToBottom();
+  }, [msgs, scrollToBottom, typing]);
+
+  const pinToLatest = useCallback(({ force = false } = {}) => {
+    if (!force && !stickToBottomRef.current) return;
     requestAnimationFrame(() => {
-      if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight;
+      scrollToBottom();
+      stickToBottomRef.current = true;
     });
-  }, [msgs, typing]);
+  }, [scrollToBottom]);
+
+  const handleMessagesScroll = useCallback(() => {
+    stickToBottomRef.current = isNearBottom(msgsRef.current);
+  }, []);
+
+  const syncTextareaHeight = useCallback((node) => {
+    if (!node) return false;
+    const previousHeight = node.offsetHeight;
+    node.style.height = "auto";
+    node.style.height = `${Math.min(node.scrollHeight, 120)}px`;
+    return Math.abs(node.offsetHeight - previousHeight) > 1;
+  }, []);
+
+  const handleInputFocus = useCallback(() => {
+    if (!stickToBottomRef.current) return;
+    pinToLatest({ force: true });
+  }, [pinToLatest]);
+
+  const handleInputChange = useCallback((event) => {
+    setInput(event.target.value);
+    const heightChanged = syncTextareaHeight(event.target);
+    if (heightChanged && stickToBottomRef.current) {
+      pinToLatest({ force: true });
+    }
+  }, [pinToLatest, setInput, syncTextareaHeight]);
+
+  const createNoemaChatMessage = useCallback(({ text, hasUpdate = false, isErr = false, time = getTime() }) => {
+    const message = { role: "noema", text, time, isErr };
+    if (!hasUpdate) return message;
+
+    const updateTone = getUpdateGlowTone(updateGlowIndex.current);
+    updateGlowIndex.current += 1;
+    return { ...message, hasUpdate: true, updateTone };
+  }, []);
+
+  const hasVisibleUIUpdate = useCallback((ui) => Boolean(
+    ui && (
+      (ui.forces?.length > 0) ||
+      (ui.ikigai && Object.values(ui.ikigai).some(Boolean)) ||
+      (ui.contradictions?.length > 0) ||
+      (ui.blocages && Object.values(ui.blocages).some(Boolean))
+    )
+  ), []);
+
+  const buildNoemaMessageFromRaw = useCallback((raw) => {
+    const ui = parseUI(raw);
+    return {
+      raw,
+      ui,
+      message: createNoemaChatMessage({
+        text: stripUI(raw),
+        hasUpdate: hasVisibleUIUpdate(ui),
+      }),
+    };
+  }, [createNoemaChatMessage, hasVisibleUIUpdate]);
+
+  const ensureTestModeSnapshot = useCallback(() => {
+    if (testModeSnapshotRef.current) return;
+
+    testModeSnapshotRef.current = {
+      history: cloneHistoryEntries(history.current),
+      uiState: { ...getUIStateSnapshot(), input: "" },
+      updateGlowIndex: updateGlowIndex.current,
+    };
+  }, [getUIStateSnapshot]);
+
+  const activateNoemaTestMode = useCallback((response, { isSeed = false } = {}) => {
+    ensureTestModeSnapshot();
+
+    const { ui, message } = buildNoemaMessageFromRaw(response.raw);
+    updateGlowIndex.current = 0;
+    history.current = [{ role: "assistant", content: response.raw }];
+    resetUIState();
+    if (ui) applyUI(ui);
+    setMsgs([message]);
+    setTestModeState({
+      isTestMode: true,
+      isSeedMode: isSeed,
+      testStep: response.stageIndex,
+      testMessageCount: response.messageCount,
+    });
+    stickToBottomRef.current = true;
+    pinToLatest({ force: true });
+  }, [
+    applyUI,
+    buildNoemaMessageFromRaw,
+    ensureTestModeSnapshot,
+    pinToLatest,
+    resetUIState,
+    setMsgs,
+    setTestModeState,
+  ]);
+
+  const stopNoemaTestMode = useCallback(() => {
+    const snapshot = testModeSnapshotRef.current;
+
+    testModeSnapshotRef.current = null;
+    resetTestModeState();
+    history.current = cloneHistoryEntries(snapshot?.history || []);
+    updateGlowIndex.current = typeof snapshot?.updateGlowIndex === "number"
+      ? snapshot.updateGlowIndex
+      : 0;
+    restoreUIState(snapshot?.uiState || null);
+    stickToBottomRef.current = true;
+    pinToLatest({ force: true });
+  }, [pinToLatest, resetTestModeState, restoreUIState]);
+
+  const advanceLocalNoemaTestJourney = useCallback((userText) => {
+    const response = isSeedMode
+      ? createNoemaSeedModeReply()
+      : advanceNoemaTestJourney({ testMessageCount });
+    const { ui, message } = buildNoemaMessageFromRaw(response.raw);
+
+    if (ui) applyUI(ui);
+    setMsgs((current) => [
+      ...current,
+      { role: "user", text: userText, time: getTime() },
+      message,
+    ]);
+    history.current.push({ role: "user", content: userText });
+    history.current.push({ role: "assistant", content: response.raw });
+    setTestModeState({
+      isTestMode: true,
+      isSeedMode,
+      testStep: response.stageIndex,
+      testMessageCount: response.messageCount,
+    });
+    stickToBottomRef.current = true;
+    pinToLatest({ force: true });
+  }, [
+    applyUI,
+    buildNoemaMessageFromRaw,
+    isSeedMode,
+    pinToLatest,
+    setMsgs,
+    setTestModeState,
+    testMessageCount,
+  ]);
 
   // ── 4. SEND ──────────────────────────────────────────────────
   const send = useCallback(async (text) => {
@@ -154,10 +326,46 @@ export default function AppShell({ onNav, user }) {
     if (!t || typing) return;
     setInput("");
     if (taRef.current) taRef.current.style.height = "auto";
+    stickToBottomRef.current = true;
+    pinToLatest({ force: true });
+
+    const testCommand = parseNoemaTestCommand(t);
+    if (testCommand) {
+      if (testCommand.type === "stop") {
+        if (isTestMode) stopNoemaTestMode();
+        return;
+      }
+
+      if (!isNoemaTestAuthorizedUser(user)) {
+        setMsgs((current) => [
+          ...current,
+          createNoemaChatMessage({
+            text: createNoemaTestUnavailableReply(),
+            isErr: true,
+          }),
+        ]);
+        return;
+      }
+
+      if (testCommand.type === "start") {
+        activateNoemaTestMode(startNoemaTestJourney());
+        return;
+      }
+
+      if (testCommand.type === "seed") {
+        activateNoemaTestMode(createNoemaSeededJourney(), { isSeed: true });
+        return;
+      }
+    }
+
+    if (isTestMode) {
+      advanceLocalNoemaTestJourney(t);
+      return;
+    }
 
     const rateLimitMsg = await checkRateLimit();
     if (rateLimitMsg) {
-      setMsgs(m => [...m, {role:"noema", text:rateLimitMsg, time:getTime(), isErr:true}]);
+      setMsgs((current) => [...current, createNoemaChatMessage({ text: rateLimitMsg, isErr: true })]);
       return;
     }
 
@@ -169,27 +377,44 @@ export default function AppShell({ onNav, user }) {
       const ui    = parseUI(raw);
       const clean = stripUI(raw);
       applyUI(ui);
-      const hasUpdate = ui && (
-        (ui.forces?.length > 0) || (ui.ikigai && Object.values(ui.ikigai).some(v => v)) ||
-        (ui.contradictions?.length > 0) || (ui.blocages?.racine)
-      );
-      setMsgs(m => [...m, {role:"noema", text:clean, time:getTime(), hasUpdate}]);
+      const hasUpdate = hasVisibleUIUpdate(ui);
+      setMsgs((current) => [...current, createNoemaChatMessage({ text: clean, hasUpdate })]);
       history.current.push({role:"assistant", content:raw});
     } catch(e) {
       // --- CODEX CHANGE START ---
       // Codex modification - show a dedicated overload message when the backend
       // reports Anthropic saturation, otherwise preserve the generic fallback.
       const errorText = getChatErrorMessage(e);
-      setMsgs(m => [...m, {role:"noema", text:errorText, time:getTime(), isErr:true}]);
+      setMsgs((current) => [...current, createNoemaChatMessage({ text: errorText, isErr: true })]);
       // --- CODEX CHANGE END ---
       console.error(e);
     }
     setTyping(false);
-  }, [applyUI, callAPI, checkRateLimit, setInput, setMsgs, setTyping, typing]);
+  }, [
+    applyUI,
+    activateNoemaTestMode,
+    advanceLocalNoemaTestJourney,
+    callAPI,
+    checkRateLimit,
+    createNoemaChatMessage,
+    hasVisibleUIUpdate,
+    isTestMode,
+    pinToLatest,
+    setInput,
+    setMsgs,
+    setTyping,
+    stopNoemaTestMode,
+    typing,
+    user,
+  ]);
 
   // ── 5. ACTIONS ───────────────────────────────────────────────
   function reset() {
     history.current = [];
+    updateGlowIndex.current = 0;
+    testModeSnapshotRef.current = null;
+    stickToBottomRef.current = true;
+    resetTestModeState();
     resetUIState();
   }
 
@@ -197,7 +422,12 @@ export default function AppShell({ onNav, user }) {
   // Codex modification - persist the current session-ending action inside the
   // existing session insights payload to avoid a schema migration for V1.
   async function newSession() {
-    await saveSession({ ...insights, next_action: nextAction, weekly_memory: weeklyMemory }, ikigai, step);
+    await saveSession(
+      { ...insights, next_action: nextAction, weekly_memory: weeklyMemory },
+      ikigai,
+      step,
+      { isTestSession: isTestMode }
+    );
     reset();
   }
   // --- CODEX CHANGE END ---
@@ -261,7 +491,14 @@ export default function AppShell({ onNav, user }) {
     <div className="app">
       <div className="topbar">
         <button className="tb-logo" onClick={()=>onNav("landing")}>Noema<span>.</span></button>
-        <StateBadge state={mstate} mode={mode}/>
+        <div className="tb-status">
+          <StateBadge state={mstate} mode={mode}/>
+          {isTestMode && (
+            <span className="test-mode-badge">
+              {isSeedMode ? "Mode test · seed" : "Mode test"}
+            </span>
+          )}
+        </div>
         <div className="tb-right">
           {/* --- CODEX CHANGE START --- */}
           {/* Codex modification - add a non-disruptive entry point for the
@@ -279,7 +516,7 @@ export default function AppShell({ onNav, user }) {
 
       <div className="main">
         <div className="chat">
-          <div className="msgs" ref={msgsRef}>
+          <div className="msgs" ref={msgsRef} onScroll={handleMessagesScroll}>
             {msgs.length===0&&!typing&&(
               <div className="welcome">
                 <div className="w-orb">◎</div>
@@ -302,16 +539,17 @@ export default function AppShell({ onNav, user }) {
                     {/* --- CODEX CHANGE START --- */}
                     {/* Codex modification - render chat text through a controlled
                         React formatter instead of injecting raw HTML strings. */}
-                    <div className={`bubble${m.isErr?" err":""}`}>
+                    <div
+                      className={[
+                        "bubble",
+                        m.isErr ? "err" : "",
+                        m.hasUpdate ? "has-update" : "",
+                        m.updateTone ? `update-glow-${m.updateTone}` : "",
+                      ].filter(Boolean).join(" ")}
+                    >
                       <RichText text={m.text}/>
                     </div>
                     {/* --- CODEX CHANGE END --- */}
-                    {m.hasUpdate&&(
-                      <div className="ins-chip">
-                        <div className="ins-chip-lbl">✦ Panneaux mis à jour</div>
-                        Noema a collecté de nouvelles données — consulte Insights et Ikigai.
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -337,7 +575,8 @@ export default function AppShell({ onNav, user }) {
                 ref={taRef} rows={1}
                 placeholder="Écris ici… (Entrée pour envoyer)"
                 value={input} disabled={typing}
-                onChange={e=>{setInput(e.target.value);e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,120)+"px";}}
+                onChange={handleInputChange}
+                onFocus={handleInputFocus}
                 onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send(input);}}}
                 maxLength={2000}
               />

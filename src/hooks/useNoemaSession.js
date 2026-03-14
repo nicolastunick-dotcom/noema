@@ -65,7 +65,8 @@ export function useNoemaSession({
   ]);
   // --- CODEX CHANGE END ---
 
-  return useCallback(async (currentInsights, currentIkigai, currentStep) => {
+  return useCallback(async (currentInsights, currentIkigai, currentStep, options = {}) => {
+    if (options.isTestSession) return;
     if (!sb || !user) return;
     if (historyRef.current.length === 0) return;
 

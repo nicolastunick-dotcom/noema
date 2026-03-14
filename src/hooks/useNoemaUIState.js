@@ -18,6 +18,29 @@ const EMPTY_IKIGAI = {
   mission: "",
 };
 
+const EMPTY_TEST_MODE = {
+  isTestMode: false,
+  isSeedMode: false,
+  testStep: 0,
+  testMessageCount: 0,
+};
+
+function cloneMsgs(msgs = []) {
+  return msgs.map((msg) => ({ ...msg }));
+}
+
+function cloneInsights(insights = EMPTY_INSIGHTS) {
+  return {
+    forces: [...(insights.forces || [])],
+    blocages: { ...EMPTY_INSIGHTS.blocages, ...(insights.blocages || {}) },
+    contradictions: [...(insights.contradictions || [])],
+  };
+}
+
+function cloneIkigai(ikigai = EMPTY_IKIGAI) {
+  return { ...EMPTY_IKIGAI, ...(ikigai || {}) };
+}
+
 export function useNoemaUIState({ lastSessionNoteRef }) {
   const [msgs, setMsgs] = useState([]);
   const [input, setInput] = useState("");
@@ -42,6 +65,7 @@ export function useNoemaUIState({ lastSessionNoteRef }) {
   // --- CODEX CHANGE END ---
   const [ikigai, setIkigai] = useState(EMPTY_IKIGAI);
   const [mode, setMode] = useState("accueil");
+  const [testState, setTestState] = useState(EMPTY_TEST_MODE);
 
   // --- CODEX CHANGE START ---
   // Codex modification - stabilize UI state reducers so AppShell can depend on
@@ -98,7 +122,10 @@ export function useNoemaUIState({ lastSessionNoteRef }) {
   }, [lastSessionNoteRef]);
 
   const resetUIState = useCallback(() => {
+    lastSessionNoteRef.current = "";
     setMsgs([]);
+    setInput("");
+    setTyping(false);
     setStep(0);
     setMstate("exploring");
     setMode("accueil");
@@ -113,8 +140,88 @@ export function useNoemaUIState({ lastSessionNoteRef }) {
     setSessionNote("");
     setNextAction("");
     setIkigai(EMPTY_IKIGAI);
+    setSideTab("insights");
     setMobTab("chat");
+    setTestState(EMPTY_TEST_MODE);
+  }, [lastSessionNoteRef]);
+
+  const setTestModeState = useCallback((patch) => {
+    setTestState((prev) => ({ ...prev, ...(patch || {}) }));
   }, []);
+
+  const resetTestModeState = useCallback(() => {
+    setTestState(EMPTY_TEST_MODE);
+  }, []);
+
+  const getUIStateSnapshot = useCallback(() => ({
+    msgs: cloneMsgs(msgs),
+    input,
+    typing,
+    mstate,
+    sessionIndex,
+    sessionStage,
+    messagesToday,
+    messagesRemaining,
+    step,
+    ikigaiRevealed,
+    sideTab,
+    mobTab,
+    insights: cloneInsights(insights),
+    subSessionSummary,
+    weeklyMemory,
+    sessionNote,
+    nextAction,
+    ikigai: cloneIkigai(ikigai),
+    mode,
+  }), [
+    ikigai,
+    ikigaiRevealed,
+    input,
+    insights,
+    messagesRemaining,
+    messagesToday,
+    mode,
+    mobTab,
+    msgs,
+    mstate,
+    nextAction,
+    sessionIndex,
+    sessionNote,
+    sessionStage,
+    sideTab,
+    step,
+    subSessionSummary,
+    typing,
+    weeklyMemory,
+  ]);
+
+  const restoreUIState = useCallback((snapshot) => {
+    if (!snapshot) {
+      resetUIState();
+      return;
+    }
+
+    setMsgs(cloneMsgs(snapshot.msgs));
+    setInput(snapshot.input || "");
+    setTyping(Boolean(snapshot.typing));
+    setMstate(snapshot.mstate || "exploring");
+    setSessionIndex(snapshot.sessionIndex || 0);
+    setSessionStage(snapshot.sessionStage || "");
+    setMessagesToday(snapshot.messagesToday || 0);
+    setMessagesRemaining(snapshot.messagesRemaining || 0);
+    setStep(snapshot.step || 0);
+    setIkigaiRevealed(Boolean(snapshot.ikigaiRevealed));
+    setSideTab(snapshot.sideTab || "insights");
+    setMobTab(snapshot.mobTab || "chat");
+    setInsights(cloneInsights(snapshot.insights));
+    setSubSessionSummary(snapshot.subSessionSummary || "");
+    setWeeklyMemory(snapshot.weeklyMemory || "");
+    lastSessionNoteRef.current = snapshot.sessionNote || "";
+    setSessionNote(snapshot.sessionNote || "");
+    setNextAction(snapshot.nextAction || "");
+    setIkigai(cloneIkigai(snapshot.ikigai));
+    setMode(snapshot.mode || "accueil");
+  }, [lastSessionNoteRef, resetUIState]);
   // --- CODEX CHANGE END ---
 
   return {
@@ -156,6 +263,14 @@ export function useNoemaUIState({ lastSessionNoteRef }) {
     setIkigai,
     mode,
     setMode,
+    isTestMode: testState.isTestMode,
+    isSeedMode: testState.isSeedMode,
+    testStep: testState.testStep,
+    testMessageCount: testState.testMessageCount,
+    setTestModeState,
+    resetTestModeState,
+    getUIStateSnapshot,
+    restoreUIState,
     applyUI,
     resetUIState,
   };

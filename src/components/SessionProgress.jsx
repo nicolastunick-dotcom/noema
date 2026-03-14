@@ -2,6 +2,7 @@
 // Codex modification - add a UI-only panel that visualizes the current session
 // and estimated sub-session progress from the metadata already returned by Noema.
 import { memo, useState } from "react";
+import GlassCard from "./GlassCard";
 import {
   SESSION_SUB_STEPS,
   formatSessionStage,
@@ -26,7 +27,7 @@ const SessionProgress = memo(function SessionProgress({
     : "Pause naturelle proche.";
 
   return (
-    <div className="session-progress">
+    <GlassCard className="session-progress mental-module" tone="sage">
       <div className="session-progress-head">
         <div className="session-progress-eyebrow">Parcours en cours</div>
         <div className="session-progress-title">{getSessionTitle(currentSession)}</div>
@@ -76,7 +77,7 @@ const SessionProgress = memo(function SessionProgress({
           })}
         </div>
       )}
-    </div>
+    </GlassCard>
   );
 });
 
