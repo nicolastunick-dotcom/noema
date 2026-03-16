@@ -3,6 +3,21 @@
 -- Coller dans : Supabase Dashboard → SQL Editor → Run
 -- ─────────────────────────────────────────────────────────────
 
+-- Profils Utilisateurs (avec statut Admin)
+CREATE TABLE IF NOT EXISTS profiles (
+  id          uuid REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  is_admin    boolean DEFAULT false,
+  created_at  timestamptz DEFAULT now()
+);
+
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "profiles: read access" ON profiles
+  FOR SELECT USING (true); -- Public read to let the edge function check admin status easily
+
+CREATE POLICY "profiles: update own" ON profiles
+  FOR UPDATE USING (auth.uid() = id);
+
 -- Historique de chaque session de conversation
 CREATE TABLE IF NOT EXISTS sessions (
   id          uuid DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -132,3 +147,29 @@ BEGIN
   LIMIT match_count;
 END;
 $$;
+
+-- ─────────────────────────────────────────────────────────────
+-- DASHBOARD ADMIN: SUIVI CONSOMMATION TOKEN (API USAGE)
+-- ─────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS api_usage (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  model text NOT NULL,
+  prompt_tokens integer NOT NULL DEFAULT 0,
+  completion_tokens integer NOT NULL DEFAULT 0,
+  session_id text,
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE api_usage ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "api_usage: insert own" ON api_usage
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "api_usage: admin read all" ON api_usage
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.is_admin = true
+    )
+  );

@@ -7,6 +7,7 @@ import GlassCardV2 from "../components/GlassCardV2";
 import ConscienceSidebarV2 from "../components/Panes/ConscienceSidebarV2";
 import IkigaiPaneV2 from "../components/Panes/IkigaiPaneV2";
 import NavbarV2 from "../components/NavbarV2";
+import AdminStats from "../components/AdminStats";
 import { parseUI, stripUI } from "../../utils/helpers";
 import "../styles/v2-app.css";
 
@@ -20,6 +21,7 @@ export default function AppShellV2({ onNav, user }) {
   const [activeTab, setActiveTab] = useState("conscience"); // "conscience" | "ikigai"
   const [insights, setInsights] = useState({ forces: [], blocages: {}, contradictions: [] });
   const [ikigai, setIkigai] = useState({});
+  const [bloomType, setBloomType] = useState(null);
   const messagesEndRef = useRef(null);
 
   // Responsive State
@@ -79,6 +81,10 @@ export default function AppShellV2({ onNav, user }) {
           }));
           if (ui.ikigai) {
             setIkigai(prev => ({ ...prev, ...ui.ikigai }));
+          }
+          if (ui.ui_insight_type) {
+            setBloomType(ui.ui_insight_type);
+            setTimeout(() => setBloomType(null), 4000); // Effet visuel pendant 4 secondes
           }
         }
 
@@ -161,7 +167,7 @@ export default function AppShellV2({ onNav, user }) {
 
         {/* Main Conversation Column */}
         <motion.main
-          className="v2-main-column"
+          className={`v2-main-column ${bloomType ? `insight-${bloomType}` : ''}`}
           style={{
             flex: 1.2,
             display: "flex",
@@ -304,6 +310,9 @@ export default function AppShellV2({ onNav, user }) {
         )}
 
       </div>
+
+      {/* Cockpit Admin Monitoring */}
+      <AdminStats user={user} />
     </div>
   );
 }

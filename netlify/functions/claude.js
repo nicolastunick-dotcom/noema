@@ -344,6 +344,7 @@ S'il développe, tu développes.
 Tu mémorises ce style dans la session_note (ex : "style direct, tutoiement, messages courts") pour le réinjecter à la session suivante.
 
 ---
+---
 TES LIMITES ET TON RÔLE
 
 Tu restes centré sur l'accompagnement.
@@ -352,72 +353,7 @@ Si l'utilisateur s'éloigne du cœur du travail tu le recadres avec souplesse, s
 
 Si une conversation tourne en rond tu le dis franchement et tu proposes de passer à l'étape suivante ou de clore la session.
 
----
-COUCHE INTERFACE — INVISIBLE POUR L'UTILISATEUR
-
-À la toute fin de chaque réponse, après ton message naturel, tu ajoutes silencieusement ce bloc technique. L'utilisateur ne le voit jamais — il est intercepté et supprimé par l'interface avant affichage.
-
-Tu émets ce bloc JSON dans la balise <_ui> en te basant sur ce que tu as collecté dans la conversation jusqu'ici. Tu mets à jour les champs progressivement — tu ne laisses pas un champ vide si tu as déjà la donnée.
-
-Format OBLIGATOIRE à la fin de chaque message (sans exception) :
-
-<_ui>
-{
-  "etat": "blocked|exploring|clarity|regulation",
-  "mode": "accueil|analyse|auteur|coach|regulation",
-  "step": 0,
-
-  "session_index": 1,
-  "session_stage": "",
-  "messages_today": 0,
-  "messages_remaining": 40,
-
-  "ikigai_revealed": false,
-
-  "forces": [],
-  "blocages": {
-    "racine": "",
-    "entretien": "",
-    "visible": ""
-  },
-  "contradictions": [],
-
-  "sub_session_summary": "",
-  "weekly_memory": [],
-
-  "next_action": "",
-
-  "ikigai": {
-    "aime": "",
-    "excelle": "",
-    "monde": "",
-    "paie": "",
-    "mission": ""
-  },
-
-  "session_note": ""
-}
-</_ui>
-
-Règles pour remplir ce bloc :
-- "etat" : état mental détecté de l'utilisateur à cet instant
-- "mode" : mode actif (accueil = première réponse, ensuite selon la logique)
-- "step" : étape du parcours — 0=accueil, 1=exploration, 2=forces émergentes, 3=blocages identifiés, 4=bilan livré, 5=ikigai en construction, 6=ikigai révélé, 7=direction, 8=action/coaching
-- "session_index" : numéro de session dans le parcours
-- "session_stage" : thème principal de la session en cours
-- "messages_today" : nombre de messages utilisateur dans la session du jour
-- "messages_remaining" : messages restants estimés avant la conclusion
-- "ikigai_revealed" : false avant la révélation finale, true quand la mission est révélée
-- "forces" : liste des forces détectées jusqu'ici (strings courts, max 6)
-- "blocages" : les trois niveaux — laisse "" si pas encore détecté
-- "contradictions" : liste des contradictions repérées (strings courts, max 4)
-- "sub_session_summary" : courte synthèse utile pour la sous-session suivante
-- "weekly_memory" : mémoire condensée de la session hebdomadaire
-- "next_action" : une seule action concrète à faire avant la prochaine session — laisse "" tant que la session n'est pas assez mûre pour se conclure
-- "ikigai" : remplis progressivement pendant l'exploration — ne pose JAMAIS de questions supplémentaires pour ça
-- "session_note" : une phrase sur l'état de la session + le style de communication observé
-
-Ce bloc est technique. Il ne fait pas partie de ta réponse à l'utilisateur. Tu le génères mécaniquement après chaque message, sans l'annoncer, sans en parler.`;
+Garde un ton humain, empathe, et profond. Ne donne pas de format technique.`;
 
 function buildSystemPrompt(memory, semanticMemories = []) {
   if (!memory || !memory.session_count) return NOEMA_SYSTEM;
@@ -445,36 +381,42 @@ function buildSystemPrompt(memory, semanticMemories = []) {
   return NOEMA_SYSTEM + ctx;
 }
 
-export default async (request) => {
+export const handler = async (event) => {
   // CORS preflight
-  if (request.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 204,
       headers: corsHeaders()
-    })
+    }
   }
 
-  if (request.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 })
+  if (event.httpMethod === 'GET') {
+    return { statusCode: 200, body: "API is online and ready. Use POST to interact." }
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, body: 'Method not allowed' }
+  }
+
+  const apiKey = process.env.ANTHROPIC_API_KEY || process.env.VITE_ANTHROPIC_KEY
   if (!apiKey) {
-    return new Response(
-      JSON.stringify({ error: { message: 'ANTHROPIC_API_KEY non configurée.' } }),
-      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
-    )
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: { message: 'ANTHROPIC_API_KEY non configurée.' } }),
+      headers: { 'Content-Type': 'application/json', ...corsHeaders() }
+    }
   }
 
   const openAiKey = process.env.OPENAI_API_KEY
   // OpenAI API Key is optional. If missing, we skip semantic search.
   
-  const token = request.headers.get("Authorization")?.replace("Bearer ", "");
+  const token = (event.headers.authorization || event.headers.Authorization)?.replace("Bearer ", "");
   if (!token) {
-    return new Response(
-      JSON.stringify({ error: { message: 'Unauthorized: Missing Supabase token.' } }),
-      { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
-    )
+    return {
+      statusCode: 401,
+      body: JSON.stringify({ error: { message: 'Unauthorized: Missing Supabase token.' } }),
+      headers: { 'Content-Type': 'application/json', ...corsHeaders() }
+    }
   }
 
   try {
@@ -490,14 +432,15 @@ export default async (request) => {
       }
     )
 
-    const body = await request.json()
+    const body = JSON.parse(event.body)
     const { userId, sessionId, message } = body
 
     if (!userId || !sessionId || !message) {
-      return new Response(
-        JSON.stringify({ error: { message: 'Missing required fields: userId, sessionId, message.' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
-      )
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: { message: 'Missing required fields: userId, sessionId, message.' } }),
+        headers: { 'Content-Type': 'application/json', ...corsHeaders() }
+      }
     }
 
     // 1. Fetch current session OR initialize new session object locally
@@ -522,6 +465,78 @@ export default async (request) => {
       .select('*')
       .eq('user_id', userId)
       .maybeSingle()
+
+    // --- Admin Commands Interceptor ---
+    if (message.startsWith("/")) {
+      // Vérifier le statut admin
+      let isAdmin = false;
+      const { data: profile } = await sb
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      if (profile && profile.is_admin) {
+        isAdmin = true;
+      }
+
+      if (!isAdmin) {
+        return {
+          statusCode: 200,
+          body: JSON.stringify({
+            content: [{
+               text: `Désolé, la commande "${message}" est réservée aux administrateurs. Ton profil n'a pas les droits requis.\n\n<_ui>{"ui_insight_type":"orange"}</_ui>`
+            }]
+          }),
+          headers: { 'Content-Type': 'application/json', ...corsHeaders() }
+        }
+      }
+
+      // Traitement des commandes Admin
+      if (message === "/noema-test") {
+        return {
+          statusCode: 200,
+          body: JSON.stringify({
+             content: [{
+                text: `[SYSTEM:DIAGNOSTIC] Command /noema-test executed.\n- API Authentication: OK\n- Sub-Agent Proxy: OK\n- DB Connection: Active\n\nTu es bien connecté en tant qu'admin.\n\n<_ui>{"ui_insight_type":"violet"}</_ui>`
+             }]
+          }),
+          headers: { 'Content-Type': 'application/json', ...corsHeaders() }
+        }
+      }
+
+      if (message === "/noema-seed") {
+        // Logique de seed factice
+        await sb.from('memory').upsert({
+          user_id: userId,
+          forces: ["Stratégie", "Créativité structurée"],
+          blocages: { racine: "Peur de ralentir", entretien: "Sur-engagement", visible: "Fatigue" },
+          contradictions: ["Veut ralentir mais ajoute des projets"],
+          ikigai: { aime: "Créer des systèmes", excelle: "Architecture logicielle", monde: "Des applications qui font sens", paie: "Consulting premium" },
+          updated_at: new Date().toISOString(),
+          session_count: 5
+        }, { onConflict: "user_id" });
+
+        return {
+          statusCode: 200,
+          body: JSON.stringify({
+             content: [{
+                text: `[SYSTEM:SEED] Command /noema-seed executed.\nLa base de données (Memory) a été peuplée avec un historique de test. Recharge la page pour voir les données dans l'interface Ikigai & Conscience.\n\n<_ui>{"ui_insight_type":"violet"}</_ui>`
+             }]
+          }),
+          headers: { 'Content-Type': 'application/json', ...corsHeaders() }
+        }
+      }
+
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+           content: [{ text: `[SYSTEM] Commande inconnue: ${message}.\n\n<_ui>{"ui_insight_type":"orange"}</_ui>` }]
+        }),
+        headers: { 'Content-Type': 'application/json', ...corsHeaders() }
+      }
+    }
+    // --- End Admin Commands Interceptor ---
 
     // 4. Semantic Search via Vector DB
     let semanticMemories = [];
@@ -564,34 +579,95 @@ export default async (request) => {
     const trimmedHistory = trimHistory(sessionData.history)
 
     const payload = {
-      model: "claude-sonnet-4-6",
+      model: "claude-4-5-sonnet-20250929", // pinned version
       max_tokens: 1400,
       system: systemPrompt,
       messages: trimmedHistory,
     }
 
-    // 5. Call Anthropic API
-    const response = await fetchAnthropicWithRetry(apiKey, payload)
+    // 6. Call Anthropic API (Sonnet) & Greffier (Haiku) in Parallel !
+    // Sonnet answers the user empathetically.
+    // Greffier analyzes the insights & ikigai behind the scenes via dynamic HTTP.
+    const baseUrl = process.env.URL || 'http://localhost:8888';
+    const greffierUrl = `${baseUrl}/.netlify/functions/greffier`;
 
-    if (!response.ok && response.status === 529) {
-      return new Response(
-        JSON.stringify({ error: { message: "Noema est momentanément surchargé. Réessaie dans quelques secondes." } }),
-        {
-          status: 529,
-          headers: {
-            'Content-Type': 'application/json',
-            ...corsHeaders()
-          }
-        }
-      )
+    const greffierPromise = fetch(greffierUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Host": new URL(baseUrl).host,
+        ...(event.headers.cookie ? { cookie: event.headers.cookie } : {})
+      },
+      body: JSON.stringify({
+        apiKey,
+        token,
+        userId,
+        sessionId,
+        history: sessionData.history,
+        userMemory: userMemory || {}
+      })
+    })
+    .then(r => r.ok ? r.json() : null)
+    .catch(err => {
+      console.warn("Greffier fetch failed:", err);
+      return null;
+    });
+
+    console.log('Appel Anthropic avec le modèle:', payload.model);
+
+    const [sonnetResponse, greffierData] = await Promise.all([
+      fetchAnthropicWithRetry(apiKey, payload),
+      greffierPromise
+    ]);
+
+    if (!sonnetResponse.ok && sonnetResponse.status === 529) {
+      return {
+        statusCode: 529,
+        body: JSON.stringify({ error: { message: "Noema est momentanément surchargé. Réessaie dans quelques secondes." } }),
+        headers: { 'Content-Type': 'application/json', ...corsHeaders() }
+      }
     }
 
-    const data = await response.json()
-    const responseContent = data.content?.[0]?.text || data.text
+    const data = await sonnetResponse.json()
 
-    // 6. Append assistant response and save to Supabase
+    // Usage Tracking
+    if (data.usage) {
+      await sb.from('api_usage').insert({
+        user_id: userId,
+        model: payload.model, // Use the model from the payload
+        prompt_tokens: data.usage.input_tokens,
+        completion_tokens: data.usage.output_tokens,
+        session_id: sessionId
+      }).catch(err => console.warn("Failed to log usage:", err))
+    }
+    
+    let responseContent = data.content?.[0]?.text || data.text || ""
+    
+    // Simulate the exact old <_ui> format for the Front-end relying on AppShellV2 parsing
+    if (greffierData) {
+      const artificialUIBlock = `\n\n<_ui>
+${JSON.stringify({
+  forces: greffierData.forces || [],
+  blocages: greffierData.blocages || {},
+  contradictions: greffierData.contradictions || [],
+  ikigai: greffierData.ikigai || {},
+  ui_insight_type: greffierData.ui_insight_type || null
+})}
+</_ui>`;
+      responseContent += artificialUIBlock;
+      // Inject it manually in the API response text for the frontend
+      if (data.content && data.content[0]) {
+        data.content[0].text = responseContent;
+      } else {
+        data.text = responseContent;
+      }
+    }
+
+    // 7. Append assistant response and save strictly CLEAN history to Supabase
+    // We do NOT save the <_ui> block in history to save DB space and context window
     if (responseContent) {
-      sessionData.history.push({ role: "assistant", content: responseContent })
+      const cleanHistoryContent = responseContent.replace(/<_ui>[\s\S]*?<\/_ui>/g, '').trim();
+      sessionData.history.push({ role: "assistant", content: cleanHistoryContent })
       await sb.from('sessions').upsert({
         id: sessionId,
         user_id: userId,
@@ -600,18 +676,17 @@ export default async (request) => {
       }, { onConflict: "id" })
     }
 
-    return new Response(JSON.stringify(data), {
-      status: response.status,
-      headers: {
-        'Content-Type': 'application/json',
-        ...corsHeaders()
-      }
-    })
+    return {
+      statusCode: sonnetResponse.status,
+      body: JSON.stringify(data),
+      headers: { 'Content-Type': 'application/json', ...corsHeaders() }
+    }
   } catch (err) {
-    return new Response(
-      JSON.stringify({ error: { message: err.message } }),
-      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
-    )
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: { message: err.message } }),
+      headers: { 'Content-Type': 'application/json', ...corsHeaders() }
+    }
   }
 }
 
@@ -665,10 +740,6 @@ function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   }
-}
-
-export const config = {
-  path: '/.netlify/functions/claude'
 }

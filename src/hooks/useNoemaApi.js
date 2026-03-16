@@ -6,6 +6,7 @@ import { ANTHROPIC_PROXY } from "../constants/config";
 import { buildSystemPrompt } from "../lib/supabase";
 import { trimHistory } from "../utils/helpers";
 import { OVERLOADED_MSG, isOverloadedError } from "../utils/errors";
+import { sb } from "../lib/supabase";
 
 // --- CODEX CHANGE START ---
 // Codex modification - retry transient API failures with a short backoff so
@@ -35,9 +36,11 @@ export function useNoemaApi({ user, sessionId, message }) {
       headers["anthropic-dangerous-direct-browser-access"] = "true";
     }
 
-    if (user?.session?.access_token) {
-        headers["Authorization"] = `Bearer ${user.session.access_token}`;
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session?.access_token) {
+        throw new Error("Merci de vous reconnecter. Votre session a expirée.");
     }
+    headers["Authorization"] = `Bearer ${session.access_token}`;
 
     // --- CODEX CHANGE START ---
     for (let attempt = 0; attempt <= NOEMA_RETRY_DELAYS_MS.length; attempt += 1) {
