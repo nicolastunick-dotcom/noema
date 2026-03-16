@@ -26,15 +26,17 @@ export function isRetryableNoemaApiFailure(error, status) {
 }
 // --- CODEX CHANGE END ---
 
-export function useNoemaApi({ historyRef, memoryRef }) {
+export function useNoemaApi({ user, sessionId, message }) {
   return useCallback(async () => {
-    const h = trimHistory(historyRef.current);
-    const systemPrompt = buildSystemPrompt(memoryRef.current);
     const headers = { "Content-Type":"application/json", "anthropic-version":"2023-06-01" };
 
     if (import.meta.env.DEV) {
       headers["x-api-key"] = import.meta.env.VITE_ANTHROPIC_KEY;
       headers["anthropic-dangerous-direct-browser-access"] = "true";
+    }
+
+    if (user?.session?.access_token) {
+        headers["Authorization"] = `Bearer ${user.session.access_token}`;
     }
 
     // --- CODEX CHANGE START ---
@@ -44,22 +46,22 @@ export function useNoemaApi({ historyRef, memoryRef }) {
           method:"POST",
           headers,
           body: JSON.stringify({
-            model:"claude-sonnet-4-6",
-            max_tokens:1400,
-            system:systemPrompt,
-            messages:h,
+            userId: user?.id,
+            sessionId: sessionId,
+            message: message
           }),
         });
 
         if (!res.ok) {
           const e = await res.json().catch(() => ({}));
-          const message = e?.error?.message || `HTTP ${res.status}`;
-          const err = new Error(isOverloadedError(res.status, message) ? OVERLOADED_MSG : message);
+          const errMessage = e?.error?.message || `HTTP ${res.status}`;
+          const err = new Error(isOverloadedError(res.status, errMessage) ? OVERLOADED_MSG : errMessage);
           err.status = res.status;
           throw err;
         }
 
-        return (await res.json()).content[0].text;
+        const data = await res.json();
+        return data.content?.[0]?.text || data.text;
       } catch (error) {
         const shouldRetry = isRetryableNoemaApiFailure(error, error?.status);
 
@@ -78,6 +80,6 @@ export function useNoemaApi({ historyRef, memoryRef }) {
 
     return NOEMA_RETRY_FALLBACK_MSG;
     // --- CODEX CHANGE END ---
-  }, [historyRef, memoryRef]);
+  }, [user, sessionId, message]);
 }
 // --- CODEX CHANGE END ---

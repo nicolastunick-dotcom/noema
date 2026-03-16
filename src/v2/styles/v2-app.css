@@ -1,0 +1,185 @@
+/* src/v2/styles/v2-app.css */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap');
+
+:root {
+  /* =========================================
+     NOEMA V2 - DESIGN SYSTEM
+     ========================================= */
+
+  /* Typographie Premium */
+  --font-serif: 'Playfair Display', serif;
+  --font-serif-luxe: 'Cormorant Garamond', serif;
+  --font-sans: 'Inter', sans-serif;
+
+  /* Espacement (Aération pour la lisibilité) */
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 1rem;
+  --spacing-md: 2rem;
+  --spacing-lg: 4rem;
+  --spacing-xl: 6rem;
+
+  /* Couleurs Fondamentales */
+  --color-bg-base: #e6e8eb; /* Gris mat clair */
+  --color-text-primary: #111827; /* Contraste élevé */
+  --color-text-secondary: #374151;
+  --color-text-muted: #6b7280;
+
+  /* Glassmorphism 2.0 (Réalisme & Subtilité) */
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-blur: blur(24px) saturate(160%);
+  --glass-border: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+  --glass-shadow: 0 16px 48px rgba(0, 0, 0, 0.15); /* Ombre augmentée pour plus de profondeur */
+
+  /* Accents subtils - Inspiré des pierres précieuses éteintes */
+  --accent-blue: rgba(85, 120, 255, 0.6);
+  --accent-purple: rgba(140, 80, 255, 0.6);
+  --accent-pink: rgba(255, 105, 180, 0.5);
+  --accent-green: rgba(34, 197, 94, 0.5);
+  --accent-yellow: rgba(234, 179, 8, 0.5);
+  --accent-amber: rgba(245, 158, 11, 0.6);
+}
+
+/* =========================================
+   RESETS & FONDATIONS
+   ========================================= */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Fluidité universelle */
+button, a, input, [role="button"] {
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+button:active, a:active {
+  transform: scale(0.98);
+}
+
+body.v2-root-body {
+  font-family: var(--font-sans);
+  background-color: var(--color-bg-base);
+  color: var(--color-text-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden; /* Empêche le rebond sur mac/ios */
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Typographie Spécifique */
+h1, h2, h3, .serif-font {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+.cormorant-font {
+  font-family: var(--font-serif-luxe);
+}
+
+/* Fond Ambiant V2 */
+.v2-ambient-mesh {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  background: 
+    radial-gradient(circle at 15% 50%, var(--accent-pink), transparent 40%),
+    radial-gradient(circle at 85% 30%, var(--accent-blue), transparent 40%),
+    radial-gradient(circle at 50% 80%, var(--accent-green), transparent 40%),
+    radial-gradient(circle at 70% 10%, var(--accent-yellow), transparent 40%);
+  filter: blur(80px);
+  opacity: 0.65;
+  animation: breathe 20s ease-in-out infinite alternate;
+}
+
+@keyframes breathe {
+  0% { transform: scale(1); opacity: 0.55; }
+  100% { transform: scale(1.1); opacity: 0.8; }
+}
+
+/* Shell Layout */
+.v2-app-container {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  position: relative;
+}
+
+/* =========================================
+   COMPOSANTS STANDARDS V2
+   ========================================= */
+
+.v2-glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow), var(--glass-border);
+  border-radius: 20px;
+  padding: var(--spacing-md);
+  color: var(--color-text-primary);
+}
+
+/* Champ de texte global */
+.v2-input-area {
+  background: rgba(255, 255, 255, 0.4);
+  border: none;
+  border-radius: 12px;
+  padding: 16px;
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  outline: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+  transition: box-shadow 0.3s ease, background 0.3s ease;
+}
+
+.v2-input-area:focus {
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 1);
+}
+
+/* Scrollbar invisible mais fonctionnelle */
+::-webkit-scrollbar {
+  width: 6px;
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* =========================================
+   FEEDBACK VISUEL (BLOOM EFFECTS)
+   ========================================= */
+
+.insight-red {
+  box-shadow: 0 0 40px rgba(231, 76, 60, 0.15), inset 0 0 20px rgba(231, 76, 60, 0.05) !important;
+  border-color: rgba(231, 76, 60, 0.3) !important;
+  transition: box-shadow 0.8s ease-out, border-color 0.8s ease-out;
+}
+
+.insight-orange {
+  box-shadow: 0 0 40px rgba(230, 126, 34, 0.2), inset 0 0 20px rgba(230, 126, 34, 0.08) !important;
+  border-color: rgba(230, 126, 34, 0.4) !important;
+  transition: box-shadow 0.8s ease-out, border-color 0.8s ease-out;
+}
+
+.insight-violet {
+  box-shadow: 0 0 40px rgba(155, 89, 182, 0.2), inset 0 0 20px rgba(155, 89, 182, 0.08) !important;
+  border-color: rgba(155, 89, 182, 0.4) !important;
+  transition: box-shadow 0.8s ease-out, border-color 0.8s ease-out;
+}

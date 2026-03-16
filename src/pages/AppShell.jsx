@@ -57,6 +57,7 @@ export default function AppShell({ onNav, user }) {
   const updateGlowIndex = useRef(0);
   const stickToBottomRef = useRef(true);
   const testModeSnapshotRef = useRef(null);
+  const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
   // --- CODEX CHANGE START ---
   // Codex modification - control the session journey guide from the header
   // without altering the existing shell/tab structure.
@@ -108,9 +109,8 @@ export default function AppShell({ onNav, user }) {
   // --- CODEX CHANGE END ---
 
   // --- CODEX CHANGE START ---
-  // Codex modification - Phase 1 extraction keeps API and rate-limit logic in
-  // dedicated hooks while preserving AppShell state flow and visible behavior.
-  const callAPI = useNoemaApi({ historyRef: history, memoryRef });
+  const [currentMessage, setCurrentMessage] = useState("");
+  const callAPI = useNoemaApi({ user, sessionId, message: currentMessage });
   const checkRateLimit = useNoemaRateLimit({ user, minuteTimestampsRef: minuteTimestamps });
   // --- CODEX CHANGE END ---
 
@@ -123,20 +123,29 @@ export default function AppShell({ onNav, user }) {
     const trigger = `[SYSTÈME — ne pas afficher] Démarre la session. Ouvre avec cette citation de ${q.author} : "${q.text}" — intègre-la naturellement dans ton message d'accueil en créant un lien personnel avec l'utilisateur. Pose ensuite une première question ouverte pour commencer l'exploration.`;
     history.current.push({ role: "user", content: trigger });
     setTyping(true);
-    try {
-      const raw   = await callAPI();
-      const ui    = parseUI(raw);
-      const clean = stripUI(raw);
-      applyUI(ui);
-      setMsgs([{ role: "noema", text: clean, time: getTime() }]);
-      history.current.push({ role: "assistant", content: raw });
-    } catch (e) {
-      console.error("[Noema] Erreur message d'ouverture:", e);
-      history.current = [];
-      hasOpened.current = false;
+    setCurrentMessage(trigger);
+  }, [setTyping]);
+
+  useEffect(() => {
+    if (typing && currentMessage && hasOpened.current && msgs.length === 0) {
+      (async () => {
+        try {
+          const raw   = await callAPI();
+          const ui    = parseUI(raw);
+          const clean = stripUI(raw);
+          applyUI(ui);
+          setMsgs([{ role: "noema", text: clean, time: getTime() }]);
+          history.current.push({ role: "assistant", content: raw });
+        } catch (e) {
+          console.error("[Noema] Erreur message d'ouverture:", e);
+          history.current = [];
+          hasOpened.current = false;
+        }
+        setTyping(false);
+        setCurrentMessage("");
+      })();
     }
-    setTyping(false);
-  }, [applyUI, callAPI, setMsgs, setTyping]);
+  }, [typing, currentMessage, callAPI, applyUI, msgs.length, setMsgs, setTyping]);
 
   // --- CODEX CHANGE START ---
   // Codex modification - Phase 1 session extraction moves Supabase session
@@ -372,32 +381,12 @@ export default function AppShell({ onNav, user }) {
     setMsgs(m => [...m, {role:"user", text:t, time:getTime()}]);
     history.current.push({role:"user", content:t});
     setTyping(true);
-    try {
-      const raw   = await callAPI();
-      const ui    = parseUI(raw);
-      const clean = stripUI(raw);
-      applyUI(ui);
-      const hasUpdate = hasVisibleUIUpdate(ui);
-      setMsgs((current) => [...current, createNoemaChatMessage({ text: clean, hasUpdate })]);
-      history.current.push({role:"assistant", content:raw});
-    } catch(e) {
-      // --- CODEX CHANGE START ---
-      // Codex modification - show a dedicated overload message when the backend
-      // reports Anthropic saturation, otherwise preserve the generic fallback.
-      const errorText = getChatErrorMessage(e);
-      setMsgs((current) => [...current, createNoemaChatMessage({ text: errorText, isErr: true })]);
-      // --- CODEX CHANGE END ---
-      console.error(e);
-    }
-    setTyping(false);
+    setCurrentMessage(t);
   }, [
-    applyUI,
     activateNoemaTestMode,
     advanceLocalNoemaTestJourney,
-    callAPI,
     checkRateLimit,
     createNoemaChatMessage,
-    hasVisibleUIUpdate,
     isTestMode,
     pinToLatest,
     setInput,
@@ -408,12 +397,36 @@ export default function AppShell({ onNav, user }) {
     user,
   ]);
 
+  useEffect(() => {
+    if (typing && currentMessage && msgs.length > 0 && msgs[msgs.length - 1]?.role === "user") {
+      (async () => {
+        try {
+          const raw   = await callAPI();
+          const ui    = parseUI(raw);
+          const clean = stripUI(raw);
+          applyUI(ui);
+          const hasUpdate = hasVisibleUIUpdate(ui);
+          setMsgs((current) => [...current, createNoemaChatMessage({ text: clean, hasUpdate })]);
+          history.current.push({role:"assistant", content:raw});
+        } catch(e) {
+          const errorText = getChatErrorMessage(e);
+          setMsgs((current) => [...current, createNoemaChatMessage({ text: errorText, isErr: true })]);
+          console.error(e);
+        }
+        setTyping(false);
+        setCurrentMessage("");
+      })();
+    }
+  }, [typing, currentMessage, callAPI, applyUI, hasVisibleUIUpdate, createNoemaChatMessage, msgs, setMsgs, setTyping]);
+
   // ── 5. ACTIONS ───────────────────────────────────────────────
   function reset() {
     history.current = [];
     updateGlowIndex.current = 0;
     testModeSnapshotRef.current = null;
     stickToBottomRef.current = true;
+    setSessionId(crypto.randomUUID());
+    setCurrentMessage("");
     resetTestModeState();
     resetUIState();
   }
@@ -423,6 +436,7 @@ export default function AppShell({ onNav, user }) {
   // existing session insights payload to avoid a schema migration for V1.
   async function newSession() {
     await saveSession(
+      sessionId,
       { ...insights, next_action: nextAction, weekly_memory: weeklyMemory },
       ikigai,
       step,

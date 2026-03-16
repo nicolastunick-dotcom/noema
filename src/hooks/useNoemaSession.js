@@ -65,22 +65,20 @@ export function useNoemaSession({
   ]);
   // --- CODEX CHANGE END ---
 
-  return useCallback(async (currentInsights, currentIkigai, currentStep, options = {}) => {
+  return useCallback(async (sessionId, currentInsights, currentIkigai, currentStep, options = {}) => {
     if (options.isTestSession) return;
     if (!sb || !user) return;
     if (historyRef.current.length === 0) return;
 
     const sessionData = {
-      user_id: user.id,
       ended_at: new Date().toISOString(),
-      history: historyRef.current,
       insights: currentInsights,
       ikigai: currentIkigai,
       step: currentStep,
       session_note: lastSessionNoteRef.current,
     };
 
-    const { error: insErr } = await sb.from("sessions").insert(sessionData);
+    const { error: insErr } = await sb.from("sessions").update(sessionData).eq("id", sessionId).eq("user_id", user.id);
     if (insErr) {
       console.error("[Noema] Erreur insert session:", insErr);
       return;

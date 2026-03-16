@@ -76,3 +76,59 @@ CREATE POLICY "access_codes: update" ON access_codes
 
 -- Insertion réservée aux admins via service_role (pas côté client)
 -- Pour insérer des codes : utiliser le dashboard Supabase ou une fonction Edge
+
+-- ─────────────────────────────────────────────────────────────
+-- MÉMOIRE SÉMANTIQUE (VECTOR DB)
+-- ─────────────────────────────────────────────────────────────
+
+-- 1. Activer l'extension pgvector
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- 2. Créer la table des fragments de mémoire sémantique
+CREATE TABLE IF NOT EXISTS semantic_memory (
+  id          uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id     uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  content     text NOT NULL, -- Le souvenir, insight, ou citation
+  metadata    jsonb DEFAULT '{}', -- Source (session_id), date, contexte...
+  embedding   vector(1536), -- Dimension pour text-embedding-3-small (OpenAI)
+  created_at  timestamptz DEFAULT now()
+);
+
+-- 3. Activer le Row Level Security
+ALTER TABLE semantic_memory ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "semantic_memory: user access" ON semantic_memory
+  FOR ALL USING (auth.uid() = user_id);
+
+-- 4. Optimiser la recherche par similarité (Cosinus) avec un index HNSW
+CREATE INDEX ON semantic_memory USING hnsw (embedding vector_cosine_ops);
+
+-- 5. Créer la procédure stockée (RPC) pour la recherche de similarité
+CREATE OR REPLACE FUNCTION match_semantic_memory (
+  query_embedding vector(1536),
+  match_threshold float,
+  match_count int,
+  p_user_id uuid
+)
+RETURNS TABLE (
+  id uuid,
+  content text,
+  metadata jsonb,
+  similarity float
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    semantic_memory.id,
+    semantic_memory.content,
+    semantic_memory.metadata,
+    1 - (semantic_memory.embedding <=> query_embedding) AS similarity
+  FROM semantic_memory
+  WHERE semantic_memory.user_id = p_user_id
+    AND 1 - (semantic_memory.embedding <=> query_embedding) > match_threshold
+  ORDER BY semantic_memory.embedding <=> query_embedding
+  LIMIT match_count;
+END;
+$$;
