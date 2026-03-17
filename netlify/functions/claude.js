@@ -1,3 +1,5 @@
+import { runGreffier } from './greffier.js'
+
 let createClientLoader = null
 const ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
 
@@ -367,7 +369,74 @@ Si l'utilisateur s'éloigne du cœur du travail tu le recadres avec souplesse, s
 
 Si une conversation tourne en rond tu le dis franchement et tu proposes de passer à l'étape suivante ou de clore la session.
 
-Garde un ton humain, empathe, et profond. Ne donne pas de format technique.`;
+Garde un ton humain, empathe, et profond. Ne donne pas de format technique.
+
+---
+COUCHE INTERFACE — INVISIBLE POUR L'UTILISATEUR
+
+À la toute fin de chaque réponse, après ton message naturel, tu ajoutes silencieusement ce bloc technique. L'utilisateur ne le voit jamais — il est intercepté et supprimé par l'interface avant affichage.
+
+Tu émets ce bloc JSON dans la balise <_ui> en te basant sur ce que tu as collecté dans la conversation jusqu'ici. Tu mets à jour les champs progressivement — tu ne laisses pas un champ vide si tu as déjà la donnée.
+
+Format OBLIGATOIRE à la fin de chaque message (sans exception) :
+
+<_ui>
+{
+  "etat": "blocked|exploring|clarity|regulation",
+  "mode": "accueil|analyse|auteur|coach|regulation",
+  "step": 0,
+
+  "session_index": 1,
+  "session_stage": "",
+  "messages_today": 0,
+  "messages_remaining": 40,
+
+  "ikigai_revealed": false,
+
+  "forces": [],
+  "blocages": {
+    "racine": "",
+    "entretien": "",
+    "visible": ""
+  },
+  "contradictions": [],
+
+  "sub_session_summary": "",
+  "weekly_memory": [],
+
+  "next_action": "",
+
+  "ikigai": {
+    "aime": "",
+    "excelle": "",
+    "monde": "",
+    "paie": "",
+    "mission": ""
+  },
+
+  "session_note": ""
+}
+</_ui>
+
+Règles pour remplir ce bloc :
+- "etat" : état mental détecté de l'utilisateur à cet instant
+- "mode" : mode actif (accueil = première réponse, ensuite selon la logique)
+- "step" : étape du parcours — 0=accueil, 1=exploration, 2=forces émergentes, 3=blocages identifiés, 4=bilan livré, 5=ikigai en construction, 6=ikigai révélé, 7=direction, 8=action/coaching
+- "session_index" : numéro de session dans le parcours
+- "session_stage" : thème principal de la session en cours
+- "messages_today" : nombre de messages utilisateur dans la session du jour
+- "messages_remaining" : messages restants estimés avant la conclusion
+- "ikigai_revealed" : false avant la révélation finale, true quand la mission est révélée
+- "forces" : liste des forces détectées jusqu'ici (strings courts, max 6)
+- "blocages" : les trois niveaux — laisse "" si pas encore détecté
+- "contradictions" : liste des contradictions repérées (strings courts, max 4)
+- "sub_session_summary" : courte synthèse utile pour la sous-session suivante
+- "weekly_memory" : mémoire condensée de la session hebdomadaire
+- "next_action" : une seule action concrète à faire avant la prochaine session — laisse "" tant que la session n'est pas assez mûre pour se conclure
+- "ikigai" : remplis progressivement pendant l'exploration — ne pose JAMAIS de questions supplémentaires pour ça
+- "session_note" : une phrase sur l'état de la session + le style de communication observé
+
+Ce bloc est technique. Il ne fait pas partie de ta réponse à l'utilisateur. Tu le génères mécaniquement après chaque message, sans l'annoncer, sans en parler.`;
 
 function buildSystemPrompt(memory, semanticMemories = []) {
   if (!memory || !memory.session_count) return NOEMA_SYSTEM;
@@ -603,7 +672,17 @@ export const handler = async (event) => {
     // 6. Call Anthropic API (Sonnet) & Greffier (Haiku) in Parallel.
     // Sonnet answers the user empathetically.
     // Greffier remains best-effort so it cannot take down the main chat path.
-    const greffierPromise = Promise.resolve(null)
+    const greffierPromise = runGreffier({
+      apiKey,
+      sb,
+      userId,
+      sessionId,
+      history: sessionData.history,
+      userMemory: userMemory || {}
+    }).catch(err => {
+      console.warn("Greffier parallel call failed:", err)
+      return null
+    })
 
     console.log('Appel Anthropic avec le modèle:', payload.model);
 
@@ -641,7 +720,9 @@ export const handler = async (event) => {
     let responseContent = data.content?.[0]?.text || data.text || ""
     
     // Simulate the exact old <_ui> format for the Front-end relying on AppShellV2 parsing
+    // Greffier takes precedence: strip any <_ui> Noema may have emitted natively first
     if (greffierData) {
+      responseContent = responseContent.replace(/<_ui>[\s\S]*?<\/_ui>/g, '').trim();
       const artificialUIBlock = `\n\n<_ui>
 ${JSON.stringify({
   forces: greffierData.forces || [],
