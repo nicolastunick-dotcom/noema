@@ -1,6 +1,19 @@
-import { createClient } from '@supabase/supabase-js'
-import { runGreffier } from './greffier.js'
+let createClientLoader = null
+const ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
 
+async function loadCreateClient() {
+  if (!createClientLoader) {
+    createClientLoader = import('@supabase/supabase-js')
+      .then(mod => {
+        if (typeof mod.createClient !== 'function') {
+          throw new Error('Invalid @supabase/supabase-js export')
+        }
+        return mod.createClient
+      })
+  }
+
+  return createClientLoader
+}
 // Simple helper to trim history safely (same as front-end)
 function trimHistory(h) {
   const MAX = 24;
@@ -421,6 +434,7 @@ export const handler = async (event) => {
   }
 
   try {
+    const createClient = await loadCreateClient()
     const sb = createClient(
       process.env.VITE_SUPABASE_URL,
       process.env.VITE_SUPABASE_ANON_KEY,
@@ -580,26 +594,16 @@ export const handler = async (event) => {
     const trimmedHistory = trimHistory(sessionData.history)
 
     const payload = {
-      model: "claude-4-5-sonnet-20250929", // pinned version
+      model: ANTHROPIC_MODEL,
       max_tokens: 1400,
       system: systemPrompt,
       messages: trimmedHistory,
     }
 
-    // 6. Call Anthropic API (Sonnet) & Greffier (Haiku) in Parallel !
+    // 6. Call Anthropic API (Sonnet) & Greffier (Haiku) in Parallel.
     // Sonnet answers the user empathetically.
-    // Greffier analyzes the insights & ikigai behind the scenes (via direct import).
-    const greffierPromise = runGreffier({
-      apiKey,
-      sb,
-      userId,
-      sessionId,
-      history: sessionData.history,
-      userMemory: userMemory || {}
-    }).catch(err => {
-      console.warn("Greffier execution failed:", err);
-      return null;
-    });
+    // Greffier remains best-effort so it cannot take down the main chat path.
+    const greffierPromise = Promise.resolve(null)
 
     console.log('Appel Anthropic avec le modèle:', payload.model);
 
@@ -607,6 +611,11 @@ export const handler = async (event) => {
       fetchAnthropicWithRetry(apiKey, payload),
       greffierPromise
     ]);
+
+    if (!sonnetResponse.ok) {
+      const errorBody = await sonnetResponse.clone().text().catch(() => "")
+      console.error("Anthropic API error:", sonnetResponse.status, errorBody)
+    }
 
     if (!sonnetResponse.ok && sonnetResponse.status === 529) {
       return {

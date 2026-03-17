@@ -1,6 +1,6 @@
 // netlify/functions/greffier.js
-import { createClient } from '@supabase/supabase-js';
-const HAÏKU_MODEL = "claude-4-5-haiku-20260115";
+const HAIKU_MODEL = "claude-4-5-haiku-20260115";
+let createClientLoader = null
 
 const GREFFIER_SYSTEM = `Tu es l'Agent Greffier de Noema. Ton rôle est d'analyser silencieusement la conversation en cours pour extraire les "Insights" (forces, blocages, contradictions) et construire l'Ikigai de l'utilisateur.
 
@@ -41,14 +41,15 @@ export async function runGreffier({ apiKey, sb, userId, sessionId, history, user
   try {
     // Prevent sending the whole history if it's too long (Haiku contextualizes quickly)
     // Send the last 6 messages to get context of the recent exchange
-    const recentHistory = history.slice(-6);
+    const recentHistory = Array.isArray(history) ? history.slice(-6) : [];
+    const safeUserMemory = userMemory && typeof userMemory === 'object' ? userMemory : {};
 
     const memoryContext = `
 ÉTAT ACTUEL DE LA MÉMOIRE (User ID: ${userId}) :
-Forces connues : ${JSON.stringify(userMemory.forces || [])}
-Contradictions connues : ${JSON.stringify(userMemory.contradictions || [])}
-Blocages connus : ${JSON.stringify(userMemory.blocages || {})}
-Ikigai actuel : ${JSON.stringify(userMemory.ikigai || {})}
+Forces connues : ${JSON.stringify(safeUserMemory.forces || [])}
+Contradictions connues : ${JSON.stringify(safeUserMemory.contradictions || [])}
+Blocages connus : ${JSON.stringify(safeUserMemory.blocages || {})}
+Ikigai actuel : ${JSON.stringify(safeUserMemory.ikigai || {})}
 
 Analyse les derniers messages et fournis le JSON mis à jour. S'il y a un nouvel insight fort, ajoute le flag ui_insight_type.
 `;
@@ -58,7 +59,7 @@ Analyse les derniers messages et fournis le JSON mis à jour. S'il y a un nouvel
     const fullSystem = `${GREFFIER_SYSTEM}\n\n${memoryContext}`;
 
     const payload = {
-      model: HAÏKU_MODEL,
+      model: HAIKU_MODEL,
       max_tokens: 1000,
       temperature: 0,
       system: fullSystem,
@@ -86,7 +87,7 @@ Analyse les derniers messages et fournis le JSON mis à jour. S'il y a un nouvel
     if (sb && userId && data.usage) {
       await sb.from('api_usage').insert({
         user_id: userId,
-        model: HAÏKU_MODEL,
+        model: HAIKU_MODEL,
         prompt_tokens: data.usage.input_tokens,
         completion_tokens: data.usage.output_tokens,
         session_id: sessionId
@@ -107,10 +108,10 @@ Analyse les derniers messages et fournis le JSON mis à jour. S'il y a un nouvel
     if (sb && userId) {
       await sb.from('memory').upsert({
         user_id: userId,
-        forces: parsed.forces || userMemory.forces,
-        contradictions: parsed.contradictions || userMemory.contradictions,
-        blocages: parsed.blocages || userMemory.blocages,
-        ikigai: parsed.ikigai || userMemory.ikigai,
+        forces: parsed.forces || safeUserMemory.forces,
+        contradictions: parsed.contradictions || safeUserMemory.contradictions,
+        blocages: parsed.blocages || safeUserMemory.blocages,
+        ikigai: parsed.ikigai || safeUserMemory.ikigai,
         updated_at: new Date().toISOString()
       }, { onConflict: "user_id" });
       
@@ -137,20 +138,27 @@ export const handler = async (event) => {
     return { statusCode: 405, body: "Method not allowed" };
   }
 
+  let parsedBody
   try {
-    const { apiKey, token, userId, sessionId, history, userMemory } = JSON.parse(event.body);
+    parsedBody = JSON.parse(event.body || "{}");
+  } catch {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: "Invalid JSON body" })
+    };
+  }
 
-    const sb = createClient(
-      process.env.VITE_SUPABASE_URL,
-      process.env.VITE_SUPABASE_ANON_KEY,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      }
-    );
+  try {
+    const { apiKey, token, userId, sessionId, history, userMemory } = parsedBody;
+
+    if (!apiKey || !userId) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Missing required fields: apiKey, userId" })
+      };
+    }
+
+    const sb = await createSupabaseClientSafely(token);
 
     const parsed = await runGreffier({ apiKey, sb, userId, sessionId, history, userMemory });
 
@@ -166,3 +174,45 @@ export const handler = async (event) => {
     };
   }
 };
+
+async function createSupabaseClientSafely(token) {
+  const supabaseUrl = process.env.VITE_SUPABASE_URL
+  const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY
+
+  if (!token || !supabaseUrl || !supabaseAnonKey) {
+    return null
+  }
+
+  try {
+    const createClient = await loadCreateClient()
+    if (!createClient) return null
+
+    return createClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      }
+    )
+  } catch (err) {
+    console.warn("Greffier Supabase client init failed:", err)
+    return null
+  }
+}
+
+async function loadCreateClient() {
+  if (!createClientLoader) {
+    createClientLoader = import('@supabase/supabase-js')
+      .then(mod => typeof mod.createClient === 'function' ? mod.createClient : null)
+      .catch(err => {
+        console.warn("Greffier Supabase import failed:", err)
+        return null
+      })
+  }
+
+  return createClientLoader
+}
