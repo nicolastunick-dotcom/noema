@@ -31,13 +31,13 @@ export function parseUI(raw) {
   // --- CODEX CHANGE END ---
 }
 
-export function stripUI(raw) {
-  // --- CODEX CHANGE START ---
-  // Codex modification - safely remove UI metadata even when the model output
-  // is empty or malformed.
-  return (typeof raw === "string" ? raw : "").replace(/<_ui>[\s\S]*?<\/_ui>/g, "").trim();
-  // --- CODEX CHANGE END ---
-}
+export const stripUI = (raw) => {
+  if (!raw) return "";
+  // Cette regex supprime tout ce qui commence par <_ui> 
+  // même s'il n'y a pas de balise fermante </_ui> (cas de coupure)
+  return raw.replace(/<_ui>[\s\S]*?(?:<\/_ui>|$)/g, "").trim();
+};
+
 
 export function trimHistory(h) {
   if (h.length <= MAX_HISTORY) return h;

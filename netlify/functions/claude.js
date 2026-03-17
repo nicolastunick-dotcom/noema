@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { runGreffier } from './greffier.js'
 
 // Simple helper to trim history safely (same as front-end)
 function trimHistory(h) {
@@ -587,29 +588,16 @@ export const handler = async (event) => {
 
     // 6. Call Anthropic API (Sonnet) & Greffier (Haiku) in Parallel !
     // Sonnet answers the user empathetically.
-    // Greffier analyzes the insights & ikigai behind the scenes via dynamic HTTP.
-    const baseUrl = process.env.URL || 'http://localhost:8888';
-    const greffierUrl = `${baseUrl}/.netlify/functions/greffier`;
-
-    const greffierPromise = fetch(greffierUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Host": new URL(baseUrl).host,
-        ...(event.headers.cookie ? { cookie: event.headers.cookie } : {})
-      },
-      body: JSON.stringify({
-        apiKey,
-        token,
-        userId,
-        sessionId,
-        history: sessionData.history,
-        userMemory: userMemory || {}
-      })
-    })
-    .then(r => r.ok ? r.json() : null)
-    .catch(err => {
-      console.warn("Greffier fetch failed:", err);
+    // Greffier analyzes the insights & ikigai behind the scenes (via direct import).
+    const greffierPromise = runGreffier({
+      apiKey,
+      sb,
+      userId,
+      sessionId,
+      history: sessionData.history,
+      userMemory: userMemory || {}
+    }).catch(err => {
+      console.warn("Greffier execution failed:", err);
       return null;
     });
 
