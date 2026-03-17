@@ -3,8 +3,6 @@
 // changing request construction or frontend error semantics.
 import { useCallback } from "react";
 import { ANTHROPIC_PROXY } from "../constants/config";
-import { buildSystemPrompt } from "../lib/supabase";
-import { trimHistory } from "../utils/helpers";
 import { OVERLOADED_MSG, isOverloadedError } from "../utils/errors";
 import { sb } from "../lib/supabase";
 

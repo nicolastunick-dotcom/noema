@@ -9,44 +9,44 @@ function corsHeaders() {
   };
 }
 
-export default async (request) => {
+export const handler = async (event) => {
   // CORS preflight
-  if (request.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: corsHeaders()
-    });
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 204, headers: corsHeaders() };
   }
 
-  if (request.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 });
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, body: 'Method not allowed' };
   }
 
   const openAiKey = process.env.OPENAI_API_KEY;
   if (!openAiKey) {
-    return new Response(
-      JSON.stringify({ error: { message: 'OPENAI_API_KEY non configurée.' } }),
-      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
-    );
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: { message: 'OPENAI_API_KEY non configurée.' } }),
+      headers: { 'Content-Type': 'application/json', ...corsHeaders() }
+    };
   }
 
-  const token = request.headers.get("Authorization")?.replace("Bearer ", "");
+  const token = (event.headers.authorization || event.headers.Authorization)?.replace("Bearer ", "");
   if (!token) {
-    return new Response(
-      JSON.stringify({ error: { message: 'Unauthorized: Missing Supabase token.' } }),
-      { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
-    );
+    return {
+      statusCode: 401,
+      body: JSON.stringify({ error: { message: 'Unauthorized: Missing Supabase token.' } }),
+      headers: { 'Content-Type': 'application/json', ...corsHeaders() }
+    };
   }
 
   try {
-    const body = await request.json();
+    const body = JSON.parse(event.body);
     const { input } = body;
 
     if (!input || typeof input !== 'string') {
-      return new Response(
-        JSON.stringify({ error: { message: 'Missing or invalid required field: input.' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
-      );
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: { message: 'Missing or invalid required field: input.' } }),
+        headers: { 'Content-Type': 'application/json', ...corsHeaders() }
+      };
     }
 
     // Call OpenAI API
@@ -64,33 +64,26 @@ export default async (request) => {
 
     if (!response.ok) {
       const errorData = await response.json();
-      return new Response(
-        JSON.stringify({ error: { message: `OpenAI API Error: ${errorData.error?.message || response.statusText}` } }),
-        { status: response.status, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
-      );
+      return {
+        statusCode: response.status,
+        body: JSON.stringify({ error: { message: `OpenAI API Error: ${errorData.error?.message || response.statusText}` } }),
+        headers: { 'Content-Type': 'application/json', ...corsHeaders() }
+      };
     }
 
     const data = await response.json();
 
-    // Structure standardisée de retour d'embedding
-    return new Response(JSON.stringify({
-      embedding: data.data[0].embedding
-    }), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        ...corsHeaders()
-      }
-    });
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ embedding: data.data[0].embedding }),
+      headers: { 'Content-Type': 'application/json', ...corsHeaders() }
+    };
 
   } catch (err) {
-    return new Response(
-      JSON.stringify({ error: { message: err.message } }),
-      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
-    );
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: { message: err.message } }),
+      headers: { 'Content-Type': 'application/json', ...corsHeaders() }
+    };
   }
-};
-
-export const config = {
-  path: '/.netlify/functions/embeddings'
 };

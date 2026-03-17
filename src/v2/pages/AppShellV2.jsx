@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNoemaSession } from "../../hooks/useNoemaSession";
 import { useNoemaApi } from "../../hooks/useNoemaApi";
+import { sb } from "../../lib/supabase";
 import AnimatedMessage from "../components/messages/AnimatedMessage";
 import GlassCardV2 from "../components/GlassCardV2";
 import ConscienceSidebarV2 from "../components/Panes/ConscienceSidebarV2";
@@ -22,6 +22,7 @@ export default function AppShellV2({ onNav, user }) {
   const [insights, setInsights] = useState({ forces: [], blocages: {}, contradictions: [] });
   const [ikigai, setIkigai] = useState({});
   const [bloomType, setBloomType] = useState(null);
+  const [sessionIndex, setSessionIndex] = useState(1);
   const messagesEndRef = useRef(null);
 
   // Responsive State
@@ -34,6 +35,28 @@ export default function AppShellV2({ onNav, user }) {
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
+
+  // Mémoire inter-sessions : chargement au démarrage depuis Supabase
+  useEffect(() => {
+    if (!sb || !user) return;
+    (async () => {
+      const { data: mem } = await sb.from("memory").select("*").eq("user_id", user.id).maybeSingle();
+      if (!mem) return;
+      if (Array.isArray(mem.forces) || mem.blocages || mem.contradictions) {
+        setInsights({
+          forces: mem.forces || [],
+          blocages: mem.blocages || {},
+          contradictions: mem.contradictions || []
+        });
+      }
+      if (mem.ikigai && Object.keys(mem.ikigai).length > 0) {
+        setIkigai(mem.ikigai);
+      }
+      if (typeof mem.session_count === "number" && mem.session_count > 0) {
+        setSessionIndex(mem.session_count + 1);
+      }
+    })();
+  }, [user]);
 
   // 2. Custom hooks
   // useNoemaApi returns the raw async function callAPI
@@ -140,7 +163,7 @@ export default function AppShellV2({ onNav, user }) {
                  <AnimatePresence mode="wait">
                    {activeTab === "conscience" && (
                      <motion.div key="consc" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                       <ConscienceSidebarV2 insights={insights} sessionIndex={1} />
+                       <ConscienceSidebarV2 insights={insights} sessionIndex={sessionIndex} />
                      </motion.div>
                    )}
                    {activeTab === "ikigai" && (
@@ -296,7 +319,7 @@ export default function AppShellV2({ onNav, user }) {
                 <AnimatePresence mode="wait">
                    {activeTab === "conscience" && (
                      <motion.div key="consc" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }} style={{ height: "100%" }}>
-                       <ConscienceSidebarV2 insights={insights} sessionIndex={1} />
+                       <ConscienceSidebarV2 insights={insights} sessionIndex={sessionIndex} />
                      </motion.div>
                    )}
                    {activeTab === "ikigai" && (

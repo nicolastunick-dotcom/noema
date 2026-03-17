@@ -1,5 +1,5 @@
 // netlify/functions/greffier.js
-const HAIKU_MODEL = "claude-4-5-haiku-20260115";
+const HAIKU_MODEL = "claude-haiku-4-5-20251001";
 let createClientLoader = null
 
 const GREFFIER_SYSTEM = `Tu es l'Agent Greffier de Noema. Ton rôle est d'analyser silencieusement la conversation en cours pour extraire les "Insights" (forces, blocages, contradictions) et construire l'Ikigai de l'utilisateur.
