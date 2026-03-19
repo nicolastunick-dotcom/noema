@@ -34,7 +34,11 @@ FORMAT JSON ATTENDU :
     "paie": "...",
     "mission": "..."
   },
-  "ui_insight_type": "bloom-red-intense" | "bloom-violet-shift" | "bloom-gold-awakening" | null
+  "ui_insight_type": "bloom-red-intense" | "bloom-violet-shift" | "bloom-gold-awakening" | null,
+  "etat": "blocked" | "exploring" | "clarity",
+  "step": 1,
+  "session_note": "...",
+  "next_action": "..."
 }
 
 RÈGLES POUR 'phase' :
@@ -57,6 +61,31 @@ RÈGLES POUR 'ui_insight_type' (Feedback Visuel Bloom) :
 - null : s'il n'y a pas d'insight majeur NOUVEAU dans le dernier message.
 
 Si la mémoire actuelle contient déjà ces informations, NE RE-DÉCLENCHE PAS le ui_insight_type (mets null).
+
+RÈGLES POUR 'etat' :
+- "blocked" : l'utilisateur exprime un blocage fort, une résistance, ou une détresse émotionnelle
+- "clarity" : une clarté, une percée ou un déclic vient d'émerger
+- "exploring" : conversation normale d'exploration (par défaut)
+
+RÈGLES POUR 'step' (entier de 1 à 6) :
+1 = Exploration (qui tu es vraiment — début de conversation)
+2 = Forces (au moins une force identifiée)
+3 = Blocages (blocage racine ou d'entretien nommé)
+4 = Contradictions (au moins un schéma contradictoire visible)
+5 = Ikigai (construit ou en cours de construction)
+6 = Action (premières étapes concrètes définies)
+Déduis le step à partir de ce qui a été accompli dans la conversation.
+
+RÈGLES POUR 'session_note' :
+Résumé ultra-court (1 phrase max) de ce qui s'est passé dans cette session.
+Exemple : "A exprimé une peur du rejet liée à son rapport au jugement."
+Si la session est trop courte pour en tirer quelque chose, mets null.
+
+RÈGLES POUR 'next_action' :
+Tâche concrète et simple que l'utilisateur peut faire avant la prochaine session.
+Exemple : "Écrire 3 moments où il s'est senti pleinement lui-même."
+Si rien de concret n'a encore émergé dans la conversation, mets null.
+
 Ne renvoie ABSOLUMENT RIEN d'autre que l'objet JSON valide.`;
 
 function withTimeout(promise, ms, label) {
@@ -147,6 +176,10 @@ function normalizeGreffierPayload(parsed, safeUserMemory = {}) {
     contradictions: conscience.contradictions,
     ikigai,
     ui_insight_type: normalizeBloom(parsed?.ui_insight_type, conscience, phase),
+    etat: typeof parsed?.etat === "string" ? parsed.etat : "exploring",
+    step: typeof parsed?.step === "number" && parsed.step >= 1 && parsed.step <= 6 ? parsed.step : null,
+    session_note: typeof parsed?.session_note === "string" && parsed.session_note ? parsed.session_note : null,
+    next_action: typeof parsed?.next_action === "string" && parsed.next_action ? parsed.next_action : null,
   }
 }
 

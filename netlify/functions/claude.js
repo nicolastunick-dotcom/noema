@@ -52,8 +52,8 @@ function shouldRunGreffier(message, history = []) {
 
   if (!text || text === "START_SESSION") return false
 
-  const isSubstantive = charCount >= 180 || wordCount >= 28
-  const cadenceHit = userMessageCount > 0 && userMessageCount % 3 === 0
+  const isSubstantive = charCount >= 40
+  const cadenceHit = userMessageCount > 0 && userMessageCount % 2 === 0
   return isSubstantive || cadenceHit
 }
 
@@ -736,7 +736,11 @@ ${JSON.stringify({
   },
   contradictions: conscience.contradictions || [],
   ikigai: greffierData.ikigai || {},
-  ui_insight_type: greffierData.ui_insight_type || null
+  ui_insight_type: greffierData.ui_insight_type || null,
+  etat: greffierData.etat || "exploring",
+  step: greffierData.step ?? null,
+  session_note: greffierData.session_note || null,
+  next_action: greffierData.next_action || null,
 })}
 </_ui>`;
       responseContent += artificialUIBlock;
