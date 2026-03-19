@@ -1,6 +1,6 @@
 let createClientLoader = null
 const ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
-const GREFFIER_TIMEOUT_MS = 5000
+const GREFFIER_TIMEOUT_MS = 8000
 let runGreffierLoader = null
 
 async function loadCreateClient() {
