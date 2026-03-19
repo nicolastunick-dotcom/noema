@@ -1,5 +1,6 @@
 // netlify/functions/greffier.js
-const HAIKU_MODEL = "claude-4-5-haiku-20260115";
+const HAIKU_MODEL = "claude-haiku-4-5-20251001";
+const GREFFIER_TIMEOUT_MS = 2000;
 let createClientLoader = null
 
 const GREFFIER_SYSTEM = `Tu es l'Agent Greffier de Noema. Ton rôle est d'analyser silencieusement la conversation en cours pour extraire les "Insights" (forces, blocages, contradictions) et construire l'Ikigai de l'utilisateur.
@@ -11,6 +12,14 @@ Tu dois répondre UNIQUEMENT avec un objet JSON strictement valide, qui sera uti
 
 FORMAT JSON ATTENDU :
 {
+  "phase": "Immersion" | "Reflet" | "Analyse Profonde" | "Percée",
+  "progression": 0,
+  "conscience": {
+    "racine": "...",
+    "entretien": "...",
+    "visible": "...",
+    "contradictions": ["Contradiction 1", "Contradiction 2"]
+  },
   "forces": ["Force 1", "Force 2"...], // Conserve les forces précédentes et ajoute les nouvelles (max 6)
   "blocages": {
     "racine": "...", // Mets à jour si découvert
@@ -25,17 +34,121 @@ FORMAT JSON ATTENDU :
     "paie": "...",
     "mission": "..."
   },
-  "ui_insight_type": "red" | "orange" | "violet" | null
+  "ui_insight_type": "bloom-red-intense" | "bloom-violet-shift" | "bloom-gold-awakening" | null
 }
 
+RÈGLES POUR 'phase' :
+- "Immersion" : l'utilisateur dépose la matière, les signaux sont encore émergents
+- "Reflet" : des schémas commencent à se dessiner
+- "Analyse Profonde" : un blocage racine, un blocage d'entretien ou des contradictions deviennent lisibles
+- "Percée" : une prise de conscience forte, une bascule intérieure ou une nouvelle clarté apparaît
+
+RÈGLES POUR 'progression' :
+- nombre de 0 à 100
+- 0-25 = immersion
+- 26-55 = reflet
+- 56-80 = analyse profonde
+- 81-100 = percée
+
 RÈGLES POUR 'ui_insight_type' (Feedback Visuel Bloom) :
-- "red" : un nouveau BLOCAGE très profond, une peur racine, ou un trauma vient d'être identifié.
-- "orange" : une nouvelle CONTRADICTION forte ou un schéma de maintien est mis en évidence.
-- "violet" : une nouvelle FORCE majeure, un talent, ou un pilier très clair de l'IKIGAI vient d'apparaître.
+- "bloom-red-intense" : un nouveau BLOCAGE racine, un trauma, ou un nœud profond est identifié.
+- "bloom-violet-shift" : une nouvelle CONTRADICTION forte ou un schéma de maintien devient visible.
+- "bloom-gold-awakening" : une PERCÉE de conscience, un déclic, ou une clarté importante émerge.
 - null : s'il n'y a pas d'insight majeur NOUVEAU dans le dernier message.
 
 Si la mémoire actuelle contient déjà ces informations, NE RE-DÉCLENCHE PAS le ui_insight_type (mets null).
 Ne renvoie ABSOLUMENT RIEN d'autre que l'objet JSON valide.`;
+
+function withTimeout(promise, ms, label) {
+  let timer = null
+
+  return Promise.race([
+    promise.finally(() => {
+      if (timer) clearTimeout(timer)
+    }),
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+    }),
+  ])
+}
+
+function clampProgression(value) {
+  if (!Number.isFinite(value)) return null
+  return Math.max(0, Math.min(100, Math.round(value)))
+}
+
+function inferPhase(conscience = {}, ikigai = {}) {
+  if (ikigai?.mission) return "Percée"
+  if (conscience.racine || (conscience.contradictions || []).length > 0) return "Analyse Profonde"
+  if (conscience.entretien || conscience.visible) return "Reflet"
+  return "Immersion"
+}
+
+function inferProgression(phase) {
+  switch (phase) {
+    case "Percée":
+      return 85
+    case "Analyse Profonde":
+      return 45
+    case "Reflet":
+      return 30
+    default:
+      return 15
+  }
+}
+
+function normalizeBloom(value, conscience, phase) {
+  if (["bloom-red-intense", "bloom-violet-shift", "bloom-gold-awakening"].includes(value)) {
+    return value
+  }
+
+  if (phase === "Percée") return "bloom-gold-awakening"
+  if (conscience.racine) return "bloom-red-intense"
+  if ((conscience.contradictions || []).length > 0) return "bloom-violet-shift"
+  return null
+}
+
+function normalizeGreffierPayload(parsed, safeUserMemory = {}) {
+  const memoryBlocages = safeUserMemory.blocages || {}
+  const rawConscience = parsed?.conscience || {}
+  const conscience = {
+    racine: rawConscience.racine || parsed?.blocages?.racine || memoryBlocages.racine || "",
+    entretien: rawConscience.entretien || parsed?.blocages?.entretien || memoryBlocages.entretien || "",
+    visible: rawConscience.visible || parsed?.blocages?.visible || memoryBlocages.visible || "",
+    contradictions: Array.isArray(rawConscience.contradictions)
+      ? rawConscience.contradictions
+      : Array.isArray(parsed?.contradictions)
+        ? parsed.contradictions
+        : Array.isArray(safeUserMemory.contradictions)
+          ? safeUserMemory.contradictions
+          : [],
+  }
+
+  const phase = typeof parsed?.phase === "string" && parsed.phase.trim()
+    ? parsed.phase.trim()
+    : inferPhase(conscience, parsed?.ikigai || safeUserMemory.ikigai || {})
+
+  const progression = clampProgression(parsed?.progression) ?? inferProgression(phase)
+  const forces = Array.isArray(parsed?.forces) ? parsed.forces : (safeUserMemory.forces || [])
+  const ikigai = parsed?.ikigai && typeof parsed.ikigai === "object"
+    ? parsed.ikigai
+    : (safeUserMemory.ikigai || {})
+
+  return {
+    phase,
+    progression,
+    conscience,
+    forces,
+    blocages: {
+      racine: conscience.racine,
+      entretien: conscience.entretien,
+      visible: conscience.visible,
+    },
+    contradictions: conscience.contradictions,
+    ikigai,
+    ui_insight_type: normalizeBloom(parsed?.ui_insight_type, conscience, phase),
+  }
+}
 
 export async function runGreffier({ apiKey, sb, userId, sessionId, history, userMemory = {} }) {
   try {
@@ -66,7 +179,7 @@ Analyse les derniers messages et fournis le JSON mis à jour. S'il y a un nouvel
       messages: recentHistory.filter(m => m.role === 'user' || m.role === 'assistant'),
     };
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await withTimeout(fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -74,10 +187,16 @@ Analyse les derniers messages et fournis le JSON mis à jour. S'il y a un nouvel
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify(payload),
-    });
+    }), GREFFIER_TIMEOUT_MS, 'Greffier Anthropic fetch');
 
     if (!response.ok) {
-      console.warn("Greffier Haiku call failed:", response.status);
+      const errorBody = await response.clone().text().catch(() => "");
+      console.warn("Greffier Haiku call failed:", {
+        status: response.status,
+        statusText: response.statusText,
+        model: HAIKU_MODEL,
+        body: errorBody,
+      });
       return null;
     }
 
@@ -85,13 +204,17 @@ Analyse les derniers messages et fournis le JSON mis à jour. S'il y a un nouvel
     let text = data.content?.[0]?.text || "";
 
     if (sb && userId && data.usage) {
-      await sb.from('api_usage').insert({
-        user_id: userId,
-        model: HAIKU_MODEL,
-        prompt_tokens: data.usage.input_tokens,
-        completion_tokens: data.usage.output_tokens,
-        session_id: sessionId
-      }).catch(e => console.warn("Failed to log Greffier usage", e));
+      try {
+        await sb.from('api_usage').insert({
+          user_id: userId,
+          model: HAIKU_MODEL,
+          prompt_tokens: data.usage.input_tokens,
+          completion_tokens: data.usage.output_tokens,
+          session_id: sessionId
+        });
+      } catch (e) {
+        console.warn("Failed to log Greffier usage", e);
+      }
     }
 
     // Parse JSON safely
@@ -100,27 +223,42 @@ Analyse les derniers messages et fournis le JSON mis à jour. S'il y a un nouvel
     if (text.startsWith("```")) text = text.replace("```", "");
     if (text.endsWith("```")) text = text.replace(/```$/, "");
     
-    const parsed = JSON.parse(text.trim());
+    const parsed = normalizeGreffierPayload(JSON.parse(text.trim()), safeUserMemory);
 
     // Update Silent Database Tables (memory / user_insights)
     // As requested: "Met à jour silencieusement les tables user_insights et ikigai_state."
     // In our schema, it's the `memory` table that holds forces, blocages, ikigai.
     if (sb && userId) {
-      await sb.from('memory').upsert({
-        user_id: userId,
-        forces: parsed.forces || safeUserMemory.forces,
-        contradictions: parsed.contradictions || safeUserMemory.contradictions,
-        blocages: parsed.blocages || safeUserMemory.blocages,
-        ikigai: parsed.ikigai || safeUserMemory.ikigai,
-        updated_at: new Date().toISOString()
-      }, { onConflict: "user_id" });
+      try {
+        await sb.from('memory').upsert({
+          user_id: userId,
+          forces: parsed.forces || safeUserMemory.forces,
+          contradictions: parsed.contradictions || safeUserMemory.contradictions,
+          blocages: parsed.blocages || safeUserMemory.blocages,
+          ikigai: parsed.ikigai || safeUserMemory.ikigai,
+          updated_at: new Date().toISOString()
+        }, { onConflict: "user_id" });
+      } catch (err) {
+        console.warn("Greffier memory upsert failed:", err);
+      }
       
-      // Also update the current session's snapshot
       if (sessionId) {
-        await sb.from('sessions').update({
-          insights: { forces: parsed.forces, blocages: parsed.blocages, contradictions: parsed.contradictions },
-          ikigai: parsed.ikigai
-        }).eq('id', sessionId);
+        try {
+          await sb.from('sessions').update({
+            insights: {
+              forces: parsed.forces,
+              blocages: parsed.blocages,
+              contradictions: parsed.contradictions,
+              conscience: parsed.conscience,
+              phase: parsed.phase,
+              progression: parsed.progression,
+              ui_insight_type: parsed.ui_insight_type,
+            },
+            ikigai: parsed.ikigai
+          }).eq('id', sessionId);
+        } catch (err) {
+          console.warn("Greffier session update failed:", err);
+        }
       }
     }
 
