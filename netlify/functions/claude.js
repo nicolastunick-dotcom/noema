@@ -1,5 +1,7 @@
 let createClientLoader = null
 const ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
+const GREFFIER_TIMEOUT_MS = 5000
+let runGreffierLoader = null
 
 async function loadCreateClient() {
   if (!createClientLoader) {
@@ -13,6 +15,60 @@ async function loadCreateClient() {
   }
 
   return createClientLoader
+}
+
+async function loadRunGreffier() {
+  if (!runGreffierLoader) {
+    runGreffierLoader = import('./greffier.js')
+      .then(mod => {
+        if (typeof mod.runGreffier !== 'function') {
+          throw new Error('Invalid greffier export')
+        }
+        return mod.runGreffier
+      })
+  }
+
+  return runGreffierLoader
+}
+
+function withTimeout(promise, ms, label) {
+  let timer = null
+
+  return Promise.race([
+    promise.finally(() => {
+      if (timer) clearTimeout(timer)
+    }),
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+    }),
+  ])
+}
+
+function shouldRunGreffier(message, history = []) {
+  const text = String(message || "").trim()
+  const wordCount = text.split(/\s+/).filter(Boolean).length
+  const charCount = text.length
+  const userMessageCount = history.filter(entry => entry?.role === "user").length
+
+  if (!text || text === "START_SESSION") return false
+
+  const isSubstantive = charCount >= 180 || wordCount >= 28
+  const cadenceHit = userMessageCount > 0 && userMessageCount % 3 === 0
+  return isSubstantive || cadenceHit
+}
+
+async function runGreffierSafely({ apiKey, sb, userId, sessionId, history, userMemory }) {
+  try {
+    const runGreffier = await withTimeout(loadRunGreffier(), GREFFIER_TIMEOUT_MS, 'Greffier load')
+    return await withTimeout(
+      runGreffier({ apiKey, sb, userId, sessionId, history, userMemory }),
+      GREFFIER_TIMEOUT_MS,
+      'Greffier run'
+    )
+  } catch (err) {
+    console.warn('Greffier best-effort failed:', err)
+    return null
+  }
 }
 // Simple helper to trim history safely (same as front-end)
 function trimHistory(h) {
@@ -603,7 +659,16 @@ export const handler = async (event) => {
     // 6. Call Anthropic API (Sonnet) & Greffier (Haiku) in Parallel.
     // Sonnet answers the user empathetically.
     // Greffier remains best-effort so it cannot take down the main chat path.
-    const greffierPromise = Promise.resolve(null)
+    const greffierPromise = shouldRunGreffier(message, sessionData.history)
+      ? runGreffierSafely({
+          apiKey,
+          sb,
+          userId,
+          sessionId,
+          history: trimmedHistory,
+          userMemory
+        })
+      : Promise.resolve(null)
 
     console.log('Appel Anthropic avec le modèle:', payload.model);
 
@@ -614,7 +679,12 @@ export const handler = async (event) => {
 
     if (!sonnetResponse.ok) {
       const errorBody = await sonnetResponse.clone().text().catch(() => "")
-      console.error("Anthropic API error:", sonnetResponse.status, errorBody)
+      console.error("Anthropic API error:", {
+        status: sonnetResponse.status,
+        statusText: sonnetResponse.statusText,
+        model: payload.model,
+        body: errorBody,
+      })
     }
 
     if (!sonnetResponse.ok && sonnetResponse.status === 529) {
@@ -629,24 +699,42 @@ export const handler = async (event) => {
 
     // Usage Tracking
     if (data.usage) {
-      await sb.from('api_usage').insert({
-        user_id: userId,
-        model: payload.model, // Use the model from the payload
-        prompt_tokens: data.usage.input_tokens,
-        completion_tokens: data.usage.output_tokens,
-        session_id: sessionId
-      }).catch(err => console.warn("Failed to log usage:", err))
+      try {
+        await sb.from('api_usage').insert({
+          user_id: userId,
+          model: payload.model, // Use the model from the payload
+          prompt_tokens: data.usage.input_tokens,
+          completion_tokens: data.usage.output_tokens,
+          session_id: sessionId
+        })
+      } catch (err) {
+        console.warn("Failed to log usage:", err)
+      }
     }
     
     let responseContent = data.content?.[0]?.text || data.text || ""
     
-    // Simulate the exact old <_ui> format for the Front-end relying on AppShellV2 parsing
+    // Emit structured UI metadata for the front-end while keeping legacy keys available.
     if (greffierData) {
+      const conscience = greffierData.conscience || {
+        racine: greffierData.blocages?.racine || "",
+        entretien: greffierData.blocages?.entretien || "",
+        visible: greffierData.blocages?.visible || "",
+        contradictions: greffierData.contradictions || [],
+      }
+
       const artificialUIBlock = `\n\n<_ui>
 ${JSON.stringify({
+  phase: greffierData.phase || "Immersion",
+  progression: Number.isFinite(greffierData.progression) ? greffierData.progression : 0,
+  conscience,
   forces: greffierData.forces || [],
-  blocages: greffierData.blocages || {},
-  contradictions: greffierData.contradictions || [],
+  blocages: greffierData.blocages || {
+    racine: conscience.racine,
+    entretien: conscience.entretien,
+    visible: conscience.visible,
+  },
+  contradictions: conscience.contradictions || [],
   ikigai: greffierData.ikigai || {},
   ui_insight_type: greffierData.ui_insight_type || null
 })}
@@ -679,6 +767,7 @@ ${JSON.stringify({
       headers: { 'Content-Type': 'application/json', ...corsHeaders() }
     }
   } catch (err) {
+    console.error("Claude function fatal error:", err)
     return {
       statusCode: 500,
       body: JSON.stringify({ error: { message: err.message } }),
@@ -695,15 +784,21 @@ async function fetchAnthropicWithRetry(apiKey, allowed) {
   let lastResponse = null
 
   for (let attempt = 0; attempt <= retryDelays.length; attempt += 1) {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify(allowed),
-    })
+    let response
+    try {
+      response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify(allowed),
+      })
+    } catch (err) {
+      console.error("Anthropic fetch failed:", err)
+      throw err
+    }
 
     if (!(await isAnthropicOverloaded(response))) {
       return response
