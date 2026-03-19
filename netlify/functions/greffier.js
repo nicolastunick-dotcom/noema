@@ -171,12 +171,16 @@ Analyse les derniers messages et fournis le JSON mis à jour. S'il y a un nouvel
     // We'll put it in the system prompt for Haiku
     const fullSystem = `${GREFFIER_SYSTEM}\n\n${memoryContext}`;
 
+    const filteredHistory = recentHistory.filter(m => m.role === 'user' || m.role === 'assistant');
+    // Prefill forces Haiku to start directly with JSON, never with conversational text
+    const messagesWithPrefill = [...filteredHistory, { role: 'assistant', content: '{' }];
+
     const payload = {
       model: HAIKU_MODEL,
       max_tokens: 1000,
       temperature: 0,
       system: fullSystem,
-      messages: recentHistory.filter(m => m.role === 'user' || m.role === 'assistant'),
+      messages: messagesWithPrefill,
     };
 
     const response = await withTimeout(fetch('https://api.anthropic.com/v1/messages', {
@@ -217,12 +221,11 @@ Analyse les derniers messages et fournis le JSON mis à jour. S'il y a un nouvel
       }
     }
 
-    // Parse JSON safely
-    text = text.trim();
-    if (text.startsWith("```json")) text = text.replace("```json", "");
-    if (text.startsWith("```")) text = text.replace("```", "");
+    // Parse JSON safely — prepend "{" because we used it as a prefill
+    text = "{" + text.trim();
+    if (text.startsWith("{```json")) text = text.replace("{```json", "{");
     if (text.endsWith("```")) text = text.replace(/```$/, "");
-    
+
     const parsed = normalizeGreffierPayload(JSON.parse(text.trim()), safeUserMemory);
 
     // Update Silent Database Tables (memory / user_insights)
