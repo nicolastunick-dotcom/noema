@@ -16,28 +16,14 @@ export function fmt(text) {
 }
 
 export function parseUI(raw) {
-  // --- CODEX CHANGE START ---
-  // Codex modification - safely parse the optional UI metadata block without
-  // assuming the model response is always a valid string/object payload.
-  const source = typeof raw === "string" ? raw : "";
-  const m = source.match(/<_ui>([\s\S]*?)<\/_ui>/);
+  const m = raw.match(/<_ui>([\s\S]*?)<\/_ui>/);
   if (!m) return null;
-  try {
-    const parsed = JSON.parse(m[1].trim());
-    return parsed && typeof parsed === "object" ? parsed : null;
-  } catch {
-    return null;
-  }
-  // --- CODEX CHANGE END ---
+  try { return JSON.parse(m[1].trim()); } catch { return null; }
 }
 
-export const stripUI = (raw) => {
-  if (!raw) return "";
-  // Cette regex supprime tout ce qui commence par <_ui> 
-  // même s'il n'y a pas de balise fermante </_ui> (cas de coupure)
-  return raw.replace(/<_ui>[\s\S]*?(?:<\/_ui>|$)/g, "").trim();
-};
-
+export function stripUI(raw) {
+  return raw.replace(/<_ui>[\s\S]*?<\/_ui>/g, "").trim();
+}
 
 export function trimHistory(h) {
   if (h.length <= MAX_HISTORY) return h;

@@ -1,5 +1,4 @@
 import { memo } from "react";
-import GlassCard from "./GlassCard";
 
 const ITEMS = [
   { icon:"❤️", label:"Ce que tu aimes",           k:"aime" },
@@ -8,65 +7,26 @@ const ITEMS = [
   { icon:"💰", label:"Ce pour quoi on te paie",   k:"paie" },
 ];
 
-const IkigaiPane = memo(function IkigaiPane({
-  ikigai,
-  onGen,
-  onOpenPage,
-  sessionIndex = 0,
-  ikigaiRevealed = false,
-  isPageReady = false,
-}) {
-  // --- CODEX CHANGE START ---
-  // Codex modification - keep the mission hidden until the guided journey has
-  // reached session 8, while leaving the other Ikigai signals visible.
-  const showMission = Boolean(ikigai.mission) && (ikigaiRevealed || sessionIndex >= 8);
-  // --- CODEX CHANGE END ---
+const IkigaiPane = memo(function IkigaiPane({ ikigai, onGen }) {
   return (
-    <div className="ik-shell">
-      {/* --- CODEX CHANGE START --- */}
-      <GlassCard className="ik-intro" tone="violet">
-        <div className="ik-intro-eyebrow">Ikigai en convergence</div>
-        <div className="ik-intro-copy">
-          Une lecture progressive de ce que tu aimes, de ce que tu portes naturellement et de la direction qui commence à se dessiner.
-        </div>
-      </GlassCard>
+    <>
       <div className="ikg">
         {ITEMS.map(({icon,label,k}) => (
-          <GlassCard className="ikc" key={k} tone="neutral">
+          <div className="ikc" key={k}>
             <div className="iki">{icon}</div>
             <div className="ikl">{label}</div>
             <div className="ikv">{ikigai[k] || <span className="ike">À découvrir</span>}</div>
-          </GlassCard>
+          </div>
         ))}
       </div>
-      {showMission ? (
-        <GlassCard className="ik-mission" tone="violet">
-          <div className="ik-mission-label">Mission de vie</div>
-          <div className="ik-mission-copy">{ikigai.mission}</div>
-        </GlassCard>
-      ) : (
-        <GlassCard className="ik-mission ik-mission--locked" tone="neutral">
-          <div className="ik-mission-label">Mission de vie</div>
-          <div className="ik-mission-copy">
-            🔒 La mission de vie sera révélée autour de la session 8,
-            lorsque la compréhension de ton parcours sera suffisamment solide.
-          </div>
-        </GlassCard>
+      {ikigai.mission && (
+        <div style={{padding:"13px",background:"var(--accent-soft)",border:"1px solid var(--accent-border)",borderRadius:"var(--rs)",marginBottom:14}}>
+          <div style={{fontSize:".62rem",fontWeight:700,letterSpacing:".09em",textTransform:"uppercase",color:"var(--accent)",marginBottom:6}}>🌟 Mission de vie</div>
+          <div style={{fontSize:".82rem",color:"var(--text2)",lineHeight:1.65,fontStyle:"italic"}}>{ikigai.mission}</div>
+        </div>
       )}
-      <GlassCard className="ik-actions" tone="neutral">
-        <button className="btn-ikg" onClick={onGen}>✨ Générer mon Ikigai maintenant</button>
-        <button
-          className="btn-ikg btn-ikg-secondary"
-          onClick={onOpenPage}
-          disabled={!isPageReady}
-          type="button"
-        >
-          Ouvrir la page de mon Ikigai
-        </button>
-        {!isPageReady && <div className="ik-note">Page dédiée bientôt disponible.</div>}
-      </GlassCard>
-      {/* --- CODEX CHANGE END --- */}
-    </div>
+      <button className="btn-ikg" onClick={onGen}>✨ Générer mon Ikigai maintenant</button>
+    </>
   );
 });
 

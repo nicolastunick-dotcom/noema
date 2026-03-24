@@ -1,31 +1,18 @@
-import { useEffect, useLayoutEffect, useRef, useCallback, useState } from "react";
-import { sb } from "../lib/supabase";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { sb, buildSystemPrompt } from "../lib/supabase";
+import { ANTHROPIC_PROXY } from "../constants/config";
 import { QUOTES } from "../constants/prompt";
-import { applyTheme } from "../constants/themes";
-import { getUpdateGlowTone, isNearBottom } from "../utils/chatEffects";
-import { getTime, parseUI, stripUI } from "../utils/helpers";
-import { getChatErrorMessage } from "../utils/errors";
+import { applyTheme, mapEtat } from "../constants/themes";
+import { getTime, fmt, parseUI, stripUI, trimHistory } from "../utils/helpers";
 import StateBadge    from "../components/StateBadge";
 import InsightsPane  from "../components/InsightsPane";
 import ProgressPane  from "../components/ProgressPane";
 import IkigaiPane    from "../components/IkigaiPane";
-import SessionGuide  from "../components/SessionGuide";
-import SessionProgress from "../components/SessionProgress";
 import { SendSVG }   from "../components/SVGs";
-import RichText      from "../components/RichText";
-import { useNoemaApi } from "../hooks/useNoemaApi";
-import { useNoemaRateLimit } from "../hooks/useNoemaRateLimit";
-import { useNoemaSession } from "../hooks/useNoemaSession";
-import { useNoemaUIState } from "../hooks/useNoemaUIState";
-import {
-  advanceNoemaTestJourney,
-  createNoemaSeededJourney,
-  createNoemaSeedModeReply,
-  createNoemaTestUnavailableReply,
-  isNoemaTestAuthorizedUser,
-  parseNoemaTestCommand,
-  startNoemaTestJourney,
-} from "../lib/testMode/noemaTestMode";
+import ChatPage      from "./ChatPage";
+import MappingPage   from "./MappingPage";
+import JournalPage   from "./JournalPage";
+import TodayPage     from "./TodayPage";
 
 // ─────────────────────────────────────────────────────────────
 // APP SHELL — Composant principal : chat + panneaux latéraux
@@ -41,12 +28,20 @@ import {
 //   9. ACTIONS (reset, newSession, genIkigai)
 //  10. RENDER
 // ─────────────────────────────────────────────────────────────
-function cloneHistoryEntries(entries = []) {
-  return entries.map((entry) => ({ ...entry }));
-}
-
 export default function AppShell({ onNav, user }) {
   // ── 1. STATE & REFS ──────────────────────────────────────────
+  const [msgs,     setMsgs]     = useState([]);
+  const [input,    setInput]    = useState("");
+  const [typing,   setTyping]   = useState(false);
+  const [mstate,   setMstate]   = useState("exploring");
+  const [step,     setStep]     = useState(0);
+  const [sideTab,  setSideTab]  = useState("insights");
+  const [mobTab,   setMobTab]   = useState("chat");
+  const [navTab,   setNavTab]   = useState("chat");
+  const [insights, setInsights] = useState({forces:[],blocages:{racine:"",entretien:"",visible:""},contradictions:[]});
+  const [ikigai,   setIkigai]   = useState({aime:"",excelle:"",monde:"",paie:"",mission:""});
+  const [mode,     setMode]     = useState("accueil");
+
   const history         = useRef([]);
   const lastSessionNote = useRef("");
   const memoryRef       = useRef(null); // toujours à jour même dans les closures async
@@ -54,588 +49,348 @@ export default function AppShell({ onNav, user }) {
   const taRef           = useRef(null);
   const minuteTimestamps = useRef([]);  // rate limiting local (par minute)
   const hasOpened       = useRef(false);
-  const updateGlowIndex = useRef(0);
-  const stickToBottomRef = useRef(true);
-  const testModeSnapshotRef = useRef(null);
-  const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
-  // --- CODEX CHANGE START ---
-  // Codex modification - control the session journey guide from the header
-  // without altering the existing shell/tab structure.
-  const [showSessionGuide, setShowSessionGuide] = useState(false);
-  // --- CODEX CHANGE END ---
-
-  // --- CODEX CHANGE START ---
-  // Codex modification - extract the AppShell UI state into a dedicated hook
-  // while keeping all rendering and orchestration behavior identical.
-  const {
-    msgs,
-    setMsgs,
-    input,
-    setInput,
-    typing,
-    setTyping,
-    mstate,
-    sessionIndex,
-    sessionStage,
-    messagesToday,
-    messagesRemaining,
-    step,
-    setStep,
-    sideTab,
-    setSideTab,
-    mobTab,
-    setMobTab,
-    insights,
-    setInsights,
-    subSessionSummary,
-    weeklyMemory,
-    setWeeklyMemory,
-    nextAction,
-    setNextAction,
-    ikigai,
-    setIkigai,
-    mode,
-    isTestMode,
-    isSeedMode,
-    testMessageCount,
-    setTestModeState,
-    resetTestModeState,
-    getUIStateSnapshot,
-    restoreUIState,
-    setSessionNote,
-    applyUI,
-    resetUIState,
-  } = useNoemaUIState({ lastSessionNoteRef: lastSessionNote });
-  // --- CODEX CHANGE END ---
-
-  // --- CODEX CHANGE START ---
-  const [currentMessage, setCurrentMessage] = useState("");
-  const callAPI = useNoemaApi({ user, sessionId, message: currentMessage });
-  const checkRateLimit = useNoemaRateLimit({ user, minuteTimestampsRef: minuteTimestamps });
-  // --- CODEX CHANGE END ---
 
   // ── 2. OPENING MESSAGE ───────────────────────────────────────
-  const openingMessage = useCallback(async () => {
+  async function openingMessage() {
     if (hasOpened.current) return;
     hasOpened.current = true;
-    stickToBottomRef.current = true;
     const q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
     const trigger = `[SYSTÈME — ne pas afficher] Démarre la session. Ouvre avec cette citation de ${q.author} : "${q.text}" — intègre-la naturellement dans ton message d'accueil en créant un lien personnel avec l'utilisateur. Pose ensuite une première question ouverte pour commencer l'exploration.`;
     history.current.push({ role: "user", content: trigger });
     setTyping(true);
-    setCurrentMessage(trigger);
-  }, [setTyping]);
-
-  useEffect(() => {
-    if (typing && currentMessage && hasOpened.current && msgs.length === 0) {
-      (async () => {
-        try {
-          const raw   = await callAPI();
-          const ui    = parseUI(raw);
-          const clean = stripUI(raw);
-          applyUI(ui);
-          setMsgs([{ role: "noema", text: clean, time: getTime() }]);
-          history.current.push({ role: "assistant", content: raw });
-        } catch (e) {
-          console.error("[Noema] Erreur message d'ouverture:", e);
-          history.current = [];
-          hasOpened.current = false;
-        }
-        setTyping(false);
-        setCurrentMessage("");
-      })();
+    try {
+      const raw   = await callAPI();
+      const ui    = parseUI(raw);
+      const clean = stripUI(raw);
+      applyUI(ui);
+      setMsgs([{ role: "noema", text: clean, time: getTime() }]);
+      history.current.push({ role: "assistant", content: raw });
+    } catch (e) {
+      console.error("[Noema] Erreur message d'ouverture:", e);
+      history.current = [];
+      hasOpened.current = false;
     }
-  }, [typing, currentMessage, callAPI, applyUI, msgs.length, setMsgs, setTyping]);
+    setTyping(false);
+  }
 
-  // --- CODEX CHANGE START ---
-  // Codex modification - Phase 1 session extraction moves Supabase session
-  // hydration and persistence into a dedicated hook without changing flow.
-  const saveSession = useNoemaSession({
-    user,
-    historyRef: history,
-    lastSessionNoteRef: lastSessionNote,
-    memoryRef,
-    setInsights,
-    setIkigai,
-    setNextAction,
-    setSessionNote,
-    setWeeklyMemory,
-    setStep,
-    openingMessage,
-  });
-  // --- CODEX CHANGE END ---
+  // ── 3. EFFECTS ───────────────────────────────────────────────
+  useEffect(() => {
+    if (!sb || !user) return;
+    (async () => {
+      const { data: mem, error: memErr } = await sb.from("memory").select("*").eq("user_id", user.id).maybeSingle();
+      if (memErr) console.error("[Noema] Erreur chargement memory:", memErr);
+      if (mem) memoryRef.current = mem;
+
+      const { data: sessions, error: sessErr } = await sb.from("sessions")
+        .select("insights,ikigai,step")
+        .eq("user_id", user.id)
+        .order("ended_at", { ascending: false })
+        .limit(1);
+      if (sessErr) console.error("[Noema] Erreur chargement sessions:", sessErr);
+      const last = sessions?.[0];
+      if (last) {
+        if (last.insights) setInsights(i => ({ ...i, ...last.insights }));
+        if (last.ikigai)   setIkigai(k => ({ ...k, ...last.ikigai }));
+        if (typeof last.step === "number") setStep(last.step);
+      }
+      await openingMessage();
+    })();
+  }, [user]);
 
   useEffect(() => {
     if (user) return;
     openingMessage();
-  }, [openingMessage, user]);
+  }, []);
 
   useEffect(() => { applyTheme(mstate); }, [mstate]);
 
-  const scrollToBottom = useCallback(() => {
-    const node = msgsRef.current;
-    if (!node) return;
-    node.scrollTop = node.scrollHeight;
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!stickToBottomRef.current) return;
-    scrollToBottom();
-  }, [msgs, scrollToBottom, typing]);
-
-  const pinToLatest = useCallback(({ force = false } = {}) => {
-    if (!force && !stickToBottomRef.current) return;
+  useEffect(() => {
     requestAnimationFrame(() => {
-      scrollToBottom();
-      stickToBottomRef.current = true;
+      if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight;
     });
-  }, [scrollToBottom]);
+  }, [msgs, typing]);
 
-  const handleMessagesScroll = useCallback(() => {
-    stickToBottomRef.current = isNearBottom(msgsRef.current);
-  }, []);
-
-  const syncTextareaHeight = useCallback((node) => {
-    if (!node) return false;
-    const previousHeight = node.offsetHeight;
-    node.style.height = "auto";
-    node.style.height = `${Math.min(node.scrollHeight, 120)}px`;
-    return Math.abs(node.offsetHeight - previousHeight) > 1;
-  }, []);
-
-  const handleInputFocus = useCallback(() => {
-    if (!stickToBottomRef.current) return;
-    pinToLatest({ force: true });
-  }, [pinToLatest]);
-
-  const handleInputChange = useCallback((event) => {
-    setInput(event.target.value);
-    const heightChanged = syncTextareaHeight(event.target);
-    if (heightChanged && stickToBottomRef.current) {
-      pinToLatest({ force: true });
+  // ── 4. API ───────────────────────────────────────────────────
+  async function callAPI() {
+    const h = trimHistory(history.current);
+    const systemPrompt = buildSystemPrompt(memoryRef.current);
+    const headers = { "Content-Type":"application/json", "anthropic-version":"2023-06-01" };
+    if (import.meta.env.DEV) {
+      headers["x-api-key"] = import.meta.env.VITE_ANTHROPIC_KEY;
+      headers["anthropic-dangerous-direct-browser-access"] = "true";
     }
-  }, [pinToLatest, setInput, syncTextareaHeight]);
-
-  const createNoemaChatMessage = useCallback(({ text, hasUpdate = false, isErr = false, time = getTime() }) => {
-    const message = { role: "noema", text, time, isErr };
-    if (!hasUpdate) return message;
-
-    const updateTone = getUpdateGlowTone(updateGlowIndex.current);
-    updateGlowIndex.current += 1;
-    return { ...message, hasUpdate: true, updateTone };
-  }, []);
-
-  const hasVisibleUIUpdate = useCallback((ui) => Boolean(
-    ui && (
-      (ui.forces?.length > 0) ||
-      (ui.ikigai && Object.values(ui.ikigai).some(Boolean)) ||
-      (ui.contradictions?.length > 0) ||
-      (ui.blocages && Object.values(ui.blocages).some(Boolean))
-    )
-  ), []);
-
-  const buildNoemaMessageFromRaw = useCallback((raw) => {
-    const ui = parseUI(raw);
-    return {
-      raw,
-      ui,
-      message: createNoemaChatMessage({
-        text: stripUI(raw),
-        hasUpdate: hasVisibleUIUpdate(ui),
-      }),
-    };
-  }, [createNoemaChatMessage, hasVisibleUIUpdate]);
-
-  const ensureTestModeSnapshot = useCallback(() => {
-    if (testModeSnapshotRef.current) return;
-
-    testModeSnapshotRef.current = {
-      history: cloneHistoryEntries(history.current),
-      uiState: { ...getUIStateSnapshot(), input: "" },
-      updateGlowIndex: updateGlowIndex.current,
-    };
-  }, [getUIStateSnapshot]);
-
-  const activateNoemaTestMode = useCallback((response, { isSeed = false } = {}) => {
-    ensureTestModeSnapshot();
-
-    const { ui, message } = buildNoemaMessageFromRaw(response.raw);
-    updateGlowIndex.current = 0;
-    history.current = [{ role: "assistant", content: response.raw }];
-    resetUIState();
-    if (ui) applyUI(ui);
-    setMsgs([message]);
-    setTestModeState({
-      isTestMode: true,
-      isSeedMode: isSeed,
-      testStep: response.stageIndex,
-      testMessageCount: response.messageCount,
+    const res = await fetch(ANTHROPIC_PROXY, {
+      method:"POST", headers,
+      body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:1400, system:systemPrompt, messages:h }),
     });
-    stickToBottomRef.current = true;
-    pinToLatest({ force: true });
-  }, [
-    applyUI,
-    buildNoemaMessageFromRaw,
-    ensureTestModeSnapshot,
-    pinToLatest,
-    resetUIState,
-    setMsgs,
-    setTestModeState,
-  ]);
+    if (!res.ok) { const e=await res.json().catch(()=>{}); throw new Error(e?.error?.message||`HTTP ${res.status}`); }
+    return (await res.json()).content[0].text;
+  }
 
-  const stopNoemaTestMode = useCallback(() => {
-    const snapshot = testModeSnapshotRef.current;
+  // ── 5. UI HANDLER ────────────────────────────────────────────
+  function applyUI(ui) {
+    if (!ui) return;
+    if (ui.session_note) lastSessionNote.current = ui.session_note;
+    if (ui.etat) setMstate(mapEtat(ui.etat));
+    if (ui.mode) setMode(ui.mode);
+    if (typeof ui.step === "number") setStep(s => Math.max(s, ui.step));
 
-    testModeSnapshotRef.current = null;
-    resetTestModeState();
-    history.current = cloneHistoryEntries(snapshot?.history || []);
-    updateGlowIndex.current = typeof snapshot?.updateGlowIndex === "number"
-      ? snapshot.updateGlowIndex
-      : 0;
-    restoreUIState(snapshot?.uiState || null);
-    stickToBottomRef.current = true;
-    pinToLatest({ force: true });
-  }, [pinToLatest, resetTestModeState, restoreUIState]);
+    if (ui.forces?.length || ui.contradictions?.length) {
+      setInsights(p => ({
+        forces: ui.forces?.length ? [...new Set([...p.forces, ...ui.forces])].slice(0, 6) : p.forces,
+        blocages: ui.blocages || p.blocages,
+        contradictions: ui.contradictions?.length ? [...new Set([...p.contradictions, ...ui.contradictions])].slice(0, 4) : p.contradictions,
+      }));
+    }
+    if (ui.blocages) {
+      setInsights(p => ({
+        ...p,
+        blocages: {
+          racine:    ui.blocages.racine    || p.blocages.racine,
+          entretien: ui.blocages.entretien || p.blocages.entretien,
+          visible:   ui.blocages.visible   || p.blocages.visible,
+        }
+      }));
+    }
+    if (ui.ikigai) {
+      setIkigai(p => ({
+        aime:    ui.ikigai.aime    || p.aime,
+        excelle: ui.ikigai.excelle || p.excelle,
+        monde:   ui.ikigai.monde   || p.monde,
+        paie:    ui.ikigai.paie    || p.paie,
+        mission: ui.ikigai.mission || p.mission,
+      }));
+    }
+  }
 
-  const advanceLocalNoemaTestJourney = useCallback((userText) => {
-    const response = isSeedMode
-      ? createNoemaSeedModeReply()
-      : advanceNoemaTestJourney({ testMessageCount });
-    const { ui, message } = buildNoemaMessageFromRaw(response.raw);
+  // ── 6. RATE LIMIT ────────────────────────────────────────────
+  async function checkRateLimit() {
+    const now = Date.now();
+    minuteTimestamps.current = minuteTimestamps.current.filter(t => now - t < 60_000);
+    if (minuteTimestamps.current.length >= 30) {
+      return "Tu envoies trop de messages. Attends une minute avant de continuer.";
+    }
+    if (sb && user) {
+      const today = new Date().toISOString().slice(0, 10);
+      const { data, error } = await sb.from("rate_limits").select("count").eq("user_id", user.id).eq("date", today).maybeSingle();
+      if (error) console.error("[Noema] Erreur rate_limits lecture:", error);
+      const currentCount = data?.count || 0;
+      if (currentCount >= 100) return "Tu as atteint ta limite pour aujourd'hui. Reviens demain pour continuer.";
+      await sb.from("rate_limits").upsert(
+        { user_id: user.id, date: today, count: currentCount + 1 },
+        { onConflict: "user_id,date" }
+      );
+    }
+    minuteTimestamps.current.push(now);
+    return null;
+  }
 
-    if (ui) applyUI(ui);
-    setMsgs((current) => [
-      ...current,
-      { role: "user", text: userText, time: getTime() },
-      message,
-    ]);
-    history.current.push({ role: "user", content: userText });
-    history.current.push({ role: "assistant", content: response.raw });
-    setTestModeState({
-      isTestMode: true,
-      isSeedMode,
-      testStep: response.stageIndex,
-      testMessageCount: response.messageCount,
-    });
-    stickToBottomRef.current = true;
-    pinToLatest({ force: true });
-  }, [
-    applyUI,
-    buildNoemaMessageFromRaw,
-    isSeedMode,
-    pinToLatest,
-    setMsgs,
-    setTestModeState,
-    testMessageCount,
-  ]);
-
-  // ── 4. SEND ──────────────────────────────────────────────────
+  // ── 7. SEND ──────────────────────────────────────────────────
   const send = useCallback(async (text) => {
     const t = text.replace(/<[^>]*>/g, "").trim().slice(0, 2000);
     if (!t || typing) return;
     setInput("");
     if (taRef.current) taRef.current.style.height = "auto";
-    stickToBottomRef.current = true;
-    pinToLatest({ force: true });
-
-    const testCommand = parseNoemaTestCommand(t);
-    if (testCommand) {
-      if (testCommand.type === "stop") {
-        if (isTestMode) stopNoemaTestMode();
-        return;
-      }
-
-      if (!isNoemaTestAuthorizedUser(user)) {
-        setMsgs((current) => [
-          ...current,
-          createNoemaChatMessage({
-            text: createNoemaTestUnavailableReply(),
-            isErr: true,
-          }),
-        ]);
-        return;
-      }
-
-      if (testCommand.type === "start") {
-        activateNoemaTestMode(startNoemaTestJourney());
-        return;
-      }
-
-      if (testCommand.type === "seed") {
-        activateNoemaTestMode(createNoemaSeededJourney(), { isSeed: true });
-        return;
-      }
-    }
-
-    if (isTestMode) {
-      advanceLocalNoemaTestJourney(t);
-      return;
-    }
 
     const rateLimitMsg = await checkRateLimit();
     if (rateLimitMsg) {
-      setMsgs((current) => [...current, createNoemaChatMessage({ text: rateLimitMsg, isErr: true })]);
+      setMsgs(m => [...m, {role:"noema", text:rateLimitMsg, time:getTime(), isErr:true}]);
       return;
     }
 
     setMsgs(m => [...m, {role:"user", text:t, time:getTime()}]);
     history.current.push({role:"user", content:t});
     setTyping(true);
-    setCurrentMessage(t);
-  }, [
-    activateNoemaTestMode,
-    advanceLocalNoemaTestJourney,
-    checkRateLimit,
-    createNoemaChatMessage,
-    isTestMode,
-    pinToLatest,
-    setInput,
-    setMsgs,
-    setTyping,
-    stopNoemaTestMode,
-    typing,
-    user,
-  ]);
-
-  useEffect(() => {
-    if (typing && currentMessage && msgs.length > 0 && msgs[msgs.length - 1]?.role === "user") {
-      (async () => {
-        try {
-          const raw   = await callAPI();
-          const ui    = parseUI(raw);
-          const clean = stripUI(raw);
-          applyUI(ui);
-          const hasUpdate = hasVisibleUIUpdate(ui);
-          setMsgs((current) => [...current, createNoemaChatMessage({ text: clean, hasUpdate })]);
-          history.current.push({role:"assistant", content:raw});
-        } catch(e) {
-          const errorText = getChatErrorMessage(e);
-          setMsgs((current) => [...current, createNoemaChatMessage({ text: errorText, isErr: true })]);
-          console.error(e);
-        }
-        setTyping(false);
-        setCurrentMessage("");
-      })();
+    try {
+      const raw   = await callAPI();
+      const ui    = parseUI(raw);
+      const clean = stripUI(raw);
+      applyUI(ui);
+      const hasUpdate = ui && (
+        (ui.forces?.length > 0) || (ui.ikigai && Object.values(ui.ikigai).some(v => v)) ||
+        (ui.contradictions?.length > 0) || (ui.blocages?.racine)
+      );
+      setMsgs(m => [...m, {role:"noema", text:clean, time:getTime(), hasUpdate}]);
+      history.current.push({role:"assistant", content:raw});
+    } catch(e) {
+      setMsgs(m => [...m, {role:"noema", text:"Une erreur est survenue. Réessaie dans un instant.", time:getTime(), isErr:true}]);
+      console.error(e);
     }
-  }, [typing, currentMessage, callAPI, applyUI, hasVisibleUIUpdate, createNoemaChatMessage, msgs, setMsgs, setTyping]);
+    setTyping(false);
+  }, [typing]);
 
-  // ── 5. ACTIONS ───────────────────────────────────────────────
+  // ── 8. SAVE SESSION ──────────────────────────────────────────
+  async function saveSession(currentInsights, currentIkigai, currentStep) {
+    if (!sb || !user) return;
+    if (history.current.length === 0) return;
+
+    const sessionData = {
+      user_id:      user.id,
+      ended_at:     new Date().toISOString(),
+      history:      history.current,
+      insights:     currentInsights,
+      ikigai:       currentIkigai,
+      step:         currentStep,
+      session_note: lastSessionNote.current,
+    };
+    const { error: insErr } = await sb.from("sessions").insert(sessionData);
+    if (insErr) { console.error("[Noema] Erreur insert session:", insErr); return; }
+
+    const { data: mem, error: memErr } = await sb.from("memory").select("*").eq("user_id", user.id).maybeSingle();
+    if (memErr) console.error("[Noema] Erreur lecture memory:", memErr);
+    const notes = [...(mem?.session_notes || []), lastSessionNote.current].filter(Boolean).slice(-10);
+    const newMemory = {
+      user_id:        user.id,
+      updated_at:     new Date().toISOString(),
+      forces:         [...new Set([...(mem?.forces || []), ...currentInsights.forces])],
+      contradictions: [...new Set([...(mem?.contradictions || []), ...currentInsights.contradictions])],
+      blocages:       { ...(mem?.blocages || {}), ...currentInsights.blocages },
+      ikigai:         { ...(mem?.ikigai || {}), ...currentIkigai },
+      session_notes:  notes,
+      session_count:  (mem?.session_count || 0) + 1,
+    };
+    const { error: upsErr } = await sb.from("memory").upsert(newMemory, { onConflict: "user_id" });
+    if (upsErr) console.error("[Noema] Erreur upsert memory:", upsErr);
+    else memoryRef.current = newMemory;
+    lastSessionNote.current = "";
+  }
+
+  // ── 9. ACTIONS ───────────────────────────────────────────────
   function reset() {
     history.current = [];
-    updateGlowIndex.current = 0;
-    testModeSnapshotRef.current = null;
-    stickToBottomRef.current = true;
-    setSessionId(crypto.randomUUID());
-    setCurrentMessage("");
-    resetTestModeState();
-    resetUIState();
+    setMsgs([]); setStep(0); setMstate("exploring"); setMode("accueil");
+    setInsights({forces:[], blocages:{racine:"",entretien:"",visible:""}, contradictions:[]});
+    setIkigai({aime:"", excelle:"", monde:"", paie:"", mission:""});
+    setMobTab("chat");
   }
 
-  // --- CODEX CHANGE START ---
-  // Codex modification - persist the current session-ending action inside the
-  // existing session insights payload to avoid a schema migration for V1.
-  async function newSession() {
-    await saveSession(
-      sessionId,
-      { ...insights, next_action: nextAction, weekly_memory: weeklyMemory },
-      ikigai,
-      step,
-      { isTestSession: isTestMode }
-    );
-    reset();
-  }
-  // --- CODEX CHANGE END ---
+  async function newSession() { await saveSession(insights, ikigai, step); reset(); }
   function genIkigai() { send("Je veux voir mon Ikigai"); }
 
-  // --- CODEX CHANGE START ---
-  if (showSessionGuide) {
-    return (
-      <div className="app">
-        <div className="modal">
-          <div className="mh">
-            <button className="mb-btn" onClick={() => setShowSessionGuide(false)}>←</button>
-            <h2 className="mt">Parcours Noema</h2>
-          </div>
-          <div className="mbody">
-            <SessionGuide/>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  // --- CODEX CHANGE END ---
+  // ── 10. RENDER ───────────────────────────────────────────────
+  const NAV_TABS = [
+    { id: "chat",    icon: "forum",         lbl: "Chat" },
+    { id: "mapping", icon: "psychology_alt", lbl: "Mapping" },
+    { id: "journal", icon: "auto_stories",  lbl: "Journal" },
+    { id: "today",   icon: "light_mode",    lbl: "Aujourd'hui" },
+  ];
 
-  // ── 6. RENDER ────────────────────────────────────────────────
-  if (mobTab !== "chat") {
-    const PANEL = {
-      insights: <InsightsPane insights={insights}/>,
-      // --- CODEX CHANGE START ---
-      // Codex modification - add the UI-only current session and sub-session
-      // tracker beneath the existing progression panel for desktop and mobile.
-      progress: (
-        <>
-          <ProgressPane step={step} mentalState={mstate} nextAction={nextAction}/>
-          <SessionProgress
-            sessionIndex={sessionIndex}
-            sessionStage={sessionStage}
-            messagesToday={messagesToday}
-            messagesRemaining={messagesRemaining}
-            subSessionSummary={subSessionSummary}
+  const renderPanel = () => {
+    switch (navTab) {
+      case "mapping":
+        return (
+          <MappingPage
+            insights={insights}
+            ikigai={ikigai}
+            step={step}
           />
-        </>
-      ),
-      // --- CODEX CHANGE END ---
-      ikigai:   <IkigaiPane ikigai={ikigai} sessionIndex={sessionIndex} onGen={()=>{ genIkigai(); setMobTab("chat"); }}/>,
-    };
-    const TITLES = {insights:"Insights",progress:"Progression",ikigai:"Ikigai"};
-    return (
-      <div className="app">
-        <div className="modal">
-          <div className="mh">
-            <button className="mb-btn" onClick={()=>setMobTab("chat")}>←</button>
-            <h2 className="mt">{TITLES[mobTab]}</h2>
-          </div>
-          <div className="mbody">{PANEL[mobTab]}</div>
-        </div>
-      </div>
-    );
-  }
+        );
+      case "journal":
+        return <JournalPage />;
+      case "today":
+        return (
+          <TodayPage
+            user={user}
+            onJournal={() => setNavTab("journal")}
+          />
+        );
+      default: // chat
+        return (
+          <ChatPage
+            msgs={msgs}
+            typing={typing}
+            input={input}
+            setInput={setInput}
+            send={send}
+            genIkigai={genIkigai}
+            onNav={onNav}
+            newSession={newSession}
+            user={user}
+            sb={sb}
+            taRef={taRef}
+          />
+        );
+    }
+  };
 
   return (
-    <div className="app">
-      <div className="topbar">
-        <button className="tb-logo" onClick={()=>onNav("landing")}>Noema<span>.</span></button>
-        <div className="tb-status">
-          <StateBadge state={mstate} mode={mode}/>
-          {isTestMode && (
-            <span className="test-mode-badge">
-              {isSeedMode ? "Mode test · seed" : "Mode test"}
-            </span>
-          )}
-        </div>
-        <div className="tb-right">
-          {/* --- CODEX CHANGE START --- */}
-          {/* Codex modification - add a non-disruptive entry point for the
-              guided session overview directly from the AppShell header. */}
-          <button className="btn-sm" onClick={() => setShowSessionGuide(true)}>Voir le parcours</button>
-          {/* --- CODEX CHANGE END --- */}
-          <button className="btn-sm" onClick={newSession}>Nouvelle session</button>
-          {/* --- CODEX CHANGE START --- */}
-          {/* Codex modification - hide logout in demo mode so the auth UI stays
-              coherent when no authenticated user session exists. */}
-          {user&&sb&&<button className="btn-sm" onClick={()=>sb.auth.signOut()}>Déconnexion</button>}
-          {/* --- CODEX CHANGE END --- */}
-        </div>
-      </div>
+    <div style={{ backgroundColor: "#111318", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      {renderPanel()}
 
-      <div className="main">
-        <div className="chat">
-          <div className="msgs" ref={msgsRef} onScroll={handleMessagesScroll}>
-            {msgs.length===0&&!typing&&(
-              <div className="welcome">
-                <div className="w-orb">◎</div>
-                <h2 className="w-title">Bonjour.<br/>Je suis Noema.</h2>
-                <p className="w-sub">Dis-moi ce qui t'occupe l'esprit en ce moment.</p>
-                <div className="starters">
-                  {["Je me sens bloqué sans savoir pourquoi","J'ai du mal à prendre une décision importante","Je veux mieux comprendre ce que je veux vraiment"].map(p=>(
-                    <button key={p} className="starter" onClick={()=>send(p)}>{p}</button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {msgs.map((m,i) => (
-              <div className="mg" key={i}>
-                <div className={`mr ${m.role}`}>
-                  <div className="mav">{m.role==="noema"?"N":"T"}</div>
-                  <div className="mb">
-                    <div className="mmeta">{m.role==="noema"?"Noema":"Toi"} · {m.time}</div>
-                    {/* --- CODEX CHANGE START --- */}
-                    {/* Codex modification - render chat text through a controlled
-                        React formatter instead of injecting raw HTML strings. */}
-                    <div
-                      className={[
-                        "bubble",
-                        m.isErr ? "err" : "",
-                        m.hasUpdate ? "has-update" : "",
-                        m.updateTone ? `update-glow-${m.updateTone}` : "",
-                      ].filter(Boolean).join(" ")}
-                    >
-                      <RichText text={m.text}/>
-                    </div>
-                    {/* --- CODEX CHANGE END --- */}
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {typing&&(
-              <div className="typ">
-                <div className="mav" style={{width:30,height:30,borderRadius:9,background:"var(--accent-soft)",border:"1px solid var(--accent-border)",color:"var(--accent)",fontSize:".7rem",fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2}}>N</div>
-                <div className="typ-b"><div className="td"/><div className="td"/><div className="td"/></div>
-              </div>
-            )}
-          </div>
-
-          <div className="inp-area">
-            <div className="qrow">
-              <button className="qc" disabled={typing} onClick={()=>send("Je suis prêt à commencer")}>Commencer →</button>
-              <button className="qc" disabled={typing} onClick={()=>send("Approfondir ce point")}>Approfondir</button>
-              <button className="qc" disabled={typing} onClick={()=>send("Fais une pause et résume-moi où j'en suis")}>Résumé</button>
-              <button className="qc sp" disabled={typing} onClick={genIkigai}>✨ Ikigai</button>
-            </div>
-            <div className="irow">
-              <textarea
-                ref={taRef} rows={1}
-                placeholder="Écris ici… (Entrée pour envoyer)"
-                value={input} disabled={typing}
-                onChange={handleInputChange}
-                onFocus={handleInputFocus}
-                onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send(input);}}}
-                maxLength={2000}
-              />
-              <button className={`send${input.trim()?" on":""}`} onClick={()=>send(input)} disabled={!input.trim()||typing}>
-                <SendSVG/>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="side">
-          <div className="stabs">
-            {[["insights","Insights"],["ikigai","Ikigai"],["progress","Progression"]].map(([k,l])=>(
-              <button key={k} className={`stab${sideTab===k?" on":""}`} onClick={()=>setSideTab(k)}>{l}</button>
-            ))}
-          </div>
-          <div className="sc">
-            {sideTab==="insights" && <InsightsPane insights={insights}/>}
-            {/* --- CODEX CHANGE START --- */}
-            {sideTab==="progress" && (
-              <>
-                <ProgressPane step={step} mentalState={mstate} nextAction={nextAction}/>
-                <SessionProgress
-                  sessionIndex={sessionIndex}
-                  sessionStage={sessionStage}
-                  messagesToday={messagesToday}
-                  messagesRemaining={messagesRemaining}
-                  subSessionSummary={subSessionSummary}
-                />
-              </>
-            )}
-            {/* --- CODEX CHANGE END --- */}
-            {sideTab==="ikigai"   && <IkigaiPane ikigai={ikigai} sessionIndex={sessionIndex} onGen={genIkigai}/>}
-          </div>
-        </div>
-      </div>
-
-      <div className="bnav">
-        {[{id:"chat",icon:"💬",lbl:"Chat"},{id:"insights",icon:"🔍",lbl:"Insights"},{id:"ikigai",icon:"🌟",lbl:"Ikigai"},{id:"progress",icon:"📈",lbl:"Progression"}].map(n=>(
-          <button key={n.id} className={`bni${mobTab===n.id?" on":""}`} onClick={()=>setMobTab(n.id)}>
-            <span className="bni-i">{n.icon}</span>
-            <span className="bni-l">{n.lbl}</span>
-          </button>
-        ))}
-      </div>
+      {/* ── Bottom Nav ── */}
+      <nav style={{
+        position: "fixed",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 72,
+        backgroundColor: "#111318",
+        borderTop: "1px solid rgba(69,70,85,0.2)",
+        display: "flex",
+        alignItems: "stretch",
+        zIndex: 100,
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+      }}>
+        {NAV_TABS.map(tab => {
+          const active = navTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setNavTab(tab.id)}
+              style={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 4,
+                border: "none",
+                background: active ? "rgba(91,108,255,0.15)" : "none",
+                cursor: "pointer",
+                borderRadius: 0,
+                transition: "background 0.2s",
+                padding: "8px 4px",
+              }}
+            >
+              <span
+                className="material-symbols-outlined"
+                style={{
+                  fontSize: "1.375rem",
+                  color: active ? "#bdc2ff" : "#454655",
+                  fontVariationSettings: active
+                    ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24"
+                    : "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24",
+                  transition: "color 0.2s",
+                }}
+              >{tab.icon}</span>
+              <span style={{
+                fontSize: "0.65rem",
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                fontWeight: active ? 600 : 400,
+                color: active ? "#bdc2ff" : "#454655",
+                letterSpacing: "0.03em",
+                transition: "color 0.2s",
+              }}>{tab.lbl}</span>
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }
+
+const panelStyle = {
+  flex: 1,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: "calc(100vh - 72px)",
+  backgroundColor: "#111318",
+};
+
+const placeholderStyle = {
+  fontFamily: "'Plus Jakarta Sans', sans-serif",
+  color: "#454655",
+  fontSize: "0.9rem",
+};

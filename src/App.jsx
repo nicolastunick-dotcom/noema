@@ -1,14 +1,9 @@
-import { useState, useEffect, Suspense, lazy } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
 import { sb } from "./lib/supabase";
-import DemoPage from "./pages/DemoPage";
-
+import Landing  from "./pages/Landing";
+import Login    from "./pages/Login";
+import AppShell from "./pages/AppShell";
 import "./styles/app.css";
-
-// Lazy load V2 AppShell to optimize bundle size
-const AppShellV2 = lazy(() => import("./v2/pages/AppShellV2"));
-const LandingV2 = lazy(() => import("./v2/pages/LandingV2"));
-const LoginV2 = lazy(() => import("./v2/pages/LoginV2"));
 
 // ─────────────────────────────────────────────────────────────
 // ROOT — Gestion navigation + auth Supabase
@@ -29,33 +24,8 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={page}
-        initial={{ opacity: 0, filter: "blur(5px)" }}
-        animate={{ opacity: 1, filter: "blur(0px)" }}
-        exit={{ opacity: 0, filter: "blur(5px)" }}
-        transition={{ duration: 0.5, ease: "easeInOut" }}
-        style={{ width: "100%", height: "100%" }}
-      >
-        {page === "landing" && (
-          <Suspense fallback={<div style={{background:"var(--color-bg-base)", height:"100vh", display:"flex", alignItems:"center", justifyContent:"center", color:"var(--color-text-secondary)"}}>Chargement...</div>}>
-            <LandingV2 onNav={setPage}/>
-          </Suspense>
-        )}
-        {page === "demo" && <DemoPage onNav={setPage} user={user}/>}
-        {page === "login" && (
-          <Suspense fallback={<div style={{background:"var(--color-bg-base)", height:"100vh", display:"flex", alignItems:"center", justifyContent:"center", color:"var(--color-text-secondary)"}}>Chargement...</div>}>
-            <LoginV2 onNav={setPage}/>
-          </Suspense>
-        )}
-        {page === "app" && (
-          <Suspense fallback={<div style={{background:"var(--color-bg-base)", height:"100vh", display:"flex", alignItems:"center", justifyContent:"center", color:"var(--color-text-secondary)"}}>Chargement...</div>}>
-            <AppShellV2 onNav={setPage} user={user}/>
-          </Suspense>
-        )}
-      </motion.div>
-    </AnimatePresence>
-  );
+  if (page === "landing") return <Landing  onNav={setPage}/>;
+  if (page === "login")   return <Login    onNav={setPage}/>;
+  if (page === "app")     return <AppShell onNav={setPage} user={user}/>;
+  return null;
 }
