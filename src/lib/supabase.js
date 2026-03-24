@@ -19,12 +19,12 @@ function createSB() {
 
 export const sb = createSB();
 
-export function buildSystemPrompt(memory) {
-  if (!memory || !memory.session_count) return NOEMA_SYSTEM;
+export function buildMemoryContext(memory) {
+  if (!memory || !memory.session_count) return "";
   const notes  = (memory.session_notes || []).slice(-6).map(n => `- ${n}`).join("\n");
   const forces = (memory.forces || []).join(", ");
   const ikigai = memory.ikigai || {};
-  const ctx = [
+  return [
     `\n\n---\nMÉMOIRE INTER-SESSIONS (${memory.session_count} session${memory.session_count > 1 ? "s" : ""} précédente${memory.session_count > 1 ? "s" : ""}) :`,
     notes  ? `Notes des dernières sessions :\n${notes}` : "",
     forces ? `Forces identifiées jusqu'ici : ${forces}` : "",
@@ -36,5 +36,8 @@ export function buildSystemPrompt(memory) {
     "---",
     "Appuie-toi sur ces données pour assurer la continuité. Rappelle l'évolution par rapport aux sessions précédentes quand c'est pertinent.",
   ].filter(Boolean).join("\n");
-  return NOEMA_SYSTEM + ctx;
+}
+
+export function buildSystemPrompt(memory) {
+  return NOEMA_SYSTEM + buildMemoryContext(memory);
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { sb, buildSystemPrompt } from "../lib/supabase";
+import { sb, buildMemoryContext } from "../lib/supabase";
 import { ANTHROPIC_PROXY } from "../constants/config";
 import { QUOTES } from "../constants/prompt";
 import { applyTheme, mapEtat } from "../constants/themes";
@@ -113,7 +113,7 @@ export default function AppShell({ onNav, user }) {
   // ── 4. API ───────────────────────────────────────────────────
   async function callAPI() {
     const h = trimHistory(history.current);
-    const systemPrompt = buildSystemPrompt(memoryRef.current);
+    const memory_context = buildMemoryContext(memoryRef.current);
     const headers = { "Content-Type":"application/json", "anthropic-version":"2023-06-01" };
     if (import.meta.env.DEV) {
       headers["x-api-key"] = import.meta.env.VITE_ANTHROPIC_KEY;
@@ -121,7 +121,7 @@ export default function AppShell({ onNav, user }) {
     }
     const res = await fetch(ANTHROPIC_PROXY, {
       method:"POST", headers,
-      body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:1400, system:systemPrompt, messages:h }),
+      body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:1400, memory_context, messages:h }),
     });
     if (!res.ok) { const e=await res.json().catch(()=>{}); throw new Error(e?.error?.message||`HTTP ${res.status}`); }
     return (await res.json()).content[0].text;
