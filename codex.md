@@ -175,7 +175,7 @@ Cartographier l'architecture de Noema et identifier, sans modifier le code, les 
 
 ### Secrets ou données sensibles exposés
 - Clé Supabase anon confirmée dans le bundle frontend et dans le code client. C'est attendu pour Supabase, mais cela devient dangereux car certaines politiques RLS sont trop ouvertes.
-- Code admin `NOEMA-1234` confirmé dans le bundle de production. Exposition confirmée.
+- Code admin `[ADMIN_CODES_REDACTED]` confirmé dans le bundle de production. Exposition confirmée.
 - `VITE_ANTHROPIC_KEY` live confirmée dans `.env.local`. Exposition confirmée localement; non confirmée dans le bundle de production courant.
 - `STRIPE_SECRET_KEY` live confirmée dans `.env.local`. Exposition confirmée localement; non confirmée dans les fichiers Git inspectés.
 - `OPENAI_API_KEY` live confirmée dans `.env.local`. Exposition confirmée localement; non confirmée dans les fichiers Git inspectés.

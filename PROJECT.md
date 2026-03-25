@@ -78,7 +78,7 @@ netlify/functions/
 - Intégration Stripe : webhook Stripe → table `subscriptions` Supabase (étape suivante)
 - Corrections sécurité restantes (voir `codex.md` priorités 2 et 3)
 - Ajouter `GMAIL_APP_PASSWORD` dans Netlify dashboard env vars (envoi formulaire contact)
-- Ajouter `VITE_ADMIN_EMAIL=nicolas.tunick278@gmail.com` dans Netlify dashboard env vars (bypass abonnement admin)
+- Ajouter `VITE_ADMIN_EMAIL=[ADMIN_EMAIL]` dans Netlify dashboard env vars (bypass abonnement admin)
 
 ---
 
@@ -109,7 +109,7 @@ netlify/functions/
 | 25/03/2026 | Claude Code | Création PROJECT.md | ✅ | Corrections sécurité codex.md |
 | 25/03/2026 | Claude Code | Pages légales + contact (4 pages) + routing | ✅ | — |
 | 25/03/2026 | Claude Code | Contact : formulaire → send-contact.js (nodemailer Gmail) | ✅ | Ajouter GMAIL_APP_PASSWORD dans Netlify env vars |
-| 25/03/2026 | Claude Code | Bypass abonnement pour compte admin (nicolas.tunick278@gmail.com) via VITE_ADMIN_EMAIL | ✅ | Ajouter VITE_ADMIN_EMAIL dans Netlify env vars |
+| 25/03/2026 | Claude Code | Bypass abonnement pour compte admin ([ADMIN_EMAIL]) via VITE_ADMIN_EMAIL | ✅ | Ajouter VITE_ADMIN_EMAIL dans Netlify env vars |
 | 25/03/2026 | Claude Code | Landing : orbe violet pulsant en hero + bouton "Découvrir l'abonnement" déplacé dans la nav | ✅ | — |
 | 25/03/2026 | Claude Code | Stripe Checkout : create-checkout-session.js + Success.jsx + routing /success | ✅ | Webhook Stripe → table subscriptions |
 | 25/03/2026 | Codex | Migration admin progressive : `profiles.is_admin` + actions sensibles via Netlify Functions | ✅ | Retirer le fallback `VITE_ADMIN_EMAIL` après validation prod |
