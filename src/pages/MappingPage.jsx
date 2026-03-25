@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 // ─────────────────────────────────────────────────────────────
 // MAPPING PAGE — Profil psychologique visuel
@@ -23,12 +23,22 @@ const C = {
 const FORCE_POWER = [94, 87, 72, 65, 58, 51];
 
 // ── Ikigai Diagram ────────────────────────────────────────────
-function IkigaiDiagram({ ikigai }) {
+function IkigaiDiagram({ ikigai, expanded }) {
+  const [hovered, setHovered] = useState(null);
+
   const circles = [
     { label: "Passion",    sub: ikigai.aime,    color: C.primary,          border: "rgba(189,194,255,0.2)", bg: "rgba(189,194,255,0.05)", style: { top: 0, left: "50%", transform: "translate(-50%, 0)" } },
     { label: "Profession", sub: ikigai.excelle, color: C.tertiary,          border: "rgba(255,182,138,0.2)", bg: "rgba(255,182,138,0.05)", style: { top: "50%", right: 0, transform: "translate(0, -50%)" } },
     { label: "Vocation",   sub: ikigai.monde,   color: C.secondary,         border: "rgba(189,194,255,0.2)", bg: "rgba(120,134,255,0.05)", style: { bottom: 0, left: "50%", transform: "translate(-50%, 0)" } },
     { label: "Mission",    sub: ikigai.paie,    color: C.primaryContainer,  border: "rgba(120,134,255,0.2)", bg: "rgba(120,134,255,0.05)", style: { top: "50%", left: 0, transform: "translate(0, -50%)" } },
+  ];
+
+  // Tooltip anchor positions (where the card appears relative to diagram)
+  const tooltipPos = [
+    { bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 8 },
+    { top: "50%",  left: "100%",  transform: "translateY(-50%)", marginLeft: 8 },
+    { top: "100%", left: "50%",  transform: "translateX(-50%)", marginTop: 8 },
+    { top: "50%",  right: "100%", transform: "translateY(-50%)", marginRight: 8 },
   ];
 
   const labelPos = [
@@ -41,54 +51,113 @@ function IkigaiDiagram({ ikigai }) {
   return (
     <div style={{ position: "relative", paddingBottom: "100%", width: "100%" }}>
       <div style={{ position: "absolute", inset: 0 }}>
-        {/* Circles */}
+        {/* Circles — hoverable */}
         {circles.map((c, i) => (
-          <div key={i} style={{
-            position: "absolute",
-            width: "66%", height: "66%",
-            borderRadius: "50%",
-            border: `1px solid ${c.border}`,
-            background: c.bg,
-            mixBlendMode: "screen",
-            ...c.style,
-          }} />
+          <div
+            key={i}
+            onMouseEnter={() => setHovered(i)}
+            onMouseLeave={() => setHovered(null)}
+            style={{
+              position: "absolute",
+              width: "66%", height: "66%",
+              borderRadius: "50%",
+              border: `1px solid ${hovered === i ? c.color : c.border}`,
+              background: hovered === i ? c.bg.replace("0.05", "0.12") : c.bg,
+              mixBlendMode: "screen",
+              transition: "border-color 0.2s, background 0.2s",
+              cursor: c.sub ? "pointer" : "default",
+              zIndex: hovered === i ? 5 : 1,
+              ...c.style,
+            }}
+          />
         ))}
 
         {/* Labels */}
         {circles.map((c, i) => (
-          <div key={i} style={{
-            position: "absolute",
-            zIndex: 2,
-            textAlign: labelPos[i].align,
-            ...labelPos[i],
-          }}>
+          <div
+            key={i}
+            onMouseEnter={() => setHovered(i)}
+            onMouseLeave={() => setHovered(null)}
+            style={{
+              position: "absolute",
+              zIndex: 6,
+              textAlign: labelPos[i].align,
+              cursor: c.sub ? "pointer" : "default",
+              ...labelPos[i],
+            }}
+          >
             <p style={{
               fontFamily: "'Instrument Serif', serif", fontStyle: "italic",
-              fontSize: "0.95rem", color: c.color, lineHeight: 1, margin: 0,
+              fontSize: expanded ? "1.1rem" : "0.95rem",
+              color: c.color,
+              lineHeight: 1, margin: 0,
+              transition: "opacity 0.2s, font-size 0.4s",
+              opacity: hovered !== null && hovered !== i ? 0.4 : 1,
             }}>{c.label}</p>
             {c.sub && (
-              <p style={{ fontSize: "0.6rem", color: C.onSurfaceVariant, marginTop: 2, lineHeight: 1.3, maxWidth: 80 }}>{c.sub}</p>
+              <p style={{
+                fontSize: expanded ? "0.75rem" : "0.6rem",
+                color: C.onSurfaceVariant,
+                marginTop: 2, lineHeight: 1.4,
+                maxWidth: expanded ? 140 : 80,
+                opacity: hovered !== null && hovered !== i ? 0.3 : 1,
+                transition: "opacity 0.2s, font-size 0.4s, max-width 0.4s",
+              }}>{c.sub}</p>
             )}
           </div>
         ))}
+
+        {/* Hover tooltip card */}
+        {hovered !== null && circles[hovered].sub && (
+          <div style={{
+            position: "absolute",
+            zIndex: 20,
+            ...tooltipPos[hovered],
+            pointerEvents: "none",
+          }}>
+            <div style={{
+              background: "#1e1f25",
+              border: `1px solid ${circles[hovered].color}44`,
+              borderRadius: 12,
+              padding: "10px 14px",
+              minWidth: 160, maxWidth: 220,
+              boxShadow: `0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px ${circles[hovered].color}22`,
+            }}>
+              <p style={{
+                fontFamily: "'Instrument Serif', serif", fontStyle: "italic",
+                fontSize: "0.85rem", color: circles[hovered].color,
+                margin: "0 0 6px",
+              }}>{circles[hovered].label}</p>
+              <p style={{
+                fontSize: "0.75rem", color: C.onSurface,
+                lineHeight: 1.5, margin: 0,
+              }}>{circles[hovered].sub}</p>
+            </div>
+          </div>
+        )}
 
         {/* Center */}
         <div style={{
           position: "absolute", top: "50%", left: "50%",
           transform: "translate(-50%, -50%)",
           zIndex: 10,
-          width: 96, height: 96, borderRadius: "50%",
+          width: expanded ? 140 : 96,
+          height: expanded ? 140 : 96,
+          borderRadius: "50%",
           background: C.surfaceContainerHigh,
           border: "1px solid rgba(69,70,85,0.2)",
           boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          textAlign: "center",
+          textAlign: "center", padding: "0 8px",
+          transition: "width 0.4s cubic-bezier(0.4,0,0.2,1), height 0.4s cubic-bezier(0.4,0,0.2,1)",
         }}>
           <span style={{
             fontFamily: "'Instrument Serif', serif", fontStyle: "italic",
-            fontSize: "1.25rem",
+            fontSize: expanded ? "1rem" : "1.25rem",
             background: "linear-gradient(135deg, #bdc2ff 0%, #7886ff 100%)",
             WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+            lineHeight: 1.2,
+            transition: "font-size 0.4s",
           }}>
             {ikigai.mission || "Ikigai"}
           </span>
@@ -223,6 +292,8 @@ function Empty({ msg }) {
 
 // ── Main ──────────────────────────────────────────────────────
 export default function MappingPage({ insights, ikigai, step }) {
+  const [ikigaiExpanded, setIkigaiExpanded] = useState(false);
+
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "auto";
@@ -257,17 +328,34 @@ export default function MappingPage({ insights, ikigai, step }) {
         </div>
 
         {/* Ikigai section */}
-        <section style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20, alignItems:"start" }}>
-          {/* Diagram */}
-          <div style={{ ...glass }}>
+        <section style={{ display:"flex", gap:20, alignItems:"start" }}>
+          {/* Diagram — expands on hover */}
+          <div
+            onMouseEnter={() => setIkigaiExpanded(true)}
+            onMouseLeave={() => setIkigaiExpanded(false)}
+            style={{
+              ...glass,
+              flex: ikigaiExpanded ? "0 0 100%" : "0 0 calc(50% - 10px)",
+              transition: "flex-basis 0.45s cubic-bezier(0.4,0,0.2,1)",
+              overflow: "hidden",
+              cursor: "default",
+            }}
+          >
             <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", pointerEvents:"none", overflow:"hidden" }}>
               <div style={{ width:280, height:280, borderRadius:"50%", background:C.primaryContainer, filter:"blur(120px)", opacity:0.08 }} />
             </div>
-            <IkigaiDiagram ikigai={ikigai} />
+            <IkigaiDiagram ikigai={ikigai} expanded={ikigaiExpanded} />
           </div>
 
-          {/* Ikigai insights */}
-          <div style={{ ...glass }}>
+          {/* Ikigai insights — fades out when diagram expands */}
+          <div style={{
+            ...glass,
+            flex: ikigaiExpanded ? "0 0 0%" : "0 0 calc(50% - 10px)",
+            opacity: ikigaiExpanded ? 0 : 1,
+            overflow: "hidden",
+            transition: "flex-basis 0.45s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease",
+            pointerEvents: ikigaiExpanded ? "none" : "auto",
+          }}>
             <div style={{ position:"absolute", top:-40, right:-40, width:120, height:120, background:"rgba(189,194,255,0.08)", filter:"blur(40px)", borderRadius:"50%" }} />
             <h3 style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"1.4rem", color:C.onSurface, marginBottom:20 }}>Harmonie Détectée</h3>
             <div style={{ display:"flex", flexDirection:"column", gap:16 }}>

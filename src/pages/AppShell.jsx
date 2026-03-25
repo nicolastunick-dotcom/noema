@@ -13,6 +13,7 @@ import ChatPage      from "./ChatPage";
 import MappingPage   from "./MappingPage";
 import JournalPage   from "./JournalPage";
 import TodayPage     from "./TodayPage";
+import AdminPanel    from "../components/AdminPanel";
 
 // ─────────────────────────────────────────────────────────────
 // APP SHELL — Composant principal : chat + panneaux latéraux
@@ -49,6 +50,8 @@ export default function AppShell({ onNav, user }) {
   const taRef           = useRef(null);
   const minuteTimestamps = useRef([]);  // rate limiting local (par minute)
   const hasOpened       = useRef(false);
+  const lastGreffierLog = useRef(null); // admin: dernier log Greffier
+  const [greffierLogTick, setGreffierLogTick] = useState(0); // force re-render quand log maj
 
   // ── 2. OPENING MESSAGE ───────────────────────────────────────
   async function openingMessage() {
@@ -124,7 +127,9 @@ export default function AppShell({ onNav, user }) {
       body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:1400, memory_context, messages:h }),
     });
     if (!res.ok) { const e=await res.json().catch(()=>{}); throw new Error(e?.error?.message||`HTTP ${res.status}`); }
-    return (await res.json()).content[0].text;
+    const json = await res.json();
+    if (json._greffier) { lastGreffierLog.current = json._greffier; setGreffierLogTick(t => t + 1); }
+    return json.content[0].text;
   }
 
   // ── 5. UI HANDLER ────────────────────────────────────────────
@@ -267,7 +272,25 @@ export default function AppShell({ onNav, user }) {
   async function newSession() { await saveSession(insights, ikigai, step); reset(); }
   function genIkigai() { send("Je veux voir mon Ikigai"); }
 
-  // ── 10. RENDER ───────────────────────────────────────────────
+  // ── 10. ADMIN ────────────────────────────────────────────────
+  function adminResetMemory() {
+    memoryRef.current = null;
+    lastSessionNote.current = "";
+  }
+  function adminForcePhase2() {
+    setMstate("clarity");
+    setStep(s => Math.max(s, 4));
+  }
+  function adminSimulateLimit() {
+    setMsgs(m => [...m, {
+      role: "noema",
+      text: "La session du jour est terminée. Mais pas ton évolution. Reviens demain pour continuer ton ascension.",
+      time: getTime(),
+      isErr: true,
+    }]);
+  }
+
+  // ── 11. RENDER ───────────────────────────────────────────────
   const NAV_TABS = [
     { id: "chat",    icon: "forum",         lbl: "Chat" },
     { id: "mapping", icon: "psychology_alt", lbl: "Mapping" },
@@ -315,6 +338,21 @@ export default function AppShell({ onNav, user }) {
 
   return (
     <div style={{ backgroundColor: "#111318", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      <AdminPanel
+        user={user}
+        sb={sb}
+        history={history.current}
+        msgs={msgs}
+        setMsgs={setMsgs}
+        lastGreffierLog={lastGreffierLog.current}
+        onResetMemory={adminResetMemory}
+        onForcePhase2={adminForcePhase2}
+        onSimulateLimit={adminSimulateLimit}
+        setInsights={setInsights}
+        setIkigai={setIkigai}
+        setStep={setStep}
+        setNavTab={setNavTab}
+      />
       {renderPanel()}
 
       {/* ── Bottom Nav ── */}

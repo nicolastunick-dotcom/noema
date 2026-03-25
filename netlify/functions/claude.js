@@ -87,6 +87,19 @@ export default async (request) => {
 
     const data = await response.json()
 
+    // ── Log usage Sonnet dans api_usage ──────────────────────────
+    if (userId && data.usage) {
+      const sbAdmin = getSupabaseAdmin()
+      if (sbAdmin) {
+        sbAdmin.from('api_usage').insert({
+          user_id:           userId,
+          model:             allowed.model,
+          prompt_tokens:     data.usage.input_tokens,
+          completion_tokens: data.usage.output_tokens,
+        }).catch(e => console.log('[Usage] log failed:', e.message))
+      }
+    }
+
     // ── Greffier — analyse silencieuse (chaque message) ─────────
     const messages   = allowed.messages
     const sessionId  = body.session_id || null
