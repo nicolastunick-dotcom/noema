@@ -75,6 +75,7 @@ netlify/functions/
 - Intégration Stripe (checkout session, webhook, table `subscriptions`)
 - Corrections sécurité restantes (voir `codex.md` priorités 2 et 3)
 - Ajouter `GMAIL_APP_PASSWORD` dans Netlify dashboard env vars (envoi formulaire contact)
+- Ajouter `VITE_ADMIN_EMAIL=nicolas.tunick278@gmail.com` dans Netlify dashboard env vars (bypass abonnement admin)
 
 ---
 
@@ -105,6 +106,8 @@ netlify/functions/
 | 25/03/2026 | Claude Code | Création PROJECT.md | ✅ | Corrections sécurité codex.md |
 | 25/03/2026 | Claude Code | Pages légales + contact (4 pages) + routing | ✅ | — |
 | 25/03/2026 | Claude Code | Contact : formulaire → send-contact.js (nodemailer Gmail) | ✅ | Ajouter GMAIL_APP_PASSWORD dans Netlify env vars |
+| 25/03/2026 | Claude Code | Bypass abonnement pour compte admin (nicolas.tunick278@gmail.com) via VITE_ADMIN_EMAIL | ✅ | Ajouter VITE_ADMIN_EMAIL dans Netlify env vars |
+| 25/03/2026 | Claude Code | Landing : orbe violet pulsant en hero + bouton "Découvrir l'abonnement" déplacé dans la nav | ✅ | — |
 
 ---
 
