@@ -310,6 +310,35 @@ export default function Landing({ onNav }) {
         <div />
         <div style={styles.navActions}>
           <button
+            style={{
+              background: "none",
+              border: "1px solid rgba(189,194,255,0.22)",
+              borderRadius: 9999,
+              padding: "8px 20px",
+              color: COLORS.primary,
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontWeight: 600,
+              fontSize: "0.9rem",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              transition: "border-color 0.2s, background 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "rgba(189,194,255,0.45)";
+              e.currentTarget.style.background = "rgba(189,194,255,0.07)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "rgba(189,194,255,0.22)";
+              e.currentTarget.style.background = "none";
+            }}
+            onClick={() => onNav?.("pricing")}
+          >
+            Découvrir l'abonnement
+            <span className="material-symbols-outlined" style={{ fontSize: "1rem" }}>arrow_forward</span>
+          </button>
+          <button
             style={styles.btnLogin}
             onMouseEnter={(e) => (e.currentTarget.style.color = COLORS.onBackground)}
             onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(226,226,233,0.7)")}
@@ -337,23 +366,29 @@ export default function Landing({ onNav }) {
 
         {/* ── Hero ──────────────────────────────────────────────────────────── */}
         <section style={styles.heroSection}>
-          <button
-            style={styles.heroTopCta}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-2px)";
-              e.currentTarget.style.borderColor = "rgba(189,194,255,0.4)";
+          {/* Orbe violet qui pulse */}
+          <style>{`
+            @keyframes orbPulse {
+              0%, 100% { transform: scale(1); opacity: 0.85; box-shadow: 0 0 40px 10px rgba(120,134,255,0.35), 0 0 80px 20px rgba(120,134,255,0.15); }
+              50% { transform: scale(1.12); opacity: 1; box-shadow: 0 0 60px 20px rgba(120,134,255,0.55), 0 0 120px 40px rgba(120,134,255,0.25); }
+            }
+            @keyframes orbInnerPulse {
+              0%, 100% { transform: scale(1); }
+              50% { transform: scale(0.88); }
+            }
+          `}</style>
+          <div
+            style={{
+              width: 80,
+              height: 80,
+              borderRadius: "50%",
+              background: "radial-gradient(circle at 38% 38%, #bdc2ff 0%, #7886ff 55%, #4a58e0 100%)",
+              animation: "orbPulse 2.8s ease-in-out infinite",
+              marginBottom: 36,
+              cursor: "default",
+              flexShrink: 0,
             }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.borderColor = "rgba(189,194,255,0.22)";
-            }}
-            onClick={() => onNav?.("pricing")}
-          >
-            Decouvrir l'abonnement
-            <span className="material-symbols-outlined" style={{ fontSize: "1.1rem" }}>
-              arrow_forward
-            </span>
-          </button>
+          />
 
           <div style={styles.heroBadge}>
             <span
