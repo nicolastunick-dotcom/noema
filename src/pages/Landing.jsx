@@ -369,26 +369,55 @@ export default function Landing({ onNav }) {
           {/* Orbe violet qui pulse */}
           <style>{`
             @keyframes orbPulse {
-              0%, 100% { transform: scale(1); opacity: 0.85; box-shadow: 0 0 40px 10px rgba(120,134,255,0.35), 0 0 80px 20px rgba(120,134,255,0.15); }
-              50% { transform: scale(1.12); opacity: 1; box-shadow: 0 0 60px 20px rgba(120,134,255,0.55), 0 0 120px 40px rgba(120,134,255,0.25); }
+              0%, 100% { transform: scale(1); opacity: 0.82; box-shadow: 0 0 50px 14px rgba(74,60,140,0.45), 0 0 100px 30px rgba(74,60,140,0.18); }
+              50% { transform: scale(1.09); opacity: 0.95; box-shadow: 0 0 70px 24px rgba(74,60,140,0.6), 0 0 140px 50px rgba(74,60,140,0.22); }
             }
-            @keyframes orbInnerPulse {
-              0%, 100% { transform: scale(1); }
-              50% { transform: scale(0.88); }
+            @keyframes orbShimmer {
+              0%, 100% { opacity: 0.35; transform: translate(-30%, -30%) scale(1); }
+              50% { opacity: 0.55; transform: translate(-28%, -32%) scale(1.08); }
+            }
+            @keyframes orbAccent {
+              0%, 100% { opacity: 0.25; transform: translate(10%, 15%) scale(1); }
+              50% { opacity: 0.4; transform: translate(12%, 13%) scale(1.06); }
             }
           `}</style>
           <div
             style={{
-              width: 80,
-              height: 80,
+              width: 104,
+              height: 104,
               borderRadius: "50%",
-              background: "radial-gradient(circle at 38% 38%, #bdc2ff 0%, #7886ff 55%, #4a58e0 100%)",
-              animation: "orbPulse 2.8s ease-in-out infinite",
+              background: "radial-gradient(circle at 42% 42%, #3d3072 0%, #2a1f5a 40%, #1a1230 75%, #110d22 100%)",
+              animation: "orbPulse 3.2s ease-in-out infinite",
               marginBottom: 36,
               cursor: "default",
               flexShrink: 0,
+              position: "relative",
+              overflow: "hidden",
             }}
-          />
+          >
+            {/* Reflet primaire — bleu-lavande Noema */}
+            <div style={{
+              position: "absolute",
+              width: "65%",
+              height: "65%",
+              borderRadius: "50%",
+              background: "radial-gradient(circle, rgba(189,194,255,0.22) 0%, transparent 70%)",
+              top: "8%",
+              left: "10%",
+              animation: "orbShimmer 3.2s ease-in-out infinite",
+            }} />
+            {/* Accent tertiaire — pêche/ambre Noema */}
+            <div style={{
+              position: "absolute",
+              width: "40%",
+              height: "40%",
+              borderRadius: "50%",
+              background: "radial-gradient(circle, rgba(255,182,138,0.18) 0%, transparent 70%)",
+              bottom: "12%",
+              right: "10%",
+              animation: "orbAccent 3.2s ease-in-out infinite",
+            }} />
+          </div>
 
           <div style={styles.heroBadge}>
             <span
