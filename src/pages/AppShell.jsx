@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { sb, buildMemoryContext } from "../lib/supabase";
+import { sb, buildMemoryContext, buildSystemPrompt } from "../lib/supabase";
 import { ANTHROPIC_PROXY } from "../constants/config";
 import { QUOTES } from "../constants/prompt";
 import { applyTheme, mapEtat } from "../constants/themes";
@@ -29,7 +29,7 @@ import AdminPanel    from "../components/AdminPanel";
 //   9. ACTIONS (reset, newSession, genIkigai)
 //  10. RENDER
 // ─────────────────────────────────────────────────────────────
-export default function AppShell({ onNav, user, initialTab = "chat", onTabChange }) {
+export default function AppShell({ onNav, user, initialTab = "chat", onTabChange, accessState = null }) {
   // ── 1. STATE & REFS ──────────────────────────────────────────
   const [msgs,     setMsgs]     = useState([]);
   const [input,    setInput]    = useState("");
@@ -132,9 +132,12 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
         headers["Authorization"] = `Bearer ${session.access_token}`;
       }
     }
+    const bodyPayload = import.meta.env.DEV
+      ? { model:"claude-sonnet-4-6", max_tokens:1400, system: buildSystemPrompt(memoryRef.current), messages:h }
+      : { model:"claude-sonnet-4-6", max_tokens:1400, memory_context, messages:h };
     const res = await fetch(ANTHROPIC_PROXY, {
       method:"POST", headers,
-      body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:1400, memory_context, messages:h }),
+      body: JSON.stringify(bodyPayload),
     });
     if (!res.ok) { const e=await res.json().catch(()=>{}); throw new Error(e?.error?.message||`HTTP ${res.status}`); }
     const json = await res.json();
@@ -357,9 +360,8 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
       <AdminPanel
         user={user}
         sb={sb}
+        accessState={accessState}
         history={history.current}
-        msgs={msgs}
-        setMsgs={setMsgs}
         lastGreffierLog={lastGreffierLog.current}
         onResetMemory={adminResetMemory}
         onForcePhase2={adminForcePhase2}
