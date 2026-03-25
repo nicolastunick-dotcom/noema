@@ -25,6 +25,10 @@ src/pages/
   Login.jsx            — Connexion / inscription / code d'accès
   Onboarding.jsx       — 4 slides première utilisation (onboarding_done Supabase)
   Pricing.jsx          — Plans mensuel / Pro (Stripe à brancher)
+  PrivacyPolicy.jsx    — Politique de confidentialité (/privacy)
+  TermsOfService.jsx   — Conditions d'utilisation (/terms)
+  EthicalAI.jsx        — Principes IA éthique (/ethical-ai)
+  Contact.jsx          — Formulaire de contact (/contact)
   AppShell.jsx         — Shell principal : navigation, état global, appel API
   ChatPage.jsx         — Interface de conversation
   MappingPage.jsx      — Mapping psychologique (Ikigai, Forces, Blocages)
@@ -70,6 +74,7 @@ netlify/functions/
 
 - Intégration Stripe (checkout session, webhook, table `subscriptions`)
 - Corrections sécurité restantes (voir `codex.md` priorités 2 et 3)
+- Ajouter `GMAIL_APP_PASSWORD` dans Netlify dashboard env vars (envoi formulaire contact)
 
 ---
 
@@ -98,6 +103,8 @@ netlify/functions/
 | 25/03/2026 | Claude Code | Audit sécurité codex.md | ✅ | Priorités 2 et 3 restantes |
 | 25/03/2026 | Claude Code | Corrections sécurité priorité 1 (×3) | ✅ | Intégration Stripe |
 | 25/03/2026 | Claude Code | Création PROJECT.md | ✅ | Corrections sécurité codex.md |
+| 25/03/2026 | Claude Code | Pages légales + contact (4 pages) + routing | ✅ | — |
+| 25/03/2026 | Claude Code | Contact : formulaire → send-contact.js (nodemailer Gmail) | ✅ | Ajouter GMAIL_APP_PASSWORD dans Netlify env vars |
 
 ---
 

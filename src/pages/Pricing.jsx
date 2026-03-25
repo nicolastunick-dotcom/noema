@@ -1,0 +1,575 @@
+import { useEffect, useMemo } from "react";
+
+const COLORS = {
+  surfaceTint: "#bdc2ff",
+  primaryContainer: "#7886ff",
+  onPrimaryContainer: "#00118c",
+  surfaceContainerLow: "#1a1b21",
+  surfaceContainer: "#1e1f25",
+  surfaceContainerHigh: "#282a2f",
+  surfaceContainerHighest: "#33353a",
+  outlineVariant: "#454655",
+  outline: "#8f8fa1",
+  onBackground: "#e2e2e9",
+  onSurface: "#e2e2e9",
+  onSurfaceVariant: "#c5c5d8",
+  primary: "#bdc2ff",
+  tertiary: "#ffb68a",
+  tertiaryContainer: "#e0731c",
+  background: "#111318",
+  surface: "#111318",
+};
+
+const monthlyFeatures = [
+  "Acces complet",
+  "Memoire illimitee",
+  "Cartographie complete",
+  "Journal guide",
+  "Rituel personnalise",
+  "25 messages/session",
+];
+
+const proFeatures = [
+  "Tout l'acces mensuel",
+  "Sessions illimitees",
+  "Acces Phase 2",
+  "Suivi avance",
+  "Priorite features",
+];
+
+const securityBadges = [
+  { icon: "lock", fill: true, label: "Paiement securise Stripe" },
+  { icon: "autorenew", fill: false, label: "Annulation en 1 clic" },
+  { icon: "shield_with_heart", fill: true, label: "Donnees chiffrees" },
+];
+
+function SymbolIcon({ children, fill = false, style }) {
+  return (
+    <span
+      className="material-symbols-outlined"
+      style={{
+        fontVariationSettings: `'FILL' ${fill ? 1 : 0}, 'wght' 500, 'GRAD' 0, 'opsz' 24`,
+        lineHeight: 1,
+        ...style,
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+export default function Pricing({ onNav, user, accessState, notice = null }) {
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "auto";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  useEffect(() => {
+    const fonts = [
+      "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap",
+      "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap",
+    ];
+    fonts.forEach((href) => {
+      if (!document.querySelector(`link[href="${href}"]`)) {
+        const link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = href;
+        document.head.appendChild(link);
+      }
+    });
+  }, []);
+
+  const isCheckingAccess = Boolean(user && accessState?.loading);
+  const hasActiveSubscription = Boolean(accessState?.hasActiveSubscription);
+
+  const handleCheckoutClick = () => {
+    console.log("Stripe Checkout placeholder: Commencer maintenant", {
+      userId: user?.id || null,
+      subscriptionStatus: accessState?.subscription?.status || null,
+    });
+  };
+
+  const helperText = useMemo(() => {
+    if (notice) return notice;
+    if (isCheckingAccess) return "Verification de votre acces en cours.";
+    if (hasActiveSubscription) return "Votre abonnement est actif. Vous pouvez entrer dans Noema.";
+    if (user) return "Votre acces a Noema necessite un abonnement actif.";
+    return "Connectez-vous d'abord pour associer votre abonnement a votre espace Noema.";
+  }, [hasActiveSubscription, isCheckingAccess, notice, user]);
+
+  const topAction = hasActiveSubscription
+    ? { label: "Acceder a Noema", onClick: () => onNav?.("/app/chat") }
+    : { label: "Se connecter", onClick: () => onNav?.("/login?next=/pricing") };
+
+  const primaryAction = isCheckingAccess
+    ? { label: "Verification...", onClick: undefined, disabled: true }
+    : hasActiveSubscription
+      ? { label: "Entrer dans Noema", onClick: () => onNav?.("/app/chat"), disabled: false }
+      : !user
+        ? { label: "Se connecter pour continuer", onClick: () => onNav?.("/login?next=/pricing"), disabled: false }
+        : { label: "Commencer maintenant", onClick: handleCheckoutClick, disabled: false };
+
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        backgroundColor: COLORS.background,
+        color: COLORS.onSurface,
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
+        overflowX: "hidden",
+      }}
+    >
+      <nav
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 50,
+          background: "rgba(26, 27, 33, 0.8)",
+          backdropFilter: "blur(24px)",
+          WebkitBackdropFilter: "blur(24px)",
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            maxWidth: 1280,
+            margin: "0 auto",
+            padding: "16px 24px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            boxSizing: "border-box",
+            gap: 16,
+          }}
+        >
+          <button
+            onClick={() => onNav?.("landing")}
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              fontSize: "1.5rem",
+              fontFamily: "'Instrument Serif', serif",
+              fontStyle: "italic",
+              color: COLORS.onBackground,
+            }}
+          >
+            Noema
+          </button>
+
+          <button
+            onClick={topAction.onClick}
+            style={{
+              background: "linear-gradient(135deg, #bdc2ff 0%, #7886ff 100%)",
+              color: COLORS.onPrimaryContainer,
+              border: "none",
+              borderRadius: 9999,
+              padding: "10px 24px",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            {topAction.label}
+          </button>
+        </div>
+      </nav>
+
+      <main
+        style={{
+          position: "relative",
+          minHeight: "100vh",
+          padding: "128px 24px 96px",
+          boxSizing: "border-box",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            top: "-10%",
+            left: "-10%",
+            width: "50%",
+            height: "50%",
+            borderRadius: "50%",
+            background: "rgba(120, 134, 255, 0.1)",
+            filter: "blur(120px)",
+            pointerEvents: "none",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            bottom: "10%",
+            right: "-5%",
+            width: "40%",
+            height: "40%",
+            borderRadius: "50%",
+            background: "rgba(255, 182, 138, 0.05)",
+            filter: "blur(100px)",
+            pointerEvents: "none",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            top: "20%",
+            right: "10%",
+            width: "30%",
+            height: "30%",
+            borderRadius: "50%",
+            background: "rgba(189, 194, 255, 0.1)",
+            filter: "blur(120px)",
+            pointerEvents: "none",
+          }}
+        />
+
+        <div style={{ maxWidth: 1120, margin: "0 auto", position: "relative", zIndex: 1 }}>
+          <div style={{ textAlign: "center", marginBottom: 64 }}>
+            <h1
+              style={{
+                fontSize: "clamp(3rem, 8vw, 4.5rem)",
+                fontFamily: "'Instrument Serif', serif",
+                fontStyle: "italic",
+                color: COLORS.onSurface,
+                margin: "0 0 24px",
+                lineHeight: 1.05,
+              }}
+            >
+              Commence ton exploration.
+            </h1>
+            <p
+              style={{
+                margin: 0,
+                fontSize: "1.125rem",
+                color: COLORS.onSurfaceVariant,
+                fontWeight: 300,
+                letterSpacing: "0.02em",
+              }}
+            >
+              Annulable a tout moment. Aucun engagement.
+            </p>
+            <p
+              style={{
+                margin: "18px auto 0",
+                maxWidth: 560,
+                fontSize: "0.95rem",
+                lineHeight: 1.6,
+                color: notice ? COLORS.primary : "rgba(197, 197, 216, 0.8)",
+              }}
+            >
+              {helperText}
+            </p>
+          </div>
+
+          <section
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+              gap: 32,
+              alignItems: "stretch",
+            }}
+          >
+            <article
+              style={{
+                position: "relative",
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+                padding: 32,
+                borderRadius: 16,
+                background: "rgba(30, 31, 37, 0.4)",
+                backdropFilter: "blur(24px)",
+                WebkitBackdropFilter: "blur(24px)",
+                border: `1px solid rgba(69, 70, 85, 0.15)`,
+                boxShadow: "inset 0 0 0 1px rgba(189, 194, 255, 0.2)",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  padding: "8px 16px",
+                  background: "linear-gradient(135deg, #bdc2ff 0%, #7886ff 100%)",
+                  color: COLORS.onPrimaryContainer,
+                  fontSize: "0.75rem",
+                  fontWeight: 700,
+                  borderBottomLeftRadius: 12,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.15em",
+                }}
+              >
+                Le plus populaire
+              </div>
+
+              <div style={{ marginBottom: 32 }}>
+                <h3
+                  style={{
+                    margin: "0 0 8px",
+                    color: COLORS.onSurfaceVariant,
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.18em",
+                  }}
+                >
+                  Acces Mensuel
+                </h3>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                  <span
+                    style={{
+                      fontSize: "3.25rem",
+                      fontFamily: "'Instrument Serif', serif",
+                      fontStyle: "italic",
+                      color: COLORS.primary,
+                      lineHeight: 1,
+                    }}
+                  >
+                    19EUR
+                  </span>
+                  <span style={{ color: COLORS.onSurfaceVariant, fontSize: "1.125rem" }}>
+                    /mois
+                  </span>
+                </div>
+              </div>
+
+              <ul
+                style={{
+                  listStyle: "none",
+                  padding: 0,
+                  margin: "0 0 40px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 20,
+                  flexGrow: 1,
+                }}
+              >
+                {monthlyFeatures.map((feature) => (
+                  <li
+                    key={feature}
+                    style={{ display: "flex", alignItems: "center", gap: 12, color: COLORS.onSurface }}
+                  >
+                    <SymbolIcon fill style={{ color: COLORS.primary, fontSize: "1.25rem" }}>
+                      check_circle
+                    </SymbolIcon>
+                    <span style={{ fontSize: "0.95rem", fontWeight: 500 }}>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <button
+                onClick={primaryAction.onClick}
+                disabled={primaryAction.disabled}
+                style={{
+                  width: "100%",
+                  border: "none",
+                  borderRadius: 9999,
+                  padding: "16px 24px",
+                  background: "linear-gradient(135deg, #bdc2ff 0%, #7886ff 100%)",
+                  color: COLORS.onPrimaryContainer,
+                  fontWeight: 700,
+                  fontSize: "1rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  cursor: primaryAction.disabled ? "wait" : "pointer",
+                  opacity: primaryAction.disabled ? 0.7 : 1,
+                }}
+              >
+                {primaryAction.label}
+                <SymbolIcon style={{ fontSize: "1.25rem" }}>arrow_forward</SymbolIcon>
+              </button>
+            </article>
+
+            <article
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                padding: 32,
+                borderRadius: 16,
+                background: "rgba(30, 31, 37, 0.4)",
+                backdropFilter: "blur(24px)",
+                WebkitBackdropFilter: "blur(24px)",
+                border: `1px solid rgba(69, 70, 85, 0.1)`,
+                opacity: 0.6,
+                filter: "grayscale(0.5)",
+              }}
+            >
+              <div style={{ marginBottom: 32 }}>
+                <div
+                  style={{
+                    display: "inline-block",
+                    marginBottom: 16,
+                    padding: "6px 12px",
+                    borderRadius: 9999,
+                    background: "rgba(224, 115, 28, 0.2)",
+                    color: COLORS.tertiary,
+                    border: `1px solid rgba(255, 182, 138, 0.3)`,
+                    fontSize: "0.625rem",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  Bientot disponible
+                </div>
+                <h3
+                  style={{
+                    margin: "0 0 8px",
+                    color: COLORS.onSurfaceVariant,
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.18em",
+                  }}
+                >
+                  Noema Pro
+                </h3>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                  <span
+                    style={{
+                      fontSize: "3.25rem",
+                      fontFamily: "'Instrument Serif', serif",
+                      fontStyle: "italic",
+                      color: COLORS.onSurfaceVariant,
+                      lineHeight: 1,
+                    }}
+                  >
+                    ?
+                  </span>
+                </div>
+              </div>
+
+              <ul
+                style={{
+                  listStyle: "none",
+                  padding: 0,
+                  margin: "0 0 40px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 20,
+                  flexGrow: 1,
+                  color: "rgba(226, 226, 233, 0.7)",
+                }}
+              >
+                {proFeatures.map((feature) => (
+                  <li key={feature} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <SymbolIcon style={{ color: COLORS.outline, fontSize: "1.25rem" }}>
+                      lock
+                    </SymbolIcon>
+                    <span style={{ fontSize: "0.95rem", fontWeight: 500 }}>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <button
+                disabled
+                style={{
+                  width: "100%",
+                  borderRadius: 9999,
+                  padding: "16px 24px",
+                  background: COLORS.surfaceContainerHighest,
+                  color: "rgba(197, 197, 216, 0.5)",
+                  border: `1px solid rgba(69, 70, 85, 0.2)`,
+                  fontWeight: 700,
+                  fontSize: "1rem",
+                  cursor: "not-allowed",
+                }}
+              >
+                Bientot disponible
+              </button>
+            </article>
+          </section>
+
+          <section
+            style={{
+              marginTop: 80,
+              padding: "0 16px",
+              display: "flex",
+              flexWrap: "wrap",
+              justifyContent: "center",
+              gap: 32,
+              alignItems: "center",
+            }}
+          >
+            {securityBadges.map(({ icon, fill, label }) => (
+              <div
+                key={label}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  color: "rgba(197, 197, 216, 0.8)",
+                }}
+              >
+                <SymbolIcon fill={fill} style={{ color: COLORS.primary, fontSize: "1.25rem" }}>
+                  {icon}
+                </SymbolIcon>
+                <span style={{ fontSize: "0.95rem", fontWeight: 500 }}>{label}</span>
+              </div>
+            ))}
+          </section>
+        </div>
+      </main>
+
+      <footer
+        style={{
+          borderTop: `1px solid rgba(69, 70, 85, 0.15)`,
+          backgroundColor: COLORS.surface,
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            maxWidth: 1280,
+            margin: "0 auto",
+            padding: "48px 32px",
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 24,
+            boxSizing: "border-box",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontSize: "1.125rem",
+                fontFamily: "'Instrument Serif', serif",
+                fontStyle: "italic",
+                color: COLORS.onBackground,
+                marginBottom: 8,
+              }}
+            >
+              Noema
+            </div>
+            <div style={{ fontSize: "0.875rem", color: "rgba(226, 226, 233, 0.6)" }}>
+              © 2024 Noema Psychological Coaching. All rights reserved.
+            </div>
+          </div>
+
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 24 }}>
+            {["Privacy Policy", "Terms of Service", "Security", "Contact Support"].map((label) => (
+              <a
+                key={label}
+                href="#"
+                style={{
+                  fontSize: "0.875rem",
+                  color: "rgba(226, 226, 233, 0.5)",
+                  textDecoration: "none",
+                }}
+              >
+                {label}
+              </a>
+            ))}
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}

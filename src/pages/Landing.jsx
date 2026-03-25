@@ -153,6 +153,26 @@ const styles = {
     maxWidth: 1024,
     margin: "0 auto",
   },
+  heroTopCta: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    padding: "12px 28px",
+    borderRadius: 9999,
+    border: "1px solid rgba(189,194,255,0.22)",
+    background: "rgba(30,31,37,0.55)",
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
+    color: COLORS.primary,
+    fontFamily: "'Plus Jakarta Sans', sans-serif",
+    fontWeight: 600,
+    fontSize: "0.95rem",
+    cursor: "pointer",
+    marginBottom: 28,
+    boxShadow: "0 18px 45px rgba(0,0,0,0.18)",
+    transition: "transform 0.2s, border-color 0.2s",
+  },
   heroBadge: {
     display: "inline-flex",
     alignItems: "center",
@@ -317,6 +337,24 @@ export default function Landing({ onNav }) {
 
         {/* ── Hero ──────────────────────────────────────────────────────────── */}
         <section style={styles.heroSection}>
+          <button
+            style={styles.heroTopCta}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-2px)";
+              e.currentTarget.style.borderColor = "rgba(189,194,255,0.4)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.borderColor = "rgba(189,194,255,0.22)";
+            }}
+            onClick={() => onNav?.("pricing")}
+          >
+            Decouvrir l'abonnement
+            <span className="material-symbols-outlined" style={{ fontSize: "1.1rem" }}>
+              arrow_forward
+            </span>
+          </button>
+
           <div style={styles.heroBadge}>
             <span
               style={styles.heroBadgeIcon}
@@ -385,6 +423,15 @@ export default function Landing({ onNav }) {
                 justifyContent: "space-between",
                 minHeight: 500,
                 overflow: "hidden",
+                transition: "transform 0.3s ease, box-shadow 0.3s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-6px)";
+                e.currentTarget.style.boxShadow = "0 24px 60px rgba(0,0,0,0.5), 0 0 40px rgba(189,194,255,0.08)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
               }}
             >
               <div style={{ position: "relative", zIndex: 1 }}>
@@ -496,6 +543,15 @@ export default function Landing({ onNav }) {
                 alignItems: "center",
                 justifyContent: "center",
                 textAlign: "center",
+                transition: "transform 0.3s ease, box-shadow 0.3s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-6px)";
+                e.currentTarget.style.boxShadow = "0 24px 60px rgba(0,0,0,0.5), 0 0 40px rgba(255,182,138,0.08)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
               }}
             >
               <div
@@ -549,6 +605,15 @@ export default function Landing({ onNav }) {
                 padding: 40,
                 display: "flex",
                 flexDirection: "column",
+                transition: "transform 0.3s ease, box-shadow 0.3s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-6px)";
+                e.currentTarget.style.boxShadow = "0 24px 60px rgba(0,0,0,0.5), 0 0 40px rgba(189,194,255,0.08)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
               }}
             >
               <div style={{ marginBottom: 24 }}>
@@ -743,7 +808,7 @@ export default function Landing({ onNav }) {
           </div>
         </section>
 
-        {/* ── CTA Section ───────────────────────────────────────────────────────── */}
+        {/* ── Video Section ─────────────────────────────────────────────────────── */}
         <section
           style={{
             maxWidth: 1024,
@@ -751,85 +816,57 @@ export default function Landing({ onNav }) {
             padding: "0 24px 96px",
           }}
         >
+          {/* TODO: remplacer ce placeholder par une vraie vidéo (<video> ou <iframe>) */}
           <div
             style={{
               ...styles.glassCard,
-              borderRadius: 48,
-              padding: "80px",
-              textAlign: "center",
-              position: "relative",
+              borderRadius: 24,
               overflow: "hidden",
+              position: "relative",
+              aspectRatio: "16 / 9",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 16,
+              border: "2px dashed rgba(69,70,85,0.4)",
+              cursor: "default",
             }}
           >
-            {/* glow accents */}
-            <div
-              style={{
-                position: "absolute",
-                top: -96,
-                right: -96,
-                width: 256,
-                height: 256,
-                background: "rgba(189,194,255,0.1)",
-                filter: "blur(100px)",
-                pointerEvents: "none",
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                bottom: -96,
-                left: -96,
-                width: 256,
-                height: 256,
-                background: "rgba(255,182,138,0.1)",
-                filter: "blur(100px)",
-                pointerEvents: "none",
-              }}
-            />
+            {/* Ambient glow */}
+            <div style={{
+              position: "absolute", inset: 0,
+              background: "radial-gradient(circle at 50% 50%, rgba(120,134,255,0.06) 0%, transparent 70%)",
+              pointerEvents: "none",
+            }} />
 
-            <h2
-              style={{
-                fontFamily: "'Instrument Serif', serif",
-                fontSize: "clamp(2rem, 6vw, 4.5rem)",
-                fontStyle: "italic",
-                letterSpacing: "-0.03em",
-                color: COLORS.onBackground,
-                marginBottom: 32,
-              }}
-            >
-              Prêt à briser le silence ?
-            </h2>
-            <p
-              style={{
-                color: COLORS.onSurfaceVariant,
-                fontSize: "1.125rem",
-                maxWidth: 640,
-                margin: "0 auto 48px",
-                lineHeight: 1.7,
-              }}
-            >
-              L'abonnement commence par une première conversation gratuite. Pas de carte
-              bancaire. Juste une rencontre.
+            {/* Play icon */}
+            <div style={{
+              width: 72, height: 72, borderRadius: "50%",
+              background: "rgba(189,194,255,0.1)",
+              border: "1px solid rgba(189,194,255,0.2)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              position: "relative", zIndex: 1,
+            }}>
+              <span
+                className="material-symbols-outlined"
+                style={{
+                  color: COLORS.primary, fontSize: "2rem",
+                  fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24",
+                }}
+              >play_arrow</span>
+            </div>
+
+            <p style={{
+              fontFamily: "'Instrument Serif', serif",
+              fontStyle: "italic",
+              fontSize: "1.25rem",
+              color: "rgba(197,197,216,0.5)",
+              position: "relative", zIndex: 1,
+              margin: 0,
+            }}>
+              Votre vidéo ici
             </p>
-            <button
-              style={{
-                background: COLORS.onBackground,
-                color: COLORS.background,
-                border: "none",
-                borderRadius: 9999,
-                padding: "20px 48px",
-                fontSize: "1.25rem",
-                fontFamily: "'Plus Jakarta Sans', sans-serif",
-                fontWeight: 700,
-                cursor: "pointer",
-                transition: "background 0.2s",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = COLORS.primary)}
-              onMouseLeave={(e) => (e.currentTarget.style.background = COLORS.onBackground)}
-              onClick={() => onNav?.("login")}
-            >
-              Commencer Maintenant
-            </button>
           </div>
         </section>
       </main>
@@ -862,24 +899,32 @@ export default function Landing({ onNav }) {
           </p>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 32 }}>
-          {["Privacy Policy", "Terms of Service", "Ethical AI", "Contact"].map((label) => (
-            <a
+          {[
+            { label: "Privacy Policy", target: "privacy" },
+            { label: "Terms of Service", target: "terms" },
+            { label: "Ethical AI", target: "ethical-ai" },
+            { label: "Contact", target: "contact" },
+          ].map(({ label, target }) => (
+            <button
               key={label}
-              href="#"
+              onClick={() => onNav?.(target)}
               style={{
+                background: "none",
+                border: "none",
+                padding: 0,
                 fontFamily: "'Plus Jakarta Sans', sans-serif",
                 fontSize: "0.75rem",
                 textTransform: "uppercase",
                 letterSpacing: "0.1em",
                 color: COLORS.outlineVariant,
-                textDecoration: "none",
+                cursor: "pointer",
                 transition: "color 0.2s",
               }}
               onMouseEnter={(e) => (e.currentTarget.style.color = COLORS.primary)}
               onMouseLeave={(e) => (e.currentTarget.style.color = COLORS.outlineVariant)}
             >
               {label}
-            </a>
+            </button>
           ))}
         </div>
       </footer>
