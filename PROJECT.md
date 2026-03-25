@@ -29,6 +29,7 @@ src/pages/
   TermsOfService.jsx   — Conditions d'utilisation (/terms)
   EthicalAI.jsx        — Principes IA éthique (/ethical-ai)
   Contact.jsx          — Formulaire de contact (/contact)
+  Success.jsx          — Page post-paiement Stripe (/success)
   AppShell.jsx         — Shell principal : navigation, état global, appel API
   ChatPage.jsx         — Interface de conversation
   MappingPage.jsx      — Mapping psychologique (Ikigai, Forces, Blocages)
@@ -50,6 +51,7 @@ netlify/functions/
   claude.js            — Proxy IA principal (auth JWT, rate limit, Greffier)
   greffier.js          — Agent extraction silencieuse (Haiku)
   verify-code.js       — Vérification codes admin côté serveur
+  create-checkout-session.js — Crée une Stripe Checkout Session (auth JWT requis)
 ```
 
 ---
@@ -72,7 +74,7 @@ netlify/functions/
 
 ## En cours
 
-- Intégration Stripe (checkout session, webhook, table `subscriptions`)
+- Intégration Stripe : webhook Stripe → table `subscriptions` Supabase (étape suivante)
 - Corrections sécurité restantes (voir `codex.md` priorités 2 et 3)
 - Ajouter `GMAIL_APP_PASSWORD` dans Netlify dashboard env vars (envoi formulaire contact)
 - Ajouter `VITE_ADMIN_EMAIL=nicolas.tunick278@gmail.com` dans Netlify dashboard env vars (bypass abonnement admin)
@@ -108,6 +110,7 @@ netlify/functions/
 | 25/03/2026 | Claude Code | Contact : formulaire → send-contact.js (nodemailer Gmail) | ✅ | Ajouter GMAIL_APP_PASSWORD dans Netlify env vars |
 | 25/03/2026 | Claude Code | Bypass abonnement pour compte admin (nicolas.tunick278@gmail.com) via VITE_ADMIN_EMAIL | ✅ | Ajouter VITE_ADMIN_EMAIL dans Netlify env vars |
 | 25/03/2026 | Claude Code | Landing : orbe violet pulsant en hero + bouton "Découvrir l'abonnement" déplacé dans la nav | ✅ | — |
+| 25/03/2026 | Claude Code | Stripe Checkout : create-checkout-session.js + Success.jsx + routing /success | ✅ | Webhook Stripe → table subscriptions |
 
 ---
 
