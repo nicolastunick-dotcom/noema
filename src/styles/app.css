@@ -11,8 +11,8 @@
   --sh-lg:0 16px 48px rgba(15,23,42,.12),0 4px 16px rgba(15,23,42,.06);
   --t:300ms cubic-bezier(.4,0,.2,1);
 }
-html,body,#root{height:100%}
-body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;overflow:hidden}
+#root{min-height:100vh}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;overflow-x:hidden}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
 
 /* ── APP ── */
