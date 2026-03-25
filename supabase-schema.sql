@@ -40,8 +40,9 @@ CREATE TABLE IF NOT EXISTS memory (
   contradictions text[] DEFAULT '{}',
   blocages       jsonb DEFAULT '{}',
   ikigai         jsonb DEFAULT '{}',
-  session_notes  text[] DEFAULT '{}',
-  session_count  integer DEFAULT 0
+  session_notes   text[] DEFAULT '{}',
+  session_count   integer DEFAULT 0,
+  onboarding_done boolean DEFAULT false
 );
 
 -- Row Level Security : chaque utilisateur ne voit que ses données
@@ -91,6 +92,28 @@ CREATE POLICY "access_codes: update" ON access_codes
 
 -- Insertion réservée aux admins via service_role (pas côté client)
 -- Pour insérer des codes : utiliser le dashboard Supabase ou une fonction Edge
+
+-- Abonnements Stripe / source de vérité d'accès payant
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id                     uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id                uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  stripe_customer_id     text,
+  stripe_subscription_id text UNIQUE,
+  plan                   text DEFAULT 'noema_monthly',
+  status                 text NOT NULL DEFAULT 'incomplete',
+  current_period_end     timestamptz,
+  cancel_at_period_end   boolean DEFAULT false,
+  created_at             timestamptz DEFAULT now(),
+  updated_at             timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS subscriptions_user_id_idx ON subscriptions (user_id);
+CREATE INDEX IF NOT EXISTS subscriptions_status_idx ON subscriptions (status);
+
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "subscriptions: user read own" ON subscriptions
+  FOR SELECT USING (auth.uid() = user_id);
 
 -- ─────────────────────────────────────────────────────────────
 -- MÉMOIRE SÉMANTIQUE (VECTOR DB)
