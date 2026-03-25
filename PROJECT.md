@@ -45,12 +45,13 @@ src/lib/
   supabase.js          — Client Supabase, buildMemoryContext, buildSystemPrompt
 
 src/components/
-  AdminPanel.jsx       — Panel admin (email : nicolas.tunick@icloud.com)
+  AdminPanel.jsx       — Panel admin (profiles.is_admin + fallback email transitoire)
 
 netlify/functions/
   claude.js            — Proxy IA principal (auth JWT, rate limit, Greffier)
   greffier.js          — Agent extraction silencieuse (Haiku)
   verify-code.js       — Vérification codes admin côté serveur
+  admin-tools.js       — Actions admin sécurisées (coûts API, reset mémoire)
   create-checkout-session.js — Crée une Stripe Checkout Session (auth JWT requis)
 ```
 
@@ -111,6 +112,9 @@ netlify/functions/
 | 25/03/2026 | Claude Code | Bypass abonnement pour compte admin (nicolas.tunick278@gmail.com) via VITE_ADMIN_EMAIL | ✅ | Ajouter VITE_ADMIN_EMAIL dans Netlify env vars |
 | 25/03/2026 | Claude Code | Landing : orbe violet pulsant en hero + bouton "Découvrir l'abonnement" déplacé dans la nav | ✅ | — |
 | 25/03/2026 | Claude Code | Stripe Checkout : create-checkout-session.js + Success.jsx + routing /success | ✅ | Webhook Stripe → table subscriptions |
+| 25/03/2026 | Codex | Migration admin progressive : `profiles.is_admin` + actions sensibles via Netlify Functions | ✅ | Retirer le fallback `VITE_ADMIN_EMAIL` après validation prod |
+| 25/03/2026 | Claude Code | Bug 1 fix — colonne `onboarding_done` absente du schéma `memory` (400 Supabase) | ✅ | Exécuter migration SQL dans Supabase dashboard |
+| 25/03/2026 | Claude Code | Bug 2 fix — `memory_context` rejeté par Anthropic en DEV → `buildSystemPrompt` direct | ✅ | — |
 
 ---
 
