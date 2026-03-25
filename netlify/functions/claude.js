@@ -87,22 +87,14 @@ export default async (request) => {
 
     const data = await response.json()
 
-    // ── Greffier — analyse silencieuse ──────────────────────────
-    // Déclenche tous les 3 messages ou si le dernier message user > 40 chars
-    const messages      = allowed.messages
-    const msgCount      = messages.filter(m => m.role === 'user').length
-    const lastUserMsg   = [...messages].reverse().find(m => m.role === 'user')
-    const lastUserLen   = typeof lastUserMsg?.content === 'string' ? lastUserMsg.content.length : 0
-    const shouldRunGreffier = (msgCount % 3 === 0) || (lastUserLen > 40)
-
-    let greffierPromise = Promise.resolve(null)
-    if (shouldRunGreffier) {
-      const userId    = body.user_id    || null
-      const sessionId = body.session_id || null
-      const userMemory = body.user_memory && typeof body.user_memory === 'object' ? body.user_memory : {}
-      greffierPromise = runGreffier({ apiKey, sb: null, userId, sessionId, history: messages, userMemory })
-        .catch(e => { console.warn('[Greffier] échec silencieux:', e.message); return null })
-    }
+    // ── Greffier — analyse silencieuse (chaque message) ─────────
+    const messages   = allowed.messages
+    const sessionId  = body.session_id || null
+    const userMemory = body.user_memory && typeof body.user_memory === 'object' ? body.user_memory : {}
+    console.log('[Greffier] déclenchement, msgs:', messages.length, 'userId:', userId)
+    const greffierPromise = runGreffier({ apiKey, sb: null, userId, sessionId, history: messages, userMemory })
+      .then(r  => { console.log('[Greffier] succès:', JSON.stringify(r)?.slice(0, 120)); return r })
+      .catch(e => { console.error('[Greffier] erreur:', e.message); return null })
 
     const [greffierResult] = await Promise.all([greffierPromise])
 
