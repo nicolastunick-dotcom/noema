@@ -281,6 +281,7 @@ export default function App() {
         user={user}
         initialTab={route.appTab}
         onTabChange={(tab) => navigate(getAppPath(tab))}
+        accessState={access}
       />
     );
   }

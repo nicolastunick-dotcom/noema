@@ -1,10 +1,8 @@
 import { useState } from "react";
 
 // ─────────────────────────────────────────────────────────────
-// ADMIN PANEL — visible uniquement pour nicolas.tunick278@gmail.com
+// ADMIN PANEL — visible pour les admins Supabase
 // ─────────────────────────────────────────────────────────────
-
-export const ADMIN_EMAIL = "nicolas.tunick278@gmail.com";
 
 const C = {
   bg: "#0c0e13",
@@ -158,18 +156,7 @@ function Row({ icon, label, onClick, color, disabled, sublabel }) {
 }
 
 // ── Composant principal ───────────────────────────────────────
-// Tarifs Anthropic ($/M tokens)
-const PRICING = {
-  'claude-sonnet-4-6':       { input: 3.00,  output: 15.00 },
-  'claude-haiku-4-5-20251001': { input: 0.80,  output: 4.00  },
-}
-
-function calcCost(model, inputTokens, outputTokens) {
-  const p = PRICING[model] || { input: 3.00, output: 15.00 }
-  return (inputTokens / 1_000_000) * p.input + (outputTokens / 1_000_000) * p.output
-}
-
-export default function AdminPanel({ user, sb, history, msgs, setMsgs, lastGreffierLog, onResetMemory, onForcePhase2, onSimulateLimit, onShowOnboarding, setInsights, setIkigai, setStep, setNavTab }) {
+export default function AdminPanel({ user, sb, accessState, history, lastGreffierLog, onResetMemory, onForcePhase2, onSimulateLimit, onShowOnboarding, setInsights, setIkigai, setStep, setNavTab }) {
   const [open, setOpen] = useState(false);
   const [showGreffier, setShowGreffier] = useState(false);
   const [showCosts, setShowCosts] = useState(false);
@@ -177,8 +164,10 @@ export default function AdminPanel({ user, sb, history, msgs, setMsgs, lastGreff
   const [costsLoading, setCostsLoading] = useState(false);
   const [activeScenario, setActiveScenario] = useState(null);
   const [feedback, setFeedback] = useState("");
+  const isAdmin = Boolean(accessState?.isAdmin);
+  const adminSource = accessState?.adminSource || null;
 
-  if (!user || user.email !== ADMIN_EMAIL) return null;
+  if (!user || !isAdmin) return null;
 
   const msgCount = history ? history.filter(m => m.role === "user").length : 0;
 
@@ -187,11 +176,44 @@ export default function AdminPanel({ user, sb, history, msgs, setMsgs, lastGreff
     setTimeout(() => setFeedback(""), 2500);
   }
 
+  async function runAdminAction(action) {
+    if (!sb || !user) {
+      flash("❌ Session admin indisponible");
+      return null;
+    }
+
+    const { data: { session } } = await sb.auth.getSession();
+    const token = session?.access_token;
+
+    if (!token) {
+      flash("❌ Session admin introuvable");
+      return null;
+    }
+
+    const response = await fetch("/.netlify/functions/admin-tools", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ action }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      flash("❌ " + (payload.error || "Action admin impossible"));
+      return null;
+    }
+
+    return payload;
+  }
+
   async function handleResetMemory() {
-    if (!sb || !user) return flash("❌ Supabase non disponible");
-    const { error } = await sb.from("memory").delete().eq("user_id", user.id);
-    if (error) flash("❌ " + error.message);
-    else { onResetMemory?.(); flash("✓ Mémoire réinitialisée"); }
+    const payload = await runAdminAction("reset-memory");
+    if (!payload) return;
+    onResetMemory?.();
+    flash("✓ Mémoire réinitialisée");
   }
 
   function handleSimulateLimit() {
@@ -215,32 +237,15 @@ export default function AdminPanel({ user, sb, history, msgs, setMsgs, lastGreff
   }
 
   async function handleShowCosts() {
-    if (!sb || !user) return flash("❌ Supabase non disponible");
     setShowCosts(c => !c);
     if (costs) return; // already loaded
     setCostsLoading(true);
-    const { data, error } = await sb
-      .from("api_usage")
-      .select("model, prompt_tokens, completion_tokens")
-      .eq("user_id", user.id);
-    if (error) { flash("❌ " + error.message); setCostsLoading(false); return; }
-    // Group by model
-    const grouped = {};
-    for (const row of data || []) {
-      if (!grouped[row.model]) grouped[row.model] = { input: 0, output: 0, calls: 0 };
-      grouped[row.model].input  += row.prompt_tokens     || 0;
-      grouped[row.model].output += row.completion_tokens || 0;
-      grouped[row.model].calls  += 1;
+    const payload = await runAdminAction("get-costs");
+    if (!payload) {
+      setCostsLoading(false);
+      return;
     }
-    const rows = Object.entries(grouped).map(([model, t]) => ({
-      model,
-      input: t.input,
-      output: t.output,
-      calls: t.calls,
-      cost: calcCost(model, t.input, t.output),
-    }));
-    const total = rows.reduce((s, r) => s + r.cost, 0);
-    setCosts({ rows, total });
+    setCosts({ rows: payload.rows || [], total: payload.total || 0 });
     setCostsLoading(false);
   }
 
@@ -289,6 +294,9 @@ export default function AdminPanel({ user, sb, history, msgs, setMsgs, lastGreff
             <div>
               <p style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: C.primary, margin: 0 }}>Panneau Admin</p>
               <p style={{ fontSize: "0.65rem", color: C.outline, margin: "3px 0 0" }}>{user.email}</p>
+              {adminSource === "legacy_email" && (
+                <p style={{ fontSize: "0.58rem", color: C.tertiary, margin: "4px 0 0" }}>Accès transitoire via email</p>
+              )}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 9999, background: "rgba(189,194,255,0.06)", border: "1px solid rgba(69,70,85,0.3)" }}>
               <span className="material-symbols-outlined" style={{ fontSize: "0.75rem", color: C.outline, fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>tag</span>

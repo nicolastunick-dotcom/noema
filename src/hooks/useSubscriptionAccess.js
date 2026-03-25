@@ -7,6 +7,9 @@ const INITIAL_STATE = {
   hasActiveSubscription: false,
   subscription: null,
   records: [],
+  isAdmin: false,
+  adminSource: null,
+  profile: null,
   error: null,
 };
 
@@ -21,25 +24,16 @@ export function useSubscriptionAccess(user) {
       return INITIAL_STATE;
     }
 
-    // Compte admin — accès illimité sans abonnement
-    if (ADMIN_EMAIL && user.email === ADMIN_EMAIL) {
-      const adminState = {
-        loading: false,
-        hasActiveSubscription: true,
-        subscription: { status: "active", plan: "admin" },
-        records: [],
-        error: null,
-      };
-      setState(adminState);
-      return adminState;
-    }
-
     if (!sb) {
+      const hasLegacyAdminAccess = Boolean(ADMIN_EMAIL && user.email === ADMIN_EMAIL);
       const nextState = {
         loading: false,
-        hasActiveSubscription: false,
-        subscription: null,
+        hasActiveSubscription: hasLegacyAdminAccess,
+        subscription: hasLegacyAdminAccess ? { status: "active", plan: "admin" } : null,
         records: [],
+        isAdmin: hasLegacyAdminAccess,
+        adminSource: hasLegacyAdminAccess ? "legacy_email" : null,
+        profile: null,
         error: "SUPABASE_UNAVAILABLE",
       };
       setState(nextState);
@@ -47,6 +41,41 @@ export function useSubscriptionAccess(user) {
     }
 
     setState((prev) => ({ ...prev, loading: true, error: null }));
+
+    let profile = null;
+    let isAdmin = Boolean(ADMIN_EMAIL && user.email === ADMIN_EMAIL);
+    let adminSource = isAdmin ? "legacy_email" : null;
+
+    const { data: profileData, error: profileError } = await sb
+      .from("profiles")
+      .select("id, is_admin")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error("[Noema] Erreur lecture profil admin:", profileError);
+    } else {
+      profile = profileData || null;
+      if (profileData?.is_admin) {
+        isAdmin = true;
+        adminSource = "profile";
+      }
+    }
+
+    if (isAdmin) {
+      const adminState = {
+        loading: false,
+        hasActiveSubscription: true,
+        subscription: { status: "active", plan: "admin" },
+        records: [],
+        isAdmin: true,
+        adminSource,
+        profile,
+        error: null,
+      };
+      setState(adminState);
+      return adminState;
+    }
 
     const { data, error } = await sb
       .from("subscriptions")
@@ -61,6 +90,9 @@ export function useSubscriptionAccess(user) {
         hasActiveSubscription: false,
         subscription: null,
         records: [],
+        isAdmin,
+        adminSource,
+        profile,
         error: error.message || "SUBSCRIPTION_CHECK_FAILED",
       };
       setState(nextState);
@@ -74,12 +106,15 @@ export function useSubscriptionAccess(user) {
       hasActiveSubscription: hasActiveSubscriptionRecord(subscription),
       subscription,
       records,
+      isAdmin,
+      adminSource,
+      profile,
       error: null,
     };
 
     setState(nextState);
     return nextState;
-  }, [user?.id]);
+  }, [user?.email, user?.id]);
 
   useEffect(() => {
     refresh();

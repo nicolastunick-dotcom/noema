@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { sb } from "../lib/supabase";
-import { genCode } from "../utils/helpers";
 import { GoogleSVG } from "../components/SVGs";
 
 const C = {
@@ -93,19 +92,16 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: input }),
       });
-      if (verifyRes.ok) {
-        const { isAdmin } = await verifyRes.json();
-        if (isAdmin) {
-          const newCode = genCode();
-          const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-          if (sb) {
-            const { error } = await sb.from("access_codes").insert({ code: newCode, expires_at: expires, max_uses: 1 });
-            if (error) { setLoad(false); setMsg({ t: "Erreur création code : " + error.message, e: true }); return; }
-          }
-          setGenerated(newCode);
-          setLoad(false);
-          return;
-        }
+      const payload = await verifyRes.json().catch(() => null);
+      if (payload?.isAdmin && payload.generatedCode) {
+        setGenerated(payload.generatedCode);
+        setLoad(false);
+        return;
+      }
+      if (payload?.isAdmin) {
+        setLoad(false);
+        setMsg({ t: payload.error || "Configuration admin incomplète. Impossible de générer un code.", e: true });
+        return;
       }
     } catch {
       // Si la fonction n'est pas disponible (ex: dev local), on continue vers la vérification normale
