@@ -10,6 +10,8 @@ const INITIAL_STATE = {
   error: null,
 };
 
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || "";
+
 export function useSubscriptionAccess(user) {
   const [state, setState] = useState(INITIAL_STATE);
 
@@ -17,6 +19,19 @@ export function useSubscriptionAccess(user) {
     if (!user?.id) {
       setState(INITIAL_STATE);
       return INITIAL_STATE;
+    }
+
+    // Compte admin — accès illimité sans abonnement
+    if (ADMIN_EMAIL && user.email === ADMIN_EMAIL) {
+      const adminState = {
+        loading: false,
+        hasActiveSubscription: true,
+        subscription: { status: "active", plan: "admin" },
+        records: [],
+        error: null,
+      };
+      setState(adminState);
+      return adminState;
     }
 
     if (!sb) {
