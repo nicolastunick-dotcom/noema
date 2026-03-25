@@ -9,6 +9,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import EthicalAI    from "./pages/EthicalAI";
 import Contact      from "./pages/Contact";
+import Success      from "./pages/Success";
 import "./styles/app.css";
 import { buildLocation, getAppPath, parseNoemaLocation, resolveNoemaTarget } from "./lib/access";
 import { useSubscriptionAccess } from "./hooks/useSubscriptionAccess";
@@ -249,6 +250,10 @@ export default function App() {
 
   if (route.page === "contact") {
     return <Contact onNav={handleNav} />;
+  }
+
+  if (route.page === "success") {
+    return <Success onNav={handleNav} />;
   }
 
   if (route.page === "pricing") {

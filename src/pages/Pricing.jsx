@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const COLORS = {
   surfaceTint: "#bdc2ff",
@@ -59,6 +59,9 @@ function SymbolIcon({ children, fill = false, style }) {
 }
 
 export default function Pricing({ onNav, user, accessState, notice = null }) {
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState(null);
+
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "auto";
@@ -83,11 +86,34 @@ export default function Pricing({ onNav, user, accessState, notice = null }) {
   const isCheckingAccess = Boolean(user && accessState?.loading);
   const hasActiveSubscription = Boolean(accessState?.hasActiveSubscription);
 
-  const handleCheckoutClick = () => {
-    console.log("Stripe Checkout placeholder: Commencer maintenant", {
-      userId: user?.id || null,
-      subscriptionStatus: accessState?.subscription?.status || null,
-    });
+  const handleCheckoutClick = async () => {
+    if (!user) {
+      onNav?.("/login?next=/pricing");
+      return;
+    }
+    setCheckoutLoading(true);
+    setCheckoutError(null);
+    try {
+      const { sb } = await import("../lib/supabase");
+      const { data: { session } } = await sb.auth.getSession();
+      const token = session?.access_token;
+
+      const res = await fetch("/.netlify/functions/create-checkout-session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ priceId: "price_1TAZhkQh5xN0PliA3dUAqyqP" }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || "Erreur checkout");
+      window.location.href = data.url;
+    } catch (err) {
+      setCheckoutError("Une erreur est survenue. Réessaie dans un instant.");
+      setCheckoutLoading(false);
+    }
   };
 
   const helperText = useMemo(() => {
@@ -108,7 +134,9 @@ export default function Pricing({ onNav, user, accessState, notice = null }) {
       ? { label: "Entrer dans Noema", onClick: () => onNav?.("/app/chat"), disabled: false }
       : !user
         ? { label: "Se connecter pour continuer", onClick: () => onNav?.("/login?next=/pricing"), disabled: false }
-        : { label: "Commencer maintenant", onClick: handleCheckoutClick, disabled: false };
+        : checkoutLoading
+          ? { label: "Redirection...", onClick: undefined, disabled: true }
+          : { label: "Commencer maintenant", onClick: handleCheckoutClick, disabled: false };
 
   return (
     <div
@@ -383,6 +411,11 @@ export default function Pricing({ onNav, user, accessState, notice = null }) {
                 {primaryAction.label}
                 <SymbolIcon style={{ fontSize: "1.25rem" }}>arrow_forward</SymbolIcon>
               </button>
+              {checkoutError && (
+                <p style={{ marginTop: 12, textAlign: "center", fontSize: "0.85rem", color: "#ff8a8a" }}>
+                  {checkoutError}
+                </p>
+              )}
             </article>
 
             <article
