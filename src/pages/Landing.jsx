@@ -369,8 +369,8 @@ export default function Landing({ onNav }) {
           {/* Orbe violet qui pulse */}
           <style>{`
             @keyframes orbPulse {
-              0%, 100% { transform: scale(1); opacity: 0.82; box-shadow: 0 0 50px 14px rgba(74,60,140,0.45), 0 0 100px 30px rgba(74,60,140,0.18); }
-              50% { transform: scale(1.09); opacity: 0.95; box-shadow: 0 0 70px 24px rgba(74,60,140,0.6), 0 0 140px 50px rgba(74,60,140,0.22); }
+              0%, 100% { transform: scale(1); opacity: 0.92; box-shadow: 0 0 55px 18px rgba(100,80,200,0.65), 0 0 110px 40px rgba(100,80,200,0.3), 0 0 180px 70px rgba(100,80,200,0.12); }
+              50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 75px 28px rgba(120,100,220,0.8), 0 0 150px 60px rgba(120,100,220,0.38), 0 0 220px 90px rgba(120,100,220,0.16); }
             }
             @keyframes orbShimmer {
               0%, 100% { opacity: 0.35; transform: translate(-30%, -30%) scale(1); }
@@ -386,7 +386,7 @@ export default function Landing({ onNav }) {
               width: 104,
               height: 104,
               borderRadius: "50%",
-              background: "radial-gradient(circle at 42% 42%, #3d3072 0%, #2a1f5a 40%, #1a1230 75%, #110d22 100%)",
+              background: "radial-gradient(circle at 38% 35%, #7060c8 0%, #4a3699 30%, #2e1f6e 58%, #1a1040 85%, #110d2a 100%)",
               animation: "orbPulse 3.2s ease-in-out infinite",
               marginBottom: 36,
               cursor: "default",
@@ -401,7 +401,7 @@ export default function Landing({ onNav }) {
               width: "65%",
               height: "65%",
               borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(189,194,255,0.22) 0%, transparent 70%)",
+              background: "radial-gradient(circle, rgba(189,194,255,0.45) 0%, rgba(189,194,255,0.1) 50%, transparent 70%)",
               top: "8%",
               left: "10%",
               animation: "orbShimmer 3.2s ease-in-out infinite",
@@ -412,7 +412,7 @@ export default function Landing({ onNav }) {
               width: "40%",
               height: "40%",
               borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(255,182,138,0.18) 0%, transparent 70%)",
+              background: "radial-gradient(circle, rgba(255,182,138,0.35) 0%, rgba(255,182,138,0.08) 50%, transparent 70%)",
               bottom: "12%",
               right: "10%",
               animation: "orbAccent 3.2s ease-in-out infinite",
