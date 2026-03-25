@@ -269,7 +269,7 @@ export default function App() {
         <Onboarding
           user={user}
           sb={sb}
-          onComplete={() => navigate(postAccessTarget, { replace: true })}
+          onComplete={() => { setNeedsOnboarding(false); navigate(postAccessTarget, { replace: true }); }}
         />
       );
   }
