@@ -90,7 +90,7 @@ Instructions prêtes à coller dans Claude Code, dans l'ordre exact. Une fois fa
 |-----|--------|
 | URL prod | `noemaapp.netlify.app` |
 | GitHub | `github.com/nicolastunick-dotcom/noema` |
-| Supabase | `zdqwrxykyhjidjfcldzd.supabase.co` |
+| Supabase | voir Netlify env vars |
 | Stripe Product ID | `prod_U8rQscolFFcsnZ` |
 | Stripe Price ID | `price_1TAZhkQh5xN0PliA3dUAqyqP` |
 | Testeurs | 8 codes envoyés |
