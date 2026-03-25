@@ -348,6 +348,7 @@ export default function AppShell({ onNav, user }) {
         onResetMemory={adminResetMemory}
         onForcePhase2={adminForcePhase2}
         onSimulateLimit={adminSimulateLimit}
+        onShowOnboarding={() => onNav("onboarding")}
         setInsights={setInsights}
         setIkigai={setIkigai}
         setStep={setStep}

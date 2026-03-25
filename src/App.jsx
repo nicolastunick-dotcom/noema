@@ -18,15 +18,23 @@ export default function App() {
     setUser(sessionUser);
     if (!sb) { setPage("app"); return; }
     // Vérifie si l'onboarding a déjà été fait
-    const { data } = await sb
+    const { data, error } = await sb
       .from("memory")
       .select("onboarding_done")
       .eq("user_id", sessionUser.id)
       .maybeSingle();
-    if (data?.onboarding_done) {
+    if (error) {
+      // Erreur Supabase → on ne bloque pas l'accès
       setPage("app");
-    } else {
+    } else if (data === null) {
+      // Aucune row → tout nouvel utilisateur → onboarding
       setPage("onboarding");
+    } else if (data.onboarding_done === false) {
+      // Onboarding explicitement non terminé
+      setPage("onboarding");
+    } else {
+      // onboarding_done = true, ou null (utilisateur existant avant la feature)
+      setPage("app");
     }
   }
 

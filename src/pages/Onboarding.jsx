@@ -506,10 +506,11 @@ export default function Onboarding({ user, sb, onComplete }) {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          justifyContent: "center",
+          justifyContent: "flex-start",
           position: "relative", zIndex: 1,
           overflowY: "auto",
           overflowX: "hidden",
+          padding: "24px 0 40px",
           animation: `${animDir === "next" ? "slideInNext" : "slideInPrev"} 0.35s cubic-bezier(0.4,0,0.2,1) both`,
         }}
       >

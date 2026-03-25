@@ -169,7 +169,7 @@ function calcCost(model, inputTokens, outputTokens) {
   return (inputTokens / 1_000_000) * p.input + (outputTokens / 1_000_000) * p.output
 }
 
-export default function AdminPanel({ user, sb, history, msgs, setMsgs, lastGreffierLog, onResetMemory, onForcePhase2, onSimulateLimit, setInsights, setIkigai, setStep, setNavTab }) {
+export default function AdminPanel({ user, sb, history, msgs, setMsgs, lastGreffierLog, onResetMemory, onForcePhase2, onSimulateLimit, onShowOnboarding, setInsights, setIkigai, setStep, setNavTab }) {
   const [open, setOpen] = useState(false);
   const [showGreffier, setShowGreffier] = useState(false);
   const [showCosts, setShowCosts] = useState(false);
@@ -343,6 +343,12 @@ export default function AdminPanel({ user, sb, history, msgs, setMsgs, lastGreff
               </div>
             </div>
           )}
+
+          {/* ── Onboarding ── */}
+          <Divider label="Onboarding" />
+          <div style={{ padding: "4px 4px" }}>
+            <Row icon="auto_awesome" label="Afficher l'onboarding" color={C.primary} onClick={() => { onShowOnboarding?.(); setOpen(false); }} />
+          </div>
 
           {/* ── Mémoire ── */}
           <Divider label="Mémoire Supabase" />
