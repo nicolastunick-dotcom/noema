@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { sb } from "../lib/supabase";
-import { ADMIN_CODES } from "../constants/config";
 import { genCode } from "../utils/helpers";
 import { GoogleSVG } from "../components/SVGs";
 
@@ -28,7 +27,7 @@ const TAB_TITLES = {
   code:   { h: "Code d'accès",    sub: "Entrez votre code pour accéder à Noema." },
 };
 
-export default function Login({ onNav }) {
+export default function Login({ onNav, notice = null, checkingAccess = false }) {
   const [tab,       setTab]       = useState("login");
   const [f,         setF]         = useState({ name: "", email: "", password: "" });
   const [show,      setShow]      = useState(false);
@@ -60,11 +59,12 @@ export default function Login({ onNav }) {
   async function doLogin() {
     if (!f.email || !f.password) { setMsg({ t: "Remplis tous les champs.", e: true }); return; }
     setLoad(true); setMsg(null);
-    if (!sb) { setTimeout(() => onNav("app"), 800); return; }
+    if (!sb) { setLoad(false); setMsg({ t: "Connexion indisponible pour le moment.", e: true }); return; }
     try {
       const { error } = await sb.auth.signInWithPassword({ email: f.email, password: f.password });
       if (error) throw error;
-      onNav("app");
+      setLoad(false);
+      setMsg({ t: "Connexion reussie. Verification de votre abonnement...", e: false });
     } catch (e) { setLoad(false); setMsg({ t: errMsg(e.message), e: true }); }
   }
 
@@ -72,7 +72,7 @@ export default function Login({ onNav }) {
     if (!f.name || !f.email || !f.password) { setMsg({ t: "Remplis tous les champs.", e: true }); return; }
     if (f.password.length < 8) { setMsg({ t: "8 caractères minimum.", e: true }); return; }
     setLoad(true); setMsg(null);
-    if (!sb) { setTimeout(() => onNav("app"), 800); return; }
+    if (!sb) { setLoad(false); setMsg({ t: "Inscription indisponible pour le moment.", e: true }); return; }
     try {
       const { error } = await sb.auth.signUp({ email: f.email, password: f.password, options: { data: { full_name: f.name } } });
       if (error) throw error;
@@ -86,16 +86,29 @@ export default function Login({ onNav }) {
     if (!input) { setMsg({ t: "Entre un code d'accès.", e: true }); return; }
     setLoad(true); setMsg(null);
 
-    if (ADMIN_CODES.includes(input)) {
-      const newCode = genCode();
-      const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-      if (sb) {
-        const { error } = await sb.from("access_codes").insert({ code: newCode, expires_at: expires, max_uses: 1 });
-        if (error) { setLoad(false); setMsg({ t: "Erreur création code : " + error.message, e: true }); return; }
+    // Vérification admin côté serveur (ADMIN_CODES n'est plus dans le bundle client)
+    try {
+      const verifyRes = await fetch("/.netlify/functions/verify-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: input }),
+      });
+      if (verifyRes.ok) {
+        const { isAdmin } = await verifyRes.json();
+        if (isAdmin) {
+          const newCode = genCode();
+          const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+          if (sb) {
+            const { error } = await sb.from("access_codes").insert({ code: newCode, expires_at: expires, max_uses: 1 });
+            if (error) { setLoad(false); setMsg({ t: "Erreur création code : " + error.message, e: true }); return; }
+          }
+          setGenerated(newCode);
+          setLoad(false);
+          return;
+        }
       }
-      setGenerated(newCode);
-      setLoad(false);
-      return;
+    } catch {
+      // Si la fonction n'est pas disponible (ex: dev local), on continue vers la vérification normale
     }
 
     if (!sb) { setLoad(false); setMsg({ t: "Supabase non configuré.", e: true }); return; }
@@ -135,7 +148,8 @@ export default function Login({ onNav }) {
   };
 
   const googleLogin = async () => {
-    if (!sb) { onNav("app"); return; }
+    if (!sb) { setMsg({ t: "Connexion Google indisponible pour le moment.", e: true }); return; }
+    setMsg({ t: "Connexion Google en cours...", e: false });
     await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
   };
 
@@ -178,6 +192,24 @@ export default function Login({ onNav }) {
             padding: 0,
           }}
         >Noema</button>
+        <button
+          onClick={() => onNav("pricing")}
+          style={{
+            background: "none",
+            border: "1px solid rgba(189,194,255,0.18)",
+            borderRadius: 9999,
+            color: C.primary,
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            fontSize: "0.75rem",
+            fontWeight: 600,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            padding: "10px 16px",
+            cursor: "pointer",
+          }}
+        >
+          Voir les offres
+        </button>
       </nav>
 
       {/* ── Main ── */}
@@ -232,6 +264,21 @@ export default function Login({ onNav }) {
                 fontSize: "0.875rem",
               }}>{sub}</p>
             </header>
+
+            {(notice || checkingAccess) && (
+              <div style={{
+                marginBottom: 20,
+                padding: "12px 16px",
+                borderRadius: 10,
+                background: "rgba(189,194,255,0.1)",
+                border: "1px solid rgba(189,194,255,0.2)",
+                color: C.primary,
+                fontSize: "0.85rem",
+                lineHeight: 1.5,
+              }}>
+                {checkingAccess ? "Connexion reussie. Verification de votre abonnement..." : notice}
+              </div>
+            )}
 
             {/* Tabs */}
             <div style={{

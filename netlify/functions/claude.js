@@ -27,6 +27,31 @@ export default async (request) => {
     return new Response('Method not allowed', { status: 405 })
   }
 
+  // ── Vérification JWT Supabase ─────────────────────────────────
+  const authHeader = request.headers.get('Authorization') || ''
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
+  if (!token) {
+    return new Response(
+      JSON.stringify({ error: { message: 'Non autorisé.' } }),
+      { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
+    )
+  }
+  const sbAdmin = getSupabaseAdmin()
+  if (!sbAdmin) {
+    return new Response(
+      JSON.stringify({ error: { message: 'Configuration serveur manquante.' } }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    )
+  }
+  const { data: { user: verifiedUser }, error: authError } = await sbAdmin.auth.getUser(token)
+  if (authError || !verifiedUser) {
+    return new Response(
+      JSON.stringify({ error: { message: 'Session invalide ou expirée.' } }),
+      { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
+    )
+  }
+  const userId = verifiedUser.id
+
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
     return new Response(
@@ -39,7 +64,7 @@ export default async (request) => {
     const body = await request.json()
 
     // ── Limite de session (25 messages par user par jour) ────────
-    const userId = body.user_id || null
+    // userId est déjà extrait du JWT vérifié — on n'utilise plus body.user_id
     if (userId) {
       const sbAdmin = getSupabaseAdmin()
       if (sbAdmin) {
@@ -130,7 +155,7 @@ function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   }
 }
 

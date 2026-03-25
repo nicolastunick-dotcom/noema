@@ -1,4 +1,5 @@
 import { useRef, useEffect } from "react";
+import DOMPurify from "dompurify";
 import { fmt } from "../utils/helpers";
 
 // ─────────────────────────────────────────────────────────────
@@ -228,7 +229,7 @@ export default function ChatPage({ msgs, typing, input, setInput, send, genIkiga
                     color: m.isErr ? "#ffb4ab" : C.onSurfaceVariant,
                     position: "relative",
                   }}
-                  dangerouslySetInnerHTML={{ __html: fmt(m.text) }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(fmt(m.text)) }}
                 />
                 {m.hasUpdate && (
                   <div style={{

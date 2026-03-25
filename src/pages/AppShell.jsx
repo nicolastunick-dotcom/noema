@@ -29,7 +29,7 @@ import AdminPanel    from "../components/AdminPanel";
 //   9. ACTIONS (reset, newSession, genIkigai)
 //  10. RENDER
 // ─────────────────────────────────────────────────────────────
-export default function AppShell({ onNav, user }) {
+export default function AppShell({ onNav, user, initialTab = "chat", onTabChange }) {
   // ── 1. STATE & REFS ──────────────────────────────────────────
   const [msgs,     setMsgs]     = useState([]);
   const [input,    setInput]    = useState("");
@@ -52,6 +52,10 @@ export default function AppShell({ onNav, user }) {
   const hasOpened       = useRef(false);
   const lastGreffierLog = useRef(null); // admin: dernier log Greffier
   const [greffierLogTick, setGreffierLogTick] = useState(0); // force re-render quand log maj
+
+  useEffect(() => {
+    setNavTab(initialTab || "chat");
+  }, [initialTab]);
 
   // ── 2. OPENING MESSAGE ───────────────────────────────────────
   async function openingMessage() {
@@ -121,6 +125,12 @@ export default function AppShell({ onNav, user }) {
     if (import.meta.env.DEV) {
       headers["x-api-key"] = import.meta.env.VITE_ANTHROPIC_KEY;
       headers["anthropic-dangerous-direct-browser-access"] = "true";
+    } else if (sb) {
+      // En production : envoyer le JWT Supabase pour vérification côté serveur
+      const { data: { session } } = await sb.auth.getSession();
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
     }
     const res = await fetch(ANTHROPIC_PROXY, {
       method:"POST", headers,
@@ -297,9 +307,15 @@ export default function AppShell({ onNav, user }) {
     { id: "journal", icon: "auto_stories",  lbl: "Journal" },
     { id: "today",   icon: "light_mode",    lbl: "Aujourd'hui" },
   ];
+  const activeTab = NAV_TABS.some((tab) => tab.id === navTab) ? navTab : "chat";
+
+  function changeTab(nextTab) {
+    setNavTab(nextTab);
+    onTabChange?.(nextTab);
+  }
 
   const renderPanel = () => {
-    switch (navTab) {
+    switch (activeTab) {
       case "mapping":
         return (
           <MappingPage
@@ -314,7 +330,7 @@ export default function AppShell({ onNav, user }) {
         return (
           <TodayPage
             user={user}
-            onJournal={() => setNavTab("journal")}
+            onJournal={() => changeTab("journal")}
           />
         );
       default: // chat
@@ -352,7 +368,7 @@ export default function AppShell({ onNav, user }) {
         setInsights={setInsights}
         setIkigai={setIkigai}
         setStep={setStep}
-        setNavTab={setNavTab}
+        setNavTab={changeTab}
       />
       {renderPanel()}
 
@@ -372,11 +388,11 @@ export default function AppShell({ onNav, user }) {
         WebkitBackdropFilter: "blur(20px)",
       }}>
         {NAV_TABS.map(tab => {
-          const active = navTab === tab.id;
+          const active = activeTab === tab.id;
           return (
             <button
               key={tab.id}
-              onClick={() => setNavTab(tab.id)}
+              onClick={() => changeTab(tab.id)}
               style={{
                 flex: 1,
                 display: "flex",
