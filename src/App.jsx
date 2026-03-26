@@ -256,6 +256,16 @@ export default function App() {
     return <Success onNav={handleNav} />;
   }
 
+  if (route.page === "onboarding-preview") {
+    return (
+      <Onboarding
+        user={null}
+        sb={null}
+        onComplete={() => navigate("/", { replace: true })}
+      />
+    );
+  }
+
   if (route.page === "pricing") {
     return <Pricing onNav={handleNav} user={user} accessState={access} notice={pricingNotice} />;
   }

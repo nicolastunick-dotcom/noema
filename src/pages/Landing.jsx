@@ -454,6 +454,7 @@ export default function Landing({ onNav }) {
                 (e.currentTarget.style.background = COLORS.surfaceContainerLow)
               }
               onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+              onClick={() => onNav?.("onboarding-preview")}
             >
               Comment ça marche ?
             </button>
