@@ -211,9 +211,10 @@ export default function App() {
       navigate(needsOnboarding ? buildLocation("/onboarding", { next: postAccessTarget }) : postAccessTarget, { replace: true });
     }
 
-    // Redirection post-confirmation email : utilisateur atterrit sur la landing avec session active
-    if (route.page === "landing" && user) {
+    // Redirection post-confirmation email : uniquement si token Supabase dans le hash URL
+    if (route.page === "landing" && user && window.location.hash.includes("access_token")) {
       if (access.loading) return;
+      window.history.replaceState({}, "", window.location.pathname);
 
       if (!access.hasActiveSubscription) {
         navigate("/pricing", { replace: true });
