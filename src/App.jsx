@@ -211,17 +211,15 @@ export default function App() {
       navigate(needsOnboarding ? buildLocation("/onboarding", { next: postAccessTarget }) : postAccessTarget, { replace: true });
     }
 
-    // Redirection post-confirmation email : uniquement si token Supabase dans le hash URL
-    if (route.page === "landing" && user && window.location.hash.includes("access_token")) {
+    // Utilisateur connecté + abonnement actif sur la landing → redirige vers l'app
+    if (route.page === "landing" && user && authReady) {
       if (access.loading) return;
-      window.history.replaceState({}, "", window.location.pathname);
-
-      if (!access.hasActiveSubscription) {
-        navigate("/pricing", { replace: true });
-        return;
-      }
+      if (!access.hasActiveSubscription) return; // pas d'abonnement → reste sur landing
 
       if (!onboardingReady) return;
+
+      // Nettoie le hash Supabase si présent (cas confirmation email)
+      if (window.location.hash) window.history.replaceState({}, "", window.location.pathname);
 
       navigate(needsOnboarding ? buildLocation("/onboarding", { next: getAppPath("chat") }) : getAppPath("chat"), { replace: true });
     }
