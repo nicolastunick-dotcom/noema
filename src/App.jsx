@@ -11,6 +11,7 @@ import EthicalAI    from "./pages/EthicalAI";
 import Contact      from "./pages/Contact";
 import Success        from "./pages/Success";
 import ResetPassword  from "./pages/ResetPassword";
+import InvitePage     from "./pages/InvitePage";
 import "./styles/app.css";
 import { buildLocation, getAppPath, parseNoemaLocation, resolveNoemaTarget } from "./lib/access";
 import { useSubscriptionAccess } from "./hooks/useSubscriptionAccess";
@@ -273,6 +274,10 @@ export default function App() {
 
   if (route.page === "reset-password") {
     return <ResetPassword onNav={handleNav} />;
+  }
+
+  if (route.page === "invite") {
+    return <InvitePage onNav={handleNav} route={route} />;
   }
 
   if (route.page === "onboarding-preview") {

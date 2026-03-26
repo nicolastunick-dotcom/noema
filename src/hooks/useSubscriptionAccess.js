@@ -77,6 +77,23 @@ export function useSubscriptionAccess(user) {
       return adminState;
     }
 
+    // Invite beta : token validé au moment du clic sur /invite
+    const inviteToken = sessionStorage.getItem("noema_invite");
+    if (inviteToken) {
+      const inviteState = {
+        loading: false,
+        hasActiveSubscription: true,
+        subscription: { status: "active", plan: "invite" },
+        records: [],
+        isAdmin: false,
+        adminSource: null,
+        profile,
+        error: null,
+      };
+      setState(inviteState);
+      return inviteState;
+    }
+
     const { data, error } = await sb
       .from("subscriptions")
       .select("id, user_id, stripe_customer_id, stripe_subscription_id, plan, status, current_period_end, cancel_at_period_end, created_at, updated_at")

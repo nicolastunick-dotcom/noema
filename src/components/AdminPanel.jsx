@@ -164,6 +164,8 @@ export default function AdminPanel({ user, sb, accessState, history, lastGreffie
   const [costsLoading, setCostsLoading] = useState(false);
   const [activeScenario, setActiveScenario] = useState(null);
   const [feedback, setFeedback] = useState("");
+  const [invites, setInvites] = useState([]);
+  const [inviteLoading, setInviteLoading] = useState(false);
   const isAdmin = Boolean(accessState?.isAdmin);
   const adminSource = accessState?.adminSource || null;
 
@@ -174,6 +176,34 @@ export default function AdminPanel({ user, sb, accessState, history, lastGreffie
   function flash(msg) {
     setFeedback(msg);
     setTimeout(() => setFeedback(""), 2500);
+  }
+
+  async function createInvite() {
+    if (!sb || !user) { flash("❌ Session admin indisponible"); return; }
+    setInviteLoading(true);
+    const { data: { session } } = await sb.auth.getSession();
+    const token = session?.access_token;
+    if (!token) { flash("❌ Token introuvable"); setInviteLoading(false); return; }
+
+    try {
+      const res = await fetch("/.netlify/functions/create-invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (data.token) {
+        const link = `${window.location.origin}/invite?token=${data.token}`;
+        setInvites(prev => [{ token: data.token, link }, ...prev]);
+        await navigator.clipboard.writeText(link).catch(() => {});
+        flash(`✅ Lien copié : ${data.token}`);
+      } else {
+        flash(`❌ ${data.error || "Erreur"}`);
+      }
+    } catch (err) {
+      flash(`❌ ${err.message}`);
+    }
+    setInviteLoading(false);
   }
 
   async function runAdminAction(action) {
@@ -351,6 +381,32 @@ export default function AdminPanel({ user, sb, accessState, history, lastGreffie
               </div>
             </div>
           )}
+
+          {/* ── Liens d'invitation ── */}
+          <Divider label="Liens d'invitation beta" />
+          <div style={{ padding: "4px 4px 8px" }}>
+            <Row
+              icon="link"
+              label={inviteLoading ? "Génération…" : "Créer un lien d'invitation"}
+              color={C.tertiary}
+              onClick={createInvite}
+            />
+            {invites.length > 0 && (
+              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                {invites.map(inv => (
+                  <div key={inv.token} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", background: C.bg, borderRadius: 8, border: `1px solid ${C.border}` }}>
+                    <span style={{ fontSize: "0.72rem", color: C.primary, fontFamily: "monospace", letterSpacing: "0.08em" }}>{inv.token}</span>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(inv.link).then(() => flash("✅ Lien copié !"))}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.7rem", color: C.onSurfaceVariant, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                    >
+                      Copier
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* ── Onboarding ── */}
           <Divider label="Onboarding" />

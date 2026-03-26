@@ -73,12 +73,37 @@ netlify/functions/
 
 ---
 
-## En cours
+## En cours / Priorités
 
-- Intégration Stripe : webhook Stripe → table `subscriptions` Supabase (étape suivante)
+### 🔴 PRIORITÉ 1 — Stripe Checkout ne fonctionne pas
+Le code est correct (STRIPE_SECRET_KEY lu depuis process.env, Price ID = price_1TAZhkQh5xN0PliA3dUAqyqP).
+**Cause probable : variables manquantes dans Netlify dashboard.**
+À vérifier dans Netlify → Site settings → Environment variables :
+- `STRIPE_SECRET_KEY` (commence par `sk_live_` ou `sk_test_`)
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+### 🟡 PRIORITÉ 2 — Webhook Stripe → table `subscriptions`
+Après que Stripe confirme le paiement, créer/mettre à jour la ligne dans `subscriptions` Supabase.
+Créer `netlify/functions/stripe-webhook.js` + `STRIPE_WEBHOOK_SECRET` dans env vars.
+
+### 🟡 PRIORITÉ 3 — Autres
 - Corrections sécurité restantes (voir `codex.md` priorités 2 et 3)
 - Ajouter `GMAIL_APP_PASSWORD` dans Netlify dashboard env vars (envoi formulaire contact)
 - Ajouter `VITE_ADMIN_EMAIL=[ADMIN_EMAIL]` dans Netlify dashboard env vars (bypass abonnement admin)
+
+### Système d'invitations beta (FAIT)
+Table Supabase `invites` à créer manuellement (SQL ci-dessous).
+Admin génère des liens depuis le panel → amis cliquent → accès direct sans paiement.
+```sql
+CREATE TABLE invites (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  token text UNIQUE NOT NULL,
+  label text,
+  created_by uuid REFERENCES auth.users(id),
+  created_at timestamptz DEFAULT now(),
+  active boolean DEFAULT true
+);
+```
 
 ---
 
@@ -119,6 +144,7 @@ netlify/functions/
 | 26/03/2026 | Claude Code | Pricing : texte bouton → "Commencer votre introspection" | ✅ | — |
 | 26/03/2026 | Claude Code | Login : "Oublié ?" → resetPasswordForEmail + ResetPassword.jsx + route /reset-password | ✅ | — |
 | 26/03/2026 | Claude Code | Fix page blanche post-confirmation email : redirect landing+user → app ou pricing | ✅ | — |
+| 26/03/2026 | Claude Code | Système invitations beta : create-invite.js + validate-invite.js + InvitePage + AdminPanel | ✅ | Créer table `invites` dans Supabase (SQL dans PROJECT.md) |
 
 ---
 
