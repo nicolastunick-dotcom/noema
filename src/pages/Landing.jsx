@@ -380,7 +380,43 @@ export default function Landing({ onNav }) {
               0%, 100% { opacity: 0.25; transform: translate(10%, 15%) scale(1); }
               50% { opacity: 0.4; transform: translate(12%, 13%) scale(1.06); }
             }
+            @keyframes heroBgPulse {
+              0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+              50% { transform: translate(-50%, -50%) scale(1.08); opacity: 0.9; }
+            }
+            @keyframes heroBgAmber {
+              0%, 100% { transform: scale(1); opacity: 0.45; }
+              50% { transform: scale(1.07); opacity: 0.7; }
+            }
           `}</style>
+
+          {/* ── Orbes de fond hero ── */}
+          <div style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            width: 500,
+            height: 500,
+            borderRadius: "50%",
+            background: "radial-gradient(circle at center, #7886ff 0%, #bdc2ff 40%, transparent 70%)",
+            filter: "blur(80px)",
+            animation: "heroBgPulse 4s ease-in-out infinite",
+            zIndex: 0,
+            pointerEvents: "none",
+          }} />
+          <div style={{
+            position: "absolute",
+            top: "18%",
+            right: "18%",
+            width: 260,
+            height: 260,
+            borderRadius: "50%",
+            background: "radial-gradient(circle at center, #ffb68a 0%, rgba(255,182,138,0.4) 50%, transparent 70%)",
+            filter: "blur(60px)",
+            animation: "heroBgAmber 4s ease-in-out 2s infinite",
+            zIndex: 0,
+            pointerEvents: "none",
+          }} />
           <div
             style={{
               width: 104,
