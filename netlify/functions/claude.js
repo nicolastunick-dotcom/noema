@@ -40,7 +40,7 @@ export default async (request) => {
   if (!sbAdmin) {
     return new Response(
       JSON.stringify({ error: { message: 'Configuration serveur manquante.' } }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
     )
   }
   const { data: { user: verifiedUser }, error: authError } = await sbAdmin.auth.getUser(token)
