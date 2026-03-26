@@ -131,7 +131,7 @@ export default function Pricing({ onNav, user, accessState, notice = null }) {
   const primaryAction = isCheckingAccess
     ? { label: "Verification...", onClick: undefined, disabled: true }
     : hasActiveSubscription
-      ? { label: "Entrer dans Noema", onClick: () => onNav?.("/app/chat"), disabled: false }
+      ? { label: "Commencer votre introspection", onClick: () => onNav?.("/app/chat"), disabled: false }
       : !user
         ? { label: "Se connecter pour continuer", onClick: () => onNav?.("/login?next=/pricing"), disabled: false }
         : checkoutLoading

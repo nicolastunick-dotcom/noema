@@ -115,6 +115,10 @@ netlify/functions/
 | 25/03/2026 | Codex | Migration admin progressive : `profiles.is_admin` + actions sensibles via Netlify Functions | ✅ | Retirer le fallback `VITE_ADMIN_EMAIL` après validation prod |
 | 25/03/2026 | Claude Code | Bug 1 fix — colonne `onboarding_done` absente du schéma `memory` (400 Supabase) | ✅ | Exécuter migration SQL dans Supabase dashboard |
 | 25/03/2026 | Claude Code | Bug 2 fix — `memory_context` rejeté par Anthropic en DEV → `buildSystemPrompt` direct | ✅ | — |
+| 26/03/2026 | Claude Code | Landing : bouton "Comment ça marche" → /onboarding-preview (retour Landing, sans auth) | ✅ | — |
+| 26/03/2026 | Claude Code | Pricing : texte bouton → "Commencer votre introspection" | ✅ | — |
+| 26/03/2026 | Claude Code | Login : "Oublié ?" → resetPasswordForEmail + ResetPassword.jsx + route /reset-password | ✅ | — |
+| 26/03/2026 | Claude Code | Fix page blanche post-confirmation email : redirect landing+user → app ou pricing | ✅ | — |
 
 ---
 

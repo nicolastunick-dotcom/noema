@@ -9,7 +9,8 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import EthicalAI    from "./pages/EthicalAI";
 import Contact      from "./pages/Contact";
-import Success      from "./pages/Success";
+import Success        from "./pages/Success";
+import ResetPassword  from "./pages/ResetPassword";
 import "./styles/app.css";
 import { buildLocation, getAppPath, parseNoemaLocation, resolveNoemaTarget } from "./lib/access";
 import { useSubscriptionAccess } from "./hooks/useSubscriptionAccess";
@@ -208,6 +209,20 @@ export default function App() {
 
       navigate(needsOnboarding ? buildLocation("/onboarding", { next: postAccessTarget }) : postAccessTarget, { replace: true });
     }
+
+    // Redirection post-confirmation email : utilisateur atterrit sur la landing avec session active
+    if (route.page === "landing" && user) {
+      if (access.loading) return;
+
+      if (!access.hasActiveSubscription) {
+        navigate("/pricing", { replace: true });
+        return;
+      }
+
+      if (!onboardingReady) return;
+
+      navigate(needsOnboarding ? buildLocation("/onboarding", { next: getAppPath("chat") }) : getAppPath("chat"), { replace: true });
+    }
   }, [
     access.hasActiveSubscription,
     access.loading,
@@ -254,6 +269,10 @@ export default function App() {
 
   if (route.page === "success") {
     return <Success onNav={handleNav} />;
+  }
+
+  if (route.page === "reset-password") {
+    return <ResetPassword onNav={handleNav} />;
   }
 
   if (route.page === "onboarding-preview") {

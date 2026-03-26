@@ -27,6 +27,7 @@ const NAV_TARGETS = {
   "ethical-ai": "/ethical-ai",
   contact: "/contact",
   success: "/success",
+  "reset-password": "/reset-password",
   "onboarding-preview": "/onboarding-preview",
   app: APP_TAB_PATHS.chat,
   chat: APP_TAB_PATHS.chat,
@@ -97,6 +98,10 @@ export function parseNoemaPath(pathname = "/") {
 
   if (normalizedPath === "/success") {
     return { page: "success", appTab: null, canonicalPath: "/success" };
+  }
+
+  if (normalizedPath === "/reset-password") {
+    return { page: "reset-password", appTab: null, canonicalPath: "/reset-password" };
   }
 
   if (normalizedPath === "/onboarding-preview") {

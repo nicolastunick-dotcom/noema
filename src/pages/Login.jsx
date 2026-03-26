@@ -55,6 +55,17 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
     return m;
   };
 
+  async function handleForgotPassword() {
+    if (!f.email) { setMsg({ t: "Entre ton email d'abord.", e: true }); return; }
+    setLoad(true); setMsg(null);
+    const { error } = await sb.auth.resetPasswordForEmail(f.email, {
+      redirectTo: "https://noemaapp.netlify.app/reset-password",
+    });
+    setLoad(false);
+    if (error) { setMsg({ t: errMsg(error.message), e: true }); }
+    else { setMsg({ t: "Un lien a été envoyé à ton adresse email.", e: false }); }
+  }
+
   async function doLogin() {
     if (!f.email || !f.password) { setMsg({ t: "Remplis tous les champs.", e: true }); return; }
     setLoad(true); setMsg(null);
@@ -346,7 +357,7 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
                         fontSize: "0.625rem", textTransform: "uppercase",
                         letterSpacing: "0.1em", color: `rgba(189,194,255,0.7)`,
                         fontFamily: "'Plus Jakarta Sans', sans-serif",
-                      }}>Oublié ?</button>
+                      }} onClick={handleForgotPassword}>Oublié ?</button>
                     )}
                   </div>
                   <div style={{ position: "relative" }}>
