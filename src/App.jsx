@@ -160,13 +160,6 @@ export default function App() {
         return;
       }
 
-      if (access.loading) return;
-
-      if (!access.hasActiveSubscription) {
-        navigate(buildLocation("/pricing", { reason: "subscription_required", next: currentAppPath }), { replace: true });
-        return;
-      }
-
       if (!onboardingReady) return;
 
       if (needsOnboarding) {
@@ -182,13 +175,6 @@ export default function App() {
         return;
       }
 
-      if (access.loading) return;
-
-      if (!access.hasActiveSubscription) {
-        navigate(buildLocation("/pricing", { reason: "subscription_required", next: "/onboarding" }), { replace: true });
-        return;
-      }
-
       if (!onboardingReady) return;
 
       if (!needsOnboarding) {
@@ -199,13 +185,6 @@ export default function App() {
     }
 
     if (route.page === "login" && user) {
-      if (access.loading) return;
-
-      if (!access.hasActiveSubscription) {
-        navigate(buildLocation("/pricing", { reason: "subscription_required", next: requestedNextPath }), { replace: true });
-        return;
-      }
-
       if (!onboardingReady) return;
 
       navigate(needsOnboarding ? buildLocation("/onboarding", { next: postAccessTarget }) : postAccessTarget, { replace: true });
@@ -238,10 +217,7 @@ export default function App() {
   ]);
 
   const shouldBlockForChecks = !authReady
-    || (route.page === "app" && user && access.loading)
-    || (route.page === "login" && user && access.loading)
-    || (route.page === "onboarding" && user && access.loading)
-    || ((route.page === "app" || route.page === "login" || route.page === "onboarding") && user && access.hasActiveSubscription && !onboardingReady);
+    || ((route.page === "app" || route.page === "login" || route.page === "onboarding") && user && !onboardingReady);
 
   if (shouldBlockForChecks) {
     return <LoadingScreen message="Verification de votre acces..." />;

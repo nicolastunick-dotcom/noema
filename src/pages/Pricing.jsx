@@ -87,10 +87,6 @@ export default function Pricing({ onNav, user, accessState, notice = null }) {
   const hasActiveSubscription = Boolean(accessState?.hasActiveSubscription);
 
   const handleCheckoutClick = async () => {
-    if (!user) {
-      onNav?.("/login?next=/pricing");
-      return;
-    }
     setCheckoutLoading(true);
     setCheckoutError(null);
     try {
@@ -126,17 +122,13 @@ export default function Pricing({ onNav, user, accessState, notice = null }) {
 
   const topAction = hasActiveSubscription
     ? { label: "Acceder a Noema", onClick: () => onNav?.("/app/chat") }
-    : { label: "Se connecter", onClick: () => onNav?.("/login?next=/pricing") };
+    : { label: "Accueil", onClick: () => onNav?.("/") };
 
-  const primaryAction = isCheckingAccess
-    ? { label: "Verification...", onClick: undefined, disabled: true }
-    : hasActiveSubscription
-      ? { label: "Commencer votre introspection", onClick: () => onNav?.("/app/chat"), disabled: false }
-      : !user
-        ? { label: "Se connecter pour continuer", onClick: () => onNav?.("/login?next=/pricing"), disabled: false }
-        : checkoutLoading
-          ? { label: "Redirection...", onClick: undefined, disabled: true }
-          : { label: "Commencer maintenant", onClick: handleCheckoutClick, disabled: false };
+  const primaryAction = hasActiveSubscription
+    ? { label: "Commencer votre introspection", onClick: () => onNav?.("/app/chat"), disabled: false }
+    : checkoutLoading
+      ? { label: "Redirection...", onClick: undefined, disabled: true }
+      : { label: "Commencer maintenant", onClick: handleCheckoutClick, disabled: false };
 
   return (
     <div
