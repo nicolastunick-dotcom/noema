@@ -189,7 +189,7 @@ export default function NoemaOrb({ size = 60, showText = false }) {
       // project() applique déjà rotY → les lettres suivent la rotation.
       const WORD       = "Noema";
       const N_CHARS    = WORD.length;
-      const BASE_FONT  = 72; // taille canvas (800px internes)
+      const BASE_FONT  = 108; // taille canvas (800px internes)
 
       for (let i = 0; i < N_CHARS; i++) {
         const angle = (i / N_CHARS) * Math.PI * 2;
@@ -207,24 +207,16 @@ export default function NoemaOrb({ size = 60, showText = false }) {
 
         if (cAlpha < 0.02) continue;
 
-        // Tangente écran : deux points voisins pour l'angle de rotation
-        const DELTA  = 0.06;
-        const pa     = project(SPHERE_R * Math.cos(angle - DELTA), 0, SPHERE_R * Math.sin(angle - DELTA));
-        const pb     = project(SPHERE_R * Math.cos(angle + DELTA), 0, SPHERE_R * Math.sin(angle + DELTA));
-        const charRot = Math.atan2(pb.sy - pa.sy, pb.sx - pa.sx);
-
-        const fontSize = Math.max(6, BASE_FONT * proj.sc);
+        const fontSize = Math.max(8, BASE_FONT * proj.sc);
 
         ctx.save();
-        ctx.translate(proj.sx, proj.sy);
-        ctx.rotate(charRot);
         ctx.shadowColor = `rgba(189, 194, 255, ${cAlpha * 0.85})`;
-        ctx.shadowBlur  = 18;
+        ctx.shadowBlur  = 22;
         ctx.font        = `italic ${fontSize}px 'Instrument Serif', Georgia, serif`;
         ctx.fillStyle   = `rgba(255, 255, 255, ${cAlpha * 0.95})`;
         ctx.textAlign   = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(WORD[i], 0, 0);
+        ctx.fillText(WORD[i], proj.sx, proj.sy);
         ctx.restore();
       }
 
