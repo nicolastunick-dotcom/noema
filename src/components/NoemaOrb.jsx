@@ -133,34 +133,23 @@ export default function NoemaOrb({ size = 60, showText = false }) {
       ctx.fillStyle = gMist;
       ctx.fill();
 
-      // Lettrine N
+      // Lettrine N — glow réduit, aspect intérieur
       ctx.save();
       ctx.font         = `italic ${fontSize}px 'Instrument Serif', Georgia, serif`;
       ctx.textAlign    = "center";
       ctx.textBaseline = "middle";
 
-      // Halo large très doux
-      ctx.fillStyle = "rgba(130, 110, 255, 0.07)";
-      for (let dx = -7; dx <= 7; dx += 3.5) {
-        for (let dy = -7; dy <= 7; dy += 3.5) {
+      // Halo large très doux (réduit)
+      ctx.fillStyle = "rgba(120, 100, 240, 0.05)";
+      for (let dx = -6; dx <= 6; dx += 3) {
+        for (let dy = -6; dy <= 6; dy += 3) {
           ctx.fillText("N", cx + dx, cy + dy);
         }
       }
-      // Glow rapproché
-      ctx.fillStyle = "rgba(155, 135, 255, 0.16)";
-      for (let dx = -3; dx <= 3; dx += 1.5) {
-        for (let dy = -3; dy <= 3; dy += 1.5) {
-          ctx.fillText("N", cx + dx, cy + dy);
-        }
-      }
-      // Lettre principale
-      ctx.shadowColor = "rgba(150, 130, 255, 0.85)";
-      ctx.shadowBlur  = 52;
-      ctx.fillStyle   = "rgba(225, 220, 255, 0.75)";
-      ctx.fillText("N", cx, cy);
-      // Reflet
-      ctx.shadowBlur = 0;
-      ctx.fillStyle  = "rgba(255, 255, 255, 0.14)";
+      // Lettre principale — moins lumineuse, plus enfouie
+      ctx.shadowColor = "rgba(140, 120, 255, 0.55)";
+      ctx.shadowBlur  = 28;
+      ctx.fillStyle   = "rgba(210, 205, 255, 0.62)";
       ctx.fillText("N", cx, cy);
       ctx.restore();
 
@@ -228,6 +217,22 @@ export default function NoemaOrb({ size = 60, showText = false }) {
         ctx.fill();
       }
 
+
+      // ── Brume intérieure — clippée à la sphère, ne sort pas ──────────
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, SPHERE_R * 0.92, 0, Math.PI * 2);
+      ctx.clip(); // tout ce qui suit est masqué hors de la sphère
+
+      const gVig = ctx.createRadialGradient(cx, cy, SPHERE_R * 0.35, cx, cy, SPHERE_R * 0.92);
+      gVig.addColorStop(0,   "rgba(8, 9, 16, 0)");
+      gVig.addColorStop(0.55,"rgba(8, 9, 16, 0.15)");
+      gVig.addColorStop(1,   "rgba(8, 9, 16, 0.52)");
+      ctx.beginPath();
+      ctx.arc(cx, cy, SPHERE_R * 0.92, 0, Math.PI * 2);
+      ctx.fillStyle = gVig;
+      ctx.fill();
+      ctx.restore();
 
       stateRef.current.rotY -= 0.004;
       animRef.current = requestAnimationFrame(draw);
