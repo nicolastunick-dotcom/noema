@@ -184,50 +184,45 @@ export default function NoemaOrb({ size = 60, showText = false }) {
         ctx.fill();
       }
 
-      // ── "NOEMA" orbitant sur l'équateur de la sphère ──────────────────
-      // Chaque lettre est placée en 3D sur l'équateur (plan y≈0).
-      // project() applique déjà rotY → les lettres suivent la rotation.
-      const WORD       = "NOEMA";
-      const N_CHARS    = WORD.length;
-      const BASE_FONT  = 108;
-      // Lettres regroupées sur un arc de ~85° — orbitent ensemble comme un mot
-      // N est à gauche (angle négatif), A à droite (angle positif) quand en façade
-      const WORD_ARC   = Math.PI * 0.47;
+      // ── Lettrine "N" au centre absolu de la sphère ────────────────────
+      const fontSize = Math.round(W * 0.34); // ~272px sur 800px canvas
 
-      for (let i = 0; i < N_CHARS; i++) {
-        const angle = ((i - (N_CHARS - 1) / 2) / (N_CHARS - 1)) * WORD_ARC;
+      // Glow violet multicouche (brumeux)
+      ctx.save();
+      ctx.shadowColor = "rgba(120, 100, 255, 0.0)";
+      ctx.shadowBlur  = 0;
 
-        // Position 3D sur l'équateur
-        const px = SPHERE_R * Math.cos(angle);
-        const py = 0;
-        const pz = SPHERE_R * Math.sin(angle);
-
-        const proj = project(px, py, pz);
-
-        // Profondeur 0..1 — masque les lettres à l'arrière
-        const depth   = (proj.sz + SPHERE_R) / (2 * SPHERE_R);
-        const cAlpha  = depth < 0.05 ? 0 : Math.min(1, (depth - 0.05) / 0.25);
-
-        if (cAlpha < 0.02) continue;
-
-        // Lettrine sur le N : 1.8× plus grand, légère teinte lavande
-        const isLettrine = i === 0;
-        const fontSize   = Math.max(8, BASE_FONT * (isLettrine ? 1.8 : 1.0) * proj.sc);
-
-        ctx.save();
-        ctx.shadowColor = isLettrine
-          ? `rgba(189, 194, 255, ${cAlpha * 1.0})`
-          : `rgba(189, 194, 255, ${cAlpha * 0.75})`;
-        ctx.shadowBlur  = isLettrine ? 32 : 18;
-        ctx.font        = `italic ${fontSize}px 'Instrument Serif', Georgia, serif`;
-        ctx.fillStyle   = isLettrine
-          ? `rgba(220, 222, 255, ${cAlpha})`
-          : `rgba(255, 255, 255, ${cAlpha * 0.9})`;
-        ctx.textAlign    = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(WORD[i], proj.sx, proj.sy);
-        ctx.restore();
+      // Couche 1 — halo large très doux
+      ctx.font         = `italic ${fontSize}px 'Instrument Serif', Georgia, serif`;
+      ctx.textAlign    = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle    = "rgba(140, 120, 255, 0.08)";
+      for (let dx = -6; dx <= 6; dx += 3) {
+        for (let dy = -6; dy <= 6; dy += 3) {
+          ctx.fillText("N", cx + dx, cy + dy);
+        }
       }
+
+      // Couche 2 — glow rapproché violet
+      ctx.fillStyle = "rgba(160, 140, 255, 0.18)";
+      for (let dx = -3; dx <= 3; dx += 1.5) {
+        for (let dy = -3; dy <= 3; dy += 1.5) {
+          ctx.fillText("N", cx + dx, cy + dy);
+        }
+      }
+
+      // Couche 3 — lettre principale, blanc cassé légèrement lavande
+      ctx.fillStyle    = "rgba(230, 225, 255, 0.82)";
+      ctx.shadowColor  = "rgba(150, 130, 255, 0.9)";
+      ctx.shadowBlur   = 48;
+      ctx.fillText("N", cx, cy);
+
+      // Couche 4 — reflet central très lumineux
+      ctx.shadowBlur  = 0;
+      ctx.fillStyle   = "rgba(255, 255, 255, 0.18)";
+      ctx.fillText("N", cx, cy);
+
+      ctx.restore();
 
       stateRef.current.rotY -= 0.004;
       animRef.current = requestAnimationFrame(draw);
