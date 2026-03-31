@@ -75,7 +75,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
     } catch (e) {
       console.error("[Noema] Erreur message d'ouverture:", e);
       history.current = [];
-      hasOpened.current = false;
+      // Ne pas réinitialiser hasOpened — évite la boucle de retry sur HMR / surcharge API
     }
     setTyping(false);
   }
