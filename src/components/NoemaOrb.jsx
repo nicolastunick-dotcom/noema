@@ -187,12 +187,15 @@ export default function NoemaOrb({ size = 60, showText = false }) {
       // ── "NOEMA" orbitant sur l'équateur de la sphère ──────────────────
       // Chaque lettre est placée en 3D sur l'équateur (plan y≈0).
       // project() applique déjà rotY → les lettres suivent la rotation.
-      const WORD       = "Noema";
+      const WORD       = "NOEMA";
       const N_CHARS    = WORD.length;
-      const BASE_FONT  = 108; // taille canvas (800px internes)
+      const BASE_FONT  = 108;
+      // Lettres regroupées sur un arc de ~85° — orbitent ensemble comme un mot
+      // N est à gauche (angle négatif), A à droite (angle positif) quand en façade
+      const WORD_ARC   = Math.PI * 0.47;
 
       for (let i = 0; i < N_CHARS; i++) {
-        const angle = (i / N_CHARS) * Math.PI * 2;
+        const angle = ((i - (N_CHARS - 1) / 2) / (N_CHARS - 1)) * WORD_ARC;
 
         // Position 3D sur l'équateur
         const px = SPHERE_R * Math.cos(angle);
@@ -207,20 +210,26 @@ export default function NoemaOrb({ size = 60, showText = false }) {
 
         if (cAlpha < 0.02) continue;
 
-        const fontSize = Math.max(8, BASE_FONT * proj.sc);
+        // Lettrine sur le N : 1.8× plus grand, légère teinte lavande
+        const isLettrine = i === 0;
+        const fontSize   = Math.max(8, BASE_FONT * (isLettrine ? 1.8 : 1.0) * proj.sc);
 
         ctx.save();
-        ctx.shadowColor = `rgba(189, 194, 255, ${cAlpha * 0.85})`;
-        ctx.shadowBlur  = 22;
+        ctx.shadowColor = isLettrine
+          ? `rgba(189, 194, 255, ${cAlpha * 1.0})`
+          : `rgba(189, 194, 255, ${cAlpha * 0.75})`;
+        ctx.shadowBlur  = isLettrine ? 32 : 18;
         ctx.font        = `italic ${fontSize}px 'Instrument Serif', Georgia, serif`;
-        ctx.fillStyle   = `rgba(255, 255, 255, ${cAlpha * 0.95})`;
-        ctx.textAlign   = "center";
+        ctx.fillStyle   = isLettrine
+          ? `rgba(220, 222, 255, ${cAlpha})`
+          : `rgba(255, 255, 255, ${cAlpha * 0.9})`;
+        ctx.textAlign    = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(WORD[i], proj.sx, proj.sy);
         ctx.restore();
       }
 
-      stateRef.current.rotY += 0.004;
+      stateRef.current.rotY -= 0.004;
       animRef.current = requestAnimationFrame(draw);
     }
 
