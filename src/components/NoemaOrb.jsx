@@ -184,27 +184,49 @@ export default function NoemaOrb({ size = 60, showText = false }) {
         ctx.fill();
       }
 
-      // ── Logo "Noema" centré ────────────────────────────────────────────
-      // Fond doux derrière le texte
-      const gLogo = ctx.createRadialGradient(cx, cy, 0, cx, cy, 110);
-      gLogo.addColorStop(0, "rgba(17, 19, 24, 0.72)");
-      gLogo.addColorStop(0.7, "rgba(17, 19, 24, 0.28)");
-      gLogo.addColorStop(1, "rgba(17, 19, 24, 0)");
-      ctx.fillStyle = gLogo;
-      ctx.beginPath();
-      ctx.arc(cx, cy, 110, 0, Math.PI * 2);
-      ctx.fill();
+      // ── "NOEMA" orbitant sur l'équateur de la sphère ──────────────────
+      // Chaque lettre est placée en 3D sur l'équateur (plan y≈0).
+      // project() applique déjà rotY → les lettres suivent la rotation.
+      const WORD       = "Noema";
+      const N_CHARS    = WORD.length;
+      const BASE_FONT  = 72; // taille canvas (800px internes)
 
-      // Texte — glow lavande + blanc pur
-      ctx.save();
-      ctx.shadowColor = "rgba(189, 194, 255, 0.9)";
-      ctx.shadowBlur  = 28;
-      ctx.font        = "italic 78px 'Instrument Serif', Georgia, serif";
-      ctx.fillStyle   = "rgba(255, 255, 255, 0.96)";
-      ctx.textAlign   = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("Noema", cx, cy);
-      ctx.restore();
+      for (let i = 0; i < N_CHARS; i++) {
+        const angle = (i / N_CHARS) * Math.PI * 2;
+
+        // Position 3D sur l'équateur
+        const px = SPHERE_R * Math.cos(angle);
+        const py = 0;
+        const pz = SPHERE_R * Math.sin(angle);
+
+        const proj = project(px, py, pz);
+
+        // Profondeur 0..1 — masque les lettres à l'arrière
+        const depth   = (proj.sz + SPHERE_R) / (2 * SPHERE_R);
+        const cAlpha  = depth < 0.05 ? 0 : Math.min(1, (depth - 0.05) / 0.25);
+
+        if (cAlpha < 0.02) continue;
+
+        // Tangente écran : deux points voisins pour l'angle de rotation
+        const DELTA  = 0.06;
+        const pa     = project(SPHERE_R * Math.cos(angle - DELTA), 0, SPHERE_R * Math.sin(angle - DELTA));
+        const pb     = project(SPHERE_R * Math.cos(angle + DELTA), 0, SPHERE_R * Math.sin(angle + DELTA));
+        const charRot = Math.atan2(pb.sy - pa.sy, pb.sx - pa.sx);
+
+        const fontSize = Math.max(6, BASE_FONT * proj.sc);
+
+        ctx.save();
+        ctx.translate(proj.sx, proj.sy);
+        ctx.rotate(charRot);
+        ctx.shadowColor = `rgba(189, 194, 255, ${cAlpha * 0.85})`;
+        ctx.shadowBlur  = 18;
+        ctx.font        = `italic ${fontSize}px 'Instrument Serif', Georgia, serif`;
+        ctx.fillStyle   = `rgba(255, 255, 255, ${cAlpha * 0.95})`;
+        ctx.textAlign   = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(WORD[i], 0, 0);
+        ctx.restore();
+      }
 
       stateRef.current.rotY += 0.004;
       animRef.current = requestAnimationFrame(draw);
