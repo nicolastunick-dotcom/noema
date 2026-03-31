@@ -46,7 +46,7 @@ export default function NoemaOrb({ size = 60, showText = false }) {
     canvas.height = H;
     const cx = W / 2, cy = H / 2;
 
-    const SPHERE_R = 280;
+    const SPHERE_R = 340;
     const FOCAL    = 720;
     const TILT_X   = 0.22;
 
@@ -120,6 +120,50 @@ export default function NoemaOrb({ size = 60, showText = false }) {
       ctx.fillStyle = gBg;
       ctx.fillRect(0, 0, W, H);
 
+      // ── Lettrine "N" + brume — dessinées AVANT les anneaux (visuellement à l'intérieur) ──
+      const fontSize = Math.round(W * 0.30);
+
+      // Brume intérieure — radial gradient doux violet
+      const gMist = ctx.createRadialGradient(cx, cy, 0, cx, cy, SPHERE_R * 0.72);
+      gMist.addColorStop(0,   "rgba(100, 80, 220, 0.22)");
+      gMist.addColorStop(0.5, "rgba(80,  60, 180, 0.10)");
+      gMist.addColorStop(1,   "rgba(60,  40, 140, 0)");
+      ctx.beginPath();
+      ctx.arc(cx, cy, SPHERE_R * 0.72, 0, Math.PI * 2);
+      ctx.fillStyle = gMist;
+      ctx.fill();
+
+      // Lettrine N
+      ctx.save();
+      ctx.font         = `italic ${fontSize}px 'Instrument Serif', Georgia, serif`;
+      ctx.textAlign    = "center";
+      ctx.textBaseline = "middle";
+
+      // Halo large très doux
+      ctx.fillStyle = "rgba(130, 110, 255, 0.07)";
+      for (let dx = -7; dx <= 7; dx += 3.5) {
+        for (let dy = -7; dy <= 7; dy += 3.5) {
+          ctx.fillText("N", cx + dx, cy + dy);
+        }
+      }
+      // Glow rapproché
+      ctx.fillStyle = "rgba(155, 135, 255, 0.16)";
+      for (let dx = -3; dx <= 3; dx += 1.5) {
+        for (let dy = -3; dy <= 3; dy += 1.5) {
+          ctx.fillText("N", cx + dx, cy + dy);
+        }
+      }
+      // Lettre principale
+      ctx.shadowColor = "rgba(150, 130, 255, 0.85)";
+      ctx.shadowBlur  = 52;
+      ctx.fillStyle   = "rgba(225, 220, 255, 0.75)";
+      ctx.fillText("N", cx, cy);
+      // Reflet
+      ctx.shadowBlur = 0;
+      ctx.fillStyle  = "rgba(255, 255, 255, 0.14)";
+      ctx.fillText("N", cx, cy);
+      ctx.restore();
+
       // ── Points sphère ─────────────────────────────────────────────────
       const projected = sphPoints.map(p => project(p.x, p.y, p.z));
       projected.sort((a, b) => a.sz - b.sz);
@@ -184,45 +228,6 @@ export default function NoemaOrb({ size = 60, showText = false }) {
         ctx.fill();
       }
 
-      // ── Lettrine "N" au centre absolu de la sphère ────────────────────
-      const fontSize = Math.round(W * 0.34); // ~272px sur 800px canvas
-
-      // Glow violet multicouche (brumeux)
-      ctx.save();
-      ctx.shadowColor = "rgba(120, 100, 255, 0.0)";
-      ctx.shadowBlur  = 0;
-
-      // Couche 1 — halo large très doux
-      ctx.font         = `italic ${fontSize}px 'Instrument Serif', Georgia, serif`;
-      ctx.textAlign    = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillStyle    = "rgba(140, 120, 255, 0.08)";
-      for (let dx = -6; dx <= 6; dx += 3) {
-        for (let dy = -6; dy <= 6; dy += 3) {
-          ctx.fillText("N", cx + dx, cy + dy);
-        }
-      }
-
-      // Couche 2 — glow rapproché violet
-      ctx.fillStyle = "rgba(160, 140, 255, 0.18)";
-      for (let dx = -3; dx <= 3; dx += 1.5) {
-        for (let dy = -3; dy <= 3; dy += 1.5) {
-          ctx.fillText("N", cx + dx, cy + dy);
-        }
-      }
-
-      // Couche 3 — lettre principale, blanc cassé légèrement lavande
-      ctx.fillStyle    = "rgba(230, 225, 255, 0.82)";
-      ctx.shadowColor  = "rgba(150, 130, 255, 0.9)";
-      ctx.shadowBlur   = 48;
-      ctx.fillText("N", cx, cy);
-
-      // Couche 4 — reflet central très lumineux
-      ctx.shadowBlur  = 0;
-      ctx.fillStyle   = "rgba(255, 255, 255, 0.18)";
-      ctx.fillText("N", cx, cy);
-
-      ctx.restore();
 
       stateRef.current.rotY -= 0.004;
       animRef.current = requestAnimationFrame(draw);
