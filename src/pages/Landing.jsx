@@ -143,7 +143,7 @@ const styles = {
   // ── Hero
   heroSection: {
     position: "relative",
-    paddingTop: 192,
+    paddingTop: 20,
     paddingBottom: 128,
     paddingLeft: 24,
     paddingRight: 24,
