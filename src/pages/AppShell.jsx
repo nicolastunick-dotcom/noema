@@ -121,20 +121,15 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   async function callAPI() {
     const h = trimHistory(history.current);
     const memory_context = buildMemoryContext(memoryRef.current);
-    const headers = { "Content-Type":"application/json", "anthropic-version":"2023-06-01" };
-    if (import.meta.env.DEV) {
-      headers["x-api-key"] = import.meta.env.VITE_ANTHROPIC_KEY;
-      headers["anthropic-dangerous-direct-browser-access"] = "true";
-    } else if (sb) {
+    const headers = { "Content-Type":"application/json" };
+    if (sb) {
       // En production : envoyer le JWT Supabase pour vérification côté serveur
       const { data: { session } } = await sb.auth.getSession();
       if (session?.access_token) {
         headers["Authorization"] = `Bearer ${session.access_token}`;
       }
     }
-    const bodyPayload = import.meta.env.DEV
-      ? { model:"claude-sonnet-4-6", max_tokens:1400, system: buildSystemPrompt(memoryRef.current), messages:h }
-      : { model:"claude-sonnet-4-6", max_tokens:1400, memory_context, messages:h };
+    const bodyPayload = { model:"claude-sonnet-4-6", max_tokens:1400, memory_context, messages:h };
     const res = await fetch(ANTHROPIC_PROXY, {
       method:"POST", headers,
       body: JSON.stringify(bodyPayload),
