@@ -369,7 +369,7 @@ export default function Landing({ onNav }) {
         <section style={styles.heroSection}>
           {/* Orbe 3D animée */}
           <div style={{ marginBottom: 24 }}>
-            <NoemaOrb size={400} showText={false} />
+            <NoemaOrb size={520} showText={false} />
           </div>
 
           <div style={styles.heroBadge}>
