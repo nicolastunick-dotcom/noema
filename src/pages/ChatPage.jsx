@@ -1,6 +1,7 @@
 import { useRef, useEffect } from "react";
 import DOMPurify from "dompurify";
 import { fmt } from "../utils/helpers";
+import NoemaOrb from "../components/NoemaOrb";
 
 // ─────────────────────────────────────────────────────────────
 // CHAT PAGE — Design Stitch, logique passée en props par AppShell
@@ -272,26 +273,8 @@ export default function ChatPage({ msgs, typing, input, setInput, send, genIkiga
 
         {/* Typing indicator */}
         {typing && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: "85%", alignSelf: "flex-start" }}>
-            <div style={{
-              background: "rgba(30,31,37,0.6)",
-              backdropFilter: "blur(12px)",
-              border: "1px solid rgba(255,255,255,0.05)",
-              padding: "18px 24px",
-              borderRadius: "24px 24px 24px 4px",
-              display: "flex",
-              gap: 6,
-              alignItems: "center",
-            }}>
-              {[0, 1, 2].map(i => (
-                <div key={i} style={{
-                  width: 7, height: 7, borderRadius: "50%",
-                  background: C.primary, opacity: 0.6,
-                  animation: `tdot 1.4s ease-in-out ${i * 0.2}s infinite`,
-                }} />
-              ))}
-              <style>{`@keyframes tdot{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}`}</style>
-            </div>
+          <div style={{ alignSelf: "flex-start", padding: "4px 0 4px 4px" }}>
+            <NoemaOrb size={50} showText={false} />
           </div>
         )}
         </div>

@@ -1,6 +1,7 @@
 /* eslint-disable */
 // ─── Google Fonts ──────────────────────────────────────────────────────────────
 import { useEffect } from "react";
+import NoemaOrb from "../components/NoemaOrb";
 
 const COLORS = {
   background: "#0D0F14",
@@ -366,57 +367,9 @@ export default function Landing({ onNav }) {
 
         {/* ── Hero ──────────────────────────────────────────────────────────── */}
         <section style={styles.heroSection}>
-          {/* Orbe violet qui pulse */}
-          <style>{`
-            @keyframes orbPulse {
-              0%, 100% { transform: scale(1); opacity: 0.92; box-shadow: 0 0 55px 18px rgba(100,80,200,0.65), 0 0 110px 40px rgba(100,80,200,0.3), 0 0 180px 70px rgba(100,80,200,0.12); }
-              50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 75px 28px rgba(120,100,220,0.8), 0 0 150px 60px rgba(120,100,220,0.38), 0 0 220px 90px rgba(120,100,220,0.16); }
-            }
-            @keyframes orbShimmer {
-              0%, 100% { opacity: 0.35; transform: translate(-30%, -30%) scale(1); }
-              50% { opacity: 0.55; transform: translate(-28%, -32%) scale(1.08); }
-            }
-            @keyframes orbAccent {
-              0%, 100% { opacity: 0.25; transform: translate(10%, 15%) scale(1); }
-              50% { opacity: 0.4; transform: translate(12%, 13%) scale(1.06); }
-            }
-          `}</style>
-          <div
-            style={{
-              width: 104,
-              height: 104,
-              borderRadius: "50%",
-              background: "radial-gradient(circle at 38% 35%, #7060c8 0%, #4a3699 30%, #2e1f6e 58%, #1a1040 85%, #110d2a 100%)",
-              animation: "orbPulse 3.2s ease-in-out infinite",
-              marginBottom: 36,
-              cursor: "default",
-              flexShrink: 0,
-              position: "relative",
-              overflow: "hidden",
-            }}
-          >
-            {/* Reflet primaire — bleu-lavande Noema */}
-            <div style={{
-              position: "absolute",
-              width: "65%",
-              height: "65%",
-              borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(189,194,255,0.45) 0%, rgba(189,194,255,0.1) 50%, transparent 70%)",
-              top: "8%",
-              left: "10%",
-              animation: "orbShimmer 3.2s ease-in-out infinite",
-            }} />
-            {/* Accent tertiaire — pêche/ambre Noema */}
-            <div style={{
-              position: "absolute",
-              width: "40%",
-              height: "40%",
-              borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(255,182,138,0.35) 0%, rgba(255,182,138,0.08) 50%, transparent 70%)",
-              bottom: "12%",
-              right: "10%",
-              animation: "orbAccent 3.2s ease-in-out infinite",
-            }} />
+          {/* Orbe 3D animée */}
+          <div style={{ marginBottom: 24 }}>
+            <NoemaOrb size={400} showText={false} />
           </div>
 
           <div style={styles.heroBadge}>

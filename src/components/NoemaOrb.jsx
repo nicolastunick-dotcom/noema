@@ -1,0 +1,215 @@
+import { useEffect, useRef, useState } from "react";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NoemaOrb — sphère 3D animée sur Canvas
+// Props : size (px, défaut 60), showText (boolean)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TEXTS = [
+  "Noema réfléchit...",
+  "Exploration en cours...",
+  "Analyse profonde...",
+  "Connexion établie...",
+];
+
+function normalize(v) {
+  const len = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+  return { x: v.x / len, y: v.y / len, z: v.z / len };
+}
+
+function cross(a, b) {
+  return {
+    x: a.y * b.z - a.z * b.y,
+    y: a.z * b.x - a.x * b.z,
+    z: a.x * b.y - a.y * b.x,
+  };
+}
+
+export default function NoemaOrb({ size = 60, showText = false }) {
+  const canvasRef = useRef(null);
+  const animRef  = useRef(null);
+  const stateRef = useRef({ rotY: 0 });
+  const [textIdx, setTextIdx] = useState(0);
+
+  // ── Texte cyclique ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!showText) return;
+    const id = setInterval(() => setTextIdx(i => (i + 1) % TEXTS.length), 2500);
+    return () => clearInterval(id);
+  }, [showText]);
+
+  // ── Canvas 3D ───────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+
+    const W = 800, H = 800;
+    canvas.width  = W;
+    canvas.height = H;
+    const cx = W / 2, cy = H / 2;
+
+    const SPHERE_R = 260;
+    const FOCAL    = 700;
+    const TILT_X   = 0.22;   // inclinaison fixe sur X
+
+    // ── Points de la sphère (réseau de Fibonacci) ──────────────────────────
+    const N_PTS      = 200;
+    const goldenRatio = (1 + Math.sqrt(5)) / 2;
+    const sphPoints  = [];
+    for (let i = 0; i < N_PTS; i++) {
+      const theta = (2 * Math.PI * i) / goldenRatio;
+      const phi   = Math.acos(1 - (2 * (i + 0.5)) / N_PTS);
+      sphPoints.push({
+        x: SPHERE_R * Math.sin(phi) * Math.cos(theta),
+        y: SPHERE_R * Math.sin(phi) * Math.sin(theta),
+        z: SPHERE_R * Math.cos(phi),
+      });
+    }
+
+    // ── Anneaux orbitaux (3, plans différents) ─────────────────────────────
+    const ringDefs = [
+      { normal: normalize({ x: 0,   y: 1,   z: 0.4 }), rgb: [120, 134, 255] },
+      { normal: normalize({ x: 1,   y: 0.3, z: 0.2 }), rgb: [120, 134, 255] },
+      { normal: normalize({ x: 0.4, y: 0.7, z: 1   }), rgb: [189, 194, 255] },
+    ];
+
+    const rings = ringDefs.map(def => {
+      const n   = def.normal;
+      const arb = Math.abs(n.x) < 0.9 ? { x: 1, y: 0, z: 0 } : { x: 0, y: 1, z: 0 };
+      const u   = normalize(cross(n, arb));
+      const v   = cross(n, u);
+      return {
+        ...def, u, v,
+        pulseAngle: Math.random() * Math.PI * 2,
+        pulseSpeed: 0.022 + Math.random() * 0.01,
+      };
+    });
+
+    // ── Projection 3D → 2D ──────────────────────────────────────────────────
+    function project(x, y, z) {
+      const ry = stateRef.current.rotY;
+      // Rotation Y (scène tourne)
+      const x1 =  x * Math.cos(ry) + z * Math.sin(ry);
+      const z1 = -x * Math.sin(ry) + z * Math.cos(ry);
+      // Inclinaison X fixe
+      const y2 =  y * Math.cos(TILT_X) - z1 * Math.sin(TILT_X);
+      const z2 =  y * Math.sin(TILT_X) + z1 * Math.cos(TILT_X);
+
+      const d = FOCAL / (FOCAL + z2 + 350);
+      return { sx: cx + x1 * d, sy: cy + y2 * d, sz: z2, sc: d };
+    }
+
+    // Point sur un anneau à l'angle donné
+    function ringPt(ring, angle) {
+      const c = Math.cos(angle), s = Math.sin(angle);
+      return {
+        x: SPHERE_R * (c * ring.u.x + s * ring.v.x),
+        y: SPHERE_R * (c * ring.u.y + s * ring.v.y),
+        z: SPHERE_R * (c * ring.u.z + s * ring.v.z),
+      };
+    }
+
+    const SEGS = 100;
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+
+      // ── Halo ambiant central ─────────────────────────────────────────────
+      const gBg = ctx.createRadialGradient(cx, cy, 0, cx, cy, 240);
+      gBg.addColorStop(0, "rgba(90, 70, 200, 0.13)");
+      gBg.addColorStop(1, "rgba(90, 70, 200, 0)");
+      ctx.fillStyle = gBg;
+      ctx.fillRect(0, 0, W, H);
+
+      // ── Points sphère ────────────────────────────────────────────────────
+      const projected = sphPoints.map(p => project(p.x, p.y, p.z));
+      projected.sort((a, b) => a.sz - b.sz);   // peintre : back → front
+
+      for (const p of projected) {
+        const depth  = (p.sz + SPHERE_R) / (2 * SPHERE_R); // 0..1
+        const alpha  = 0.1 + depth * 0.55;
+        const radius = (1.0 + depth * 2.2) * p.sc;
+        ctx.beginPath();
+        ctx.arc(p.sx, p.sy, radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(189,194,255,${alpha})`;
+        ctx.fill();
+      }
+
+      // ── Anneaux + pulses ─────────────────────────────────────────────────
+      for (const ring of rings) {
+        ring.pulseAngle += ring.pulseSpeed;
+
+        // Tracé anneau segment par segment
+        for (let i = 0; i < SEGS; i++) {
+          const a1  = (i / SEGS) * Math.PI * 2;
+          const a2  = ((i + 1) / SEGS) * Math.PI * 2;
+          const pt1 = ringPt(ring, a1);
+          const pt2 = ringPt(ring, a2);
+          const p1  = project(pt1.x, pt1.y, pt1.z);
+          const p2  = project(pt2.x, pt2.y, pt2.z);
+
+          const depth = (p1.sz + SPHERE_R) / (2 * SPHERE_R);
+          const alpha = 0.06 + depth * 0.26;
+          const [r, g, b] = ring.rgb;
+
+          ctx.beginPath();
+          ctx.moveTo(p1.sx, p1.sy);
+          ctx.lineTo(p2.sx, p2.sy);
+          ctx.strokeStyle = `rgba(${r},${g},${b},${alpha})`;
+          ctx.lineWidth   = 1.1 * p1.sc;
+          ctx.stroke();
+        }
+
+        // Pulse (point ambre lumineux qui court sur l'anneau)
+        const pp3d  = ringPt(ring, ring.pulseAngle);
+        const pp    = project(pp3d.x, pp3d.y, pp3d.z);
+        const depth = (pp.sz + SPHERE_R) / (2 * SPHERE_R);
+        const pAlpha = 0.35 + depth * 0.65;
+        const pSize  = 12 * pp.sc;
+
+        // Halo du pulse
+        const gPulse = ctx.createRadialGradient(pp.sx, pp.sy, 0, pp.sx, pp.sy, pSize * 2.8);
+        gPulse.addColorStop(0, `rgba(255,182,138,${pAlpha * 0.75})`);
+        gPulse.addColorStop(1, "rgba(255,182,138,0)");
+        ctx.beginPath();
+        ctx.arc(pp.sx, pp.sy, pSize * 2.8, 0, Math.PI * 2);
+        ctx.fillStyle = gPulse;
+        ctx.fill();
+
+        // Cœur du pulse
+        ctx.beginPath();
+        ctx.arc(pp.sx, pp.sy, pSize * 0.45, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,220,180,${pAlpha})`;
+        ctx.fill();
+      }
+
+      stateRef.current.rotY += 0.004;
+      animRef.current = requestAnimationFrame(draw);
+    }
+
+    draw();
+    return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
+  }, []);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+      <canvas
+        ref={canvasRef}
+        style={{ width: size, height: size, display: "block" }}
+      />
+      {showText && (
+        <span style={{
+          fontSize:    "0.75rem",
+          color:       "#bdc2ff",
+          opacity:     0.75,
+          fontFamily:  "'Plus Jakarta Sans', sans-serif",
+          letterSpacing: "0.06em",
+          transition:  "opacity 0.4s",
+        }}>
+          {TEXTS[textIdx]}
+        </span>
+      )}
+    </div>
+  );
+}
