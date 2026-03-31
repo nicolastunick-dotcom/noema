@@ -27,6 +27,8 @@ export default async (request) => {
     return new Response('Method not allowed', { status: 405 })
   }
 
+  console.log('[claude] requête reçue:', request.method)
+
   // ── Vérification JWT Supabase ─────────────────────────────────
   const authHeader = request.headers.get('Authorization') || ''
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
@@ -54,9 +56,10 @@ export default async (request) => {
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
+    console.error('[claude] ANTHROPIC_API_KEY manquante dans les variables d'environnement')
     return new Response(
       JSON.stringify({ error: { message: 'ANTHROPIC_API_KEY non configurée.' } }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
     )
   }
 
