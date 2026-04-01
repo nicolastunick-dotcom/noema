@@ -66,6 +66,7 @@ netlify/functions/
 - Onboarding 4 slides première utilisation (champ `onboarding_done` dans `memory`)
 - Page Pricing avec plan Mensuel 19€ / Pro bientôt disponible
 - Panel Admin : simulation de phase, logs Greffier, coûts API
+- Streaming SSE activé côté chat avec filtrage des blocs `<_ui>` avant affichage utilisateur
 - Audit sécurité (codex.md) — 3 corrections prioritaires appliquées :
   - Correction 1 : JWT Supabase vérifié côté serveur sur `/claude`
   - Correction 2 : DOMPurify sur `dangerouslySetInnerHTML` dans ChatPage
@@ -154,6 +155,9 @@ CREATE TABLE invites (
 | 01/04/2026 | Claude Code | Streaming SSE — claude.js retourne text/event-stream, callAPI lit le stream, messages affichés token par token | ✅ | — |
 | 01/04/2026 | Claude Code | Paywall App.jsx rétabli — redirect /pricing si pas d'abonnement actif (sauf DEV) | ✅ | — |
 | 01/04/2026 | Claude Code | Sécurité invitations — token lié à userId au premier login, nettoyage à la déconnexion | ✅ | — |
+| 01/04/2026 | Claude Code | Bypass admin côté serveur pour le rate limit `/claude` via `VITE_ADMIN_EMAIL` | ✅ | Ajouter `VITE_ADMIN_EMAIL` dans Netlify env vars |
+| 01/04/2026 | Claude Code | Fix `<_ui>` visible pendant le streaming — filtrage sur chaque chunk | ✅ | — |
+| 01/04/2026 | Codex | Durcissement du fix streaming `<_ui>` — accumulation sur flux brut avant `setState` pour éviter les fuites inter-chunks | ✅ | Vérifier visuellement en local / prod |
 
 ---
 

@@ -66,14 +66,15 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
     history.current.push({ role: "user", content: trigger });
     setTyping(true);
     // Ajoute le message streaming vide immédiatement
-    setMsgs([{ role: "noema", text: "", time: getTime(), streaming: true }]);
+    setMsgs([{ role: "noema", text: "", rawText: "", time: getTime(), streaming: true }]);
     try {
       const raw = await callAPI((chunk) => {
         setMsgs(m => {
           const last = m[m.length - 1];
           if (last && last.streaming) {
-            const accumulated = last.text + chunk;
-            return [...m.slice(0, -1), { ...last, text: stripUIStreaming(accumulated) }];
+            const accumulated = (last.rawText || "") + chunk;
+            const visible = stripUIStreaming(accumulated);
+            return [...m.slice(0, -1), { ...last, rawText: accumulated, text: visible }];
           }
           return m;
         });
@@ -260,18 +261,18 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
 
     // Ajoute immédiatement le message streaming vide
     const streamTime = getTime();
-    setMsgs(m => [...m, {role:"noema", text:"", time:streamTime, streaming:true}]);
+    setMsgs(m => [...m, {role:"noema", text:"", rawText:"", time:streamTime, streaming:true}]);
 
     try {
       const raw = await callAPI((chunk) => {
         setMsgs(m => {
           const last = m[m.length - 1];
           if (last && last.streaming) {
-            const accumulated = last.text + chunk;
+            const accumulated = (last.rawText || "") + chunk;
             const visible = stripUIStreaming(accumulated);
             // Dès le premier chunk visible, on retire typing (orbe disparaît)
             if (last.text === "" && visible) setTyping(false);
-            return [...m.slice(0, -1), { ...last, text: visible }];
+            return [...m.slice(0, -1), { ...last, rawText: accumulated, text: visible }];
           }
           return m;
         });
