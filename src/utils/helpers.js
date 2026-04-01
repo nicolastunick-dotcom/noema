@@ -31,8 +31,13 @@ export function stripUIStreaming(raw) {
 }
 
 export function trimHistory(h) {
-  if (h.length <= MAX_HISTORY) return h;
-  return [h[0], ...h.slice(-(MAX_HISTORY - 1))];
+  const trimmed = h.length <= MAX_HISTORY ? h : [h[0], ...h.slice(-(MAX_HISTORY - 1))];
+  // Mini-sprint coût : retire les blocs _ui des messages assistant avant envoi au modèle.
+  // Les _ui passés sont redondants — leur état est déjà consolidé dans le system prompt
+  // via buildServerMemoryContext(). Économie : ~160 tokens × nb messages assistant.
+  return trimmed.map(msg =>
+    msg.role === "assistant" ? { ...msg, content: stripUI(msg.content) } : msg
+  );
 }
 
 // Charset lisible sans ambiguïtés visuelles (0/O, 1/I/L)

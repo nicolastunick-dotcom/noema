@@ -193,15 +193,20 @@ export default async (request) => {
     const messages   = allowed.messages
     const sessionId  = body.session_id || null
     const userMemory = body.user_memory && typeof body.user_memory === 'object' ? body.user_memory : {}
-    const greffierPromise = runGreffier({ apiKey, sb: sbAdmin, userId, sessionId, history: messages, userMemory })
-      .then((result) => {
-        console.log('[Greffier] succès:', JSON.stringify(result)?.slice(0, 120))
-        return result
-      })
-      .catch((e) => {
-        console.error('[Greffier] erreur:', e.message)
-        return null
-      })
+    // Mini-sprint coût : Greffier toutes les 3 requêtes utilisateur — ~67% de réduction de coût Greffier.
+    const userMsgCount = messages.filter(m => m.role === 'user').length
+    const shouldRunGreffier = userMsgCount > 0 && userMsgCount % 3 === 0
+    const greffierPromise = shouldRunGreffier
+      ? runGreffier({ apiKey, sb: sbAdmin, userId, sessionId, history: messages, userMemory })
+          .then((result) => {
+            console.log('[Greffier] succès:', JSON.stringify(result)?.slice(0, 120))
+            return result
+          })
+          .catch((e) => {
+            console.error('[Greffier] erreur:', e.message)
+            return null
+          })
+      : Promise.resolve(null)
 
     const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -239,7 +244,7 @@ export default async (request) => {
       }).then(() => {}, e => console.log('[Usage] log failed:', e.message))
     }
 
-    console.log('[Greffier] déclenchement, msgs:', messages.length, 'userId:', userId)
+    console.log('[Greffier]', shouldRunGreffier ? 'déclenchement' : 'skipped', '— userMsgCount:', userMsgCount, 'userId:', userId)
     const greffierResult = await greffierPromise
 
     return new Response(JSON.stringify({
