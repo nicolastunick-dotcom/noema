@@ -379,6 +379,49 @@ Après refresh :
 - `src/pages/AppShell.jsx`
 - `src/constants/prompt.js`
 
+# 3.2 Mini-sprint coût/perf ✅ EXÉCUTÉ (02/04/2026)
+
+## Objectif
+réduire les coûts tokens Anthropic et les coûts Greffier sans modifier l'architecture
+
+## Diagnostic pré-sprint
+
+Deux sources de gaspillage identifiées par audit :
+1. `trimHistory()` passait les messages assistant avec leurs blocs `_ui` intacts — environ 160 tokens × nb messages dans la fenêtre, soit jusqu'à ~1 920 tokens inutiles/requête
+2. Greffier (Haiku) déclenché à chaque message utilisateur — coût ~$0.0055/appel, soit ~$0.14/session à 25 messages
+
+## Actions appliquées
+
+### Fix 1 — strip `_ui` dans `trimHistory()` (`src/utils/helpers.js`)
+- `trimHistory()` mappe les messages assistant et appelle `stripUI(msg.content)` avant envoi
+- Justification : les `_ui` passés sont redondants — leur état est déjà consolidé dans le system prompt via `buildServerMemoryContext()`
+- Réduction : ~160 tokens × nb messages assistant dans MAX_HISTORY
+
+### Fix 2 — Greffier toutes les 3 requêtes (`netlify/functions/claude.js`)
+- Ajout de `userMsgCount = messages.filter(m => m.role === 'user').length`
+- `shouldRunGreffier = userMsgCount > 0 && userMsgCount % 3 === 0`
+- `greffierPromise` conditionnel : `Promise.resolve(null)` si pas de déclenchement
+- Log mis à jour : `[Greffier] déclenchement/skipped — userMsgCount: N`
+- Réduction : ~67% du coût Greffier (~$0.09 économisés/session à 25 messages)
+
+## Ce qui est maintenant vrai
+
+- les blocs `_ui` historiques ne consomment plus de tokens input Anthropic
+- le Greffier ne tourne qu'aux messages 3, 6, 9, 12, 15, 18, 21, 24
+- la mémoire inter-sessions reste complète (Greffier persiste toujours)
+
+## Ce qui reste une limite connue
+
+- sur des sessions courtes (< 3 messages), le Greffier ne tourne pas du tout — acceptable
+- `_greffier: null` est renvoyé dans la réponse JSON quand skipped — sans impact
+
+## Fichiers modifiés
+
+- `src/utils/helpers.js`
+- `netlify/functions/claude.js`
+
+---
+
 # 4. Sprint 3 (renommé) — Stabilisation des sessions
 
 ## Objectif

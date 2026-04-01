@@ -287,6 +287,7 @@ CREATE TABLE invites (
 | 02/04/2026 | Claude Code | Typographie — tracking premium global : `letter-spacing: 0.012em` sur `body` (baseline) + overrides ciblés boutons (.03em), tabs (.025em), nav (.02em), state-badge (.03em), serif display (-.01em). | ✅ | — |
 | 02/04/2026 | Claude Code | Sprint 3 — mémoire structurée : (1) `buildMemoryContext()` enrichi avec `blocages`, `contradictions`, `step` ; (2) `updateMemoryRef(ui)` dans AppShell — merge live `_ui` → `memoryRef.current` après chaque message ; (3) `claude.js` charge la mémoire depuis DB côté serveur (`buildServerMemoryContext`) — le backend ne dépend plus du `memory_context` client. | ✅ | — |
 | 02/04/2026 | Claude Code | Sprint 3.1 — continuité post-refresh : (1) `claude.js` lit `sessions.step` en parallèle de `memory` et l'injecte dans `buildServerMemoryContext()` — 0 migration SQL ; (2) autosave 5min → 2min pour réduire pertes `session_notes` ; (3) `session_note` enrichi : 2-3 points clés séparés par " | " au lieu d'une phrase ; (4) nettoyage dead code AppShell (imports morts, état mort, styles inutilisés) ; (5) Sprint 2 prompt.js réappliqué après écrasement silencieux par formateur. | ✅ | — |
+| 02/04/2026 | Claude Code | Mini-sprint coût/perf — Fix 1 : `trimHistory()` strip les blocs `_ui` des messages assistant avant envoi Anthropic (~160 tokens × nb msgs assistant économisés/requête) ; Fix 2 : Greffier déclenché toutes les 3 requêtes utilisateur au lieu de chaque message (~67% réduction coût Greffier). | ✅ | — |
 	
   Document ajouté : NOEMA_RUNTIME_GAPS.md
 	•	Motif :
