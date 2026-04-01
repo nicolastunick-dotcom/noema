@@ -98,8 +98,7 @@ Tu ne donnes pas des conseils génériques. Tu donnes la stratégie exacte pour 
 <_ui>
 {
   "etat": "exploring",
-  "phase": 1,
-  "msg_count": 0,
+  "step": 0,
   "forces": [],
   "blocages": {
     "racine": "",
@@ -114,25 +113,20 @@ Tu ne donnes pas des conseils génériques. Tu donnes la stratégie exacte pour 
     "paie": "",
     "mission": ""
   },
-  "ikigai_completude": 0,
-  "next_action": "",
   "session_note": "",
-  "phase_ready": false
+  "next_action": ""
 }
 </_ui>
 
 Règles pour remplir ce bloc :
 - "etat" : état détecté de l'utilisateur — "exploring" | "blocked" | "clarity" | "regulation"
-- "phase" : 1 (Guide) ou 2 (Stratège)
-- "msg_count" : numéro du message dans la session en cours (incrémente à chaque réponse)
+- "step" : entier de 0 à 10 — progression dans le parcours (0 = début, 10 = Phase 2 accomplie)
 - "forces" : liste des forces détectées jusqu'ici (strings courts, max 6)
 - "blocages" : les trois niveaux — laisse "" si pas encore détecté
 - "contradictions" : liste des contradictions repérées (strings courts, max 4)
 - "ikigai" : remplis progressivement — jamais de questions supplémentaires pour ça
-- "ikigai_completude" : entier de 0 à 100 — ne dépasse jamais 40 avant la session 8
-- "next_action" : la tâche concrète donnée en fin de session (vide sinon)
 - "session_note" : une phrase sur l'état de la session + style de communication observé
-- "phase_ready" : true uniquement quand les 4 conditions de basculement Phase 2 sont réunies
+- "next_action" : la tâche concrète donnée en fin de session (vide sinon)
 
 Ce bloc est technique. Il ne fait pas partie de ta réponse. Tu le génères après chaque message, sans l'annoncer, sans en parler.`;
 

@@ -40,8 +40,8 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   const [mobTab,   setMobTab]   = useState("chat");
   const [navTab,   setNavTab]   = useState("chat");
   const [insights, setInsights] = useState({forces:[],blocages:{racine:"",entretien:"",visible:""},contradictions:[]});
-  const [ikigai,   setIkigai]   = useState({aime:"",excelle:"",monde:"",paie:"",mission:""});
-  const [mode,     setMode]     = useState("accueil");
+  const [ikigai,      setIkigai]      = useState({aime:"",excelle:"",monde:"",paie:"",mission:""});
+  const [nextAction,  setNextAction]  = useState("");
 
   const history         = useRef([]);
   const lastSessionNote = useRef("");
@@ -183,8 +183,8 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
     if (!ui) return;
     if (ui.session_note) lastSessionNote.current = ui.session_note;
     if (ui.etat) setMstate(mapEtat(ui.etat));
-    if (ui.mode) setMode(ui.mode);
     if (typeof ui.step === "number") setStep(s => Math.max(s, ui.step));
+    if (ui.next_action) setNextAction(ui.next_action);
 
     if (ui.forces?.length || ui.contradictions?.length) {
       setInsights(p => ({
@@ -304,7 +304,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   // ── 9. ACTIONS ───────────────────────────────────────────────
   function reset() {
     history.current = [];
-    setMsgs([]); setStep(0); setMstate("exploring"); setMode("accueil");
+    setMsgs([]); setStep(0); setMstate("exploring"); setNextAction("");
     setInsights({forces:[], blocages:{racine:"",entretien:"",visible:""}, contradictions:[]});
     setIkigai({aime:"", excelle:"", monde:"", paie:"", mission:""});
     setMobTab("chat");
