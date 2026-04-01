@@ -56,7 +56,7 @@ export default async (request) => {
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
-    console.error('[claude] ANTHROPIC_API_KEY manquante dans les variables d'environnement')
+    console.error('[claude] ANTHROPIC_API_KEY manquante dans process.env')
     return new Response(
       JSON.stringify({ error: { message: 'ANTHROPIC_API_KEY non configurée.' } }),
       { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
