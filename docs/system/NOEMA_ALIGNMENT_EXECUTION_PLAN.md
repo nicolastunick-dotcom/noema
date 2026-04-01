@@ -324,7 +324,62 @@ Tests de contrat:
 - divergence silencieuse si le Greffier continue d'ecrire un schema plus riche dans `memory` ou `sessions`
 - faux sentiment d'alignement si `next_action` est stocke sans etre encore branche visuellement
 
-# 4. Sprint 3 — Stabilisation des sessions
+# 3.1 Sprint 3.1 — Continuité post-refresh ✅ EXÉCUTÉ (02/04/2026)
+
+## Objectif
+améliorer la continuité conversationnelle après refresh sans lancer la session live (Sprint 4)
+
+## Cause du bug identifiée
+
+Après refresh :
+- le Mapping est correctement réhydraté depuis `sessions.insights`, `sessions.ikigai`, `sessions.step`
+- le chat repart avec un contexte appauvri : `claude.js` chargeait `memory` mais pas `sessions.step`, et `session_notes` était une phrase unique souvent perdue sur refresh rapide
+- `history.current` est volatile (in-memory, jamais rechargé) — c'est une limite architecturale connue, non adressée dans ce sprint
+
+## Actions appliquées
+
+### 1. `step` réinjecté côté serveur (0 migration SQL)
+- `claude.js` charge maintenant `memory` et `sessions.step` en parallèle (`Promise.all`)
+- `buildServerMemoryContext(memRow, lastStep)` accepte `lastStep` comme second paramètre
+- `step` est inclus dans le contexte système même si la colonne `memory.step` n'existe pas
+- Coût latence : nul (requêtes parallèles)
+
+### 2. Autosave 5min → 2min
+- `setInterval` dans AppShell passe de `5 * 60 * 1000` à `2 * 60 * 1000`
+- Réduit la fenêtre de perte de `session_notes` sur refresh
+- `beforeunload` reste en place mais n'est plus la seule protection
+
+### 3. `session_note` enrichi
+- La règle dans `src/constants/prompt.js` passe de "une phrase" à "2-3 points clés séparés par ` | `"
+- Format : état dominant | découverte principale | ton observé
+- Plus d'information narrative par session → meilleure continuité cross-session
+
+### 4. Nettoyage dead code AppShell
+- Imports morts supprimés : `buildSystemPrompt`, `fmt`, `StateBadge`, `InsightsPane`, `ProgressPane`, `IkigaiPane`, `SendSVG`
+- États morts supprimés : `sideTab`, `setSideTab`, `mobTab`, `setMobTab`
+- Styles inutilisés supprimés : `panelStyle`, `placeholderStyle`
+- Contrat `_ui` dans `prompt.js` réappliqué après écrasement silencieux par formateur
+
+## Ce qui est maintenant vrai
+
+- après refresh, Claude connaît le `step` du parcours
+- les `session_notes` sont sauvegardées toutes les 2min au lieu de 5min
+- chaque note capture 2-3 points clés au lieu d'une phrase
+- AppShell est allégé de tous ses imports et états morts
+
+## Ce qui reste une limite connue
+
+- `history.current` n'est jamais rechargé → pas de replay de conversation cross-session (adressé au Sprint 4 session live)
+- `beforeunload` reste non fiable sur mobile pour async — atténué mais non éliminé par l'autosave 2min
+- `memory.step` n'est pas une colonne DB — `step` vient toujours de `sessions.step` au runtime
+
+## Fichiers modifiés
+
+- `netlify/functions/claude.js`
+- `src/pages/AppShell.jsx`
+- `src/constants/prompt.js`
+
+# 4. Sprint 3 (renommé) — Stabilisation des sessions
 
 ## Objectif
 creer une vraie logique de session

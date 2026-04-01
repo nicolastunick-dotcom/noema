@@ -54,8 +54,8 @@ Pipeline global réel:
 3. `AppShell` attend `accessState.loading === false` (guard dans `useEffect`), puis hydrate `memory`, hydrate la dernière ligne `sessions`, puis lance `openingMessage()`.
 4. `openingMessage()` injecte un faux message système dans `history.current`, appelle `callAPI()`, parse `_ui`, affiche la réponse nettoyée.
 5. Lors d'un vrai envoi utilisateur, `send(text)` nettoie le texte, applique le garde-fou local (30/min), pousse le message dans `msgs` et `history.current`, puis appelle `callAPI()`.
-6. `callAPI()` tronque l'historique, construit `memory_context`, récupère le JWT Supabase, envoie un POST JSON vers `ANTHROPIC_PROXY`.
-7. `netlify/functions/claude.js` vérifie le JWT, résout l'entitlement (admin → abonnement → invite), retourne 403 si absent, applique le quota 25/jour (backend uniquement), construit `system = NOEMA_SYSTEM + memory_context`, lance `runGreffier()` en parallèle, appelle Anthropic Sonnet, loggue `api_usage`, puis renvoie `{ content, _greffier }`.
+6. `callAPI()` tronque l'historique, récupère le JWT Supabase, envoie un POST JSON vers `ANTHROPIC_PROXY`. `memory_context` est encore envoyé mais ignoré côté serveur depuis Sprint 3.
+7. `netlify/functions/claude.js` vérifie le JWT, résout l'entitlement (admin → abonnement → invite), retourne 403 si absent, applique le quota 25/jour (backend uniquement), charge `memory` et `sessions.step` depuis DB en parallèle, construit `system = NOEMA_SYSTEM + buildServerMemoryContext(memRow, lastStep)`, lance `runGreffier()` en parallèle, appelle Anthropic Sonnet, loggue `api_usage`, puis renvoie `{ content, _greffier }`. (Sprint 3 + 3.1)
 8. `runGreffier()` appelle Anthropic Haiku sur les 6 derniers messages, normalise son JSON, peut upsert `memory`, peut tenter de mettre à jour `sessions`, puis renvoie un payload surtout utile à l'admin.
 9. Le frontend parse `<_ui>` avec `parseUI()`, retire le bloc caché avec `stripUI()`, fusionne l'état visible via `applyUI()`, puis affiche le texte nettoyé dans `ChatPage`.
 10. `MappingPage` lit ensuite uniquement l'état React local `insights`, `ikigai`, `step` fourni par `AppShell`.
@@ -229,7 +229,7 @@ Références:
 Champs réellement transmis au modèle principal:
 - `model`
 - `max_tokens` plafonné à `4096`
-- `system = NOEMA_SYSTEM + memory_context`
+- `system = NOEMA_SYSTEM + buildServerMemoryContext(memRow, lastStep)` — Sprint 3.1 : `lastStep` vient de `sessions.step`, pas de `memory.step`
 - `messages`
 - `stream = false`
 

@@ -1,14 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { sb, buildMemoryContext, buildSystemPrompt } from "../lib/supabase";
+import { sb, buildMemoryContext } from "../lib/supabase";
 import { ANTHROPIC_PROXY } from "../constants/config";
 import { QUOTES } from "../constants/prompt";
 import { applyTheme, mapEtat } from "../constants/themes";
-import { getTime, fmt, parseUI, stripUI, trimHistory } from "../utils/helpers";
-import StateBadge    from "../components/StateBadge";
-import InsightsPane  from "../components/InsightsPane";
-import ProgressPane  from "../components/ProgressPane";
-import IkigaiPane    from "../components/IkigaiPane";
-import { SendSVG }   from "../components/SVGs";
+import { getTime, parseUI, stripUI, trimHistory } from "../utils/helpers";
 import ChatPage      from "./ChatPage";
 import MappingPage   from "./MappingPage";
 import JournalPage   from "./JournalPage";
@@ -36,8 +31,6 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   const [typing,   setTyping]   = useState(false);
   const [mstate,   setMstate]   = useState("exploring");
   const [step,     setStep]     = useState(0);
-  const [sideTab,  setSideTab]  = useState("insights");
-  const [mobTab,   setMobTab]   = useState("chat");
   const [navTab,   setNavTab]   = useState("chat");
   const [insights, setInsights] = useState({forces:[],blocages:{racine:"",entretien:"",visible:""},contradictions:[]});
   const [ikigai,      setIkigai]      = useState({aime:"",excelle:"",monde:"",paie:"",mission:""});
@@ -146,7 +139,9 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
       saveSession(insightsRef.current, ikigaiRef.current, stepRef.current);
 
     window.addEventListener("beforeunload", doSave);
-    const timer = setInterval(doSave, 5 * 60 * 1000);
+    // Sprint 3.1 : 5min → 2min pour réduire les pertes de session_notes sur refresh rapide.
+    // beforeunload reste en place mais n'est pas fiable sur mobile / navigateurs modernes pour async.
+    const timer = setInterval(doSave, 2 * 60 * 1000);
 
     return () => {
       window.removeEventListener("beforeunload", doSave);
@@ -343,7 +338,6 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
     setMsgs([]); setStep(0); setMstate("exploring"); setNextAction("");
     setInsights({forces:[], blocages:{racine:"",entretien:"",visible:""}, contradictions:[]});
     setIkigai({aime:"", excelle:"", monde:"", paie:"", mission:""});
-    setMobTab("chat");
   }
 
   async function newSession() { await saveSession(insights, ikigai, step); reset(); }
@@ -500,18 +494,3 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
     </div>
   );
 }
-
-const panelStyle = {
-  flex: 1,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: "calc(100vh - 72px)",
-  backgroundColor: "#111318",
-};
-
-const placeholderStyle = {
-  fontFamily: "'Plus Jakarta Sans', sans-serif",
-  color: "#454655",
-  fontSize: "0.9rem",
-};

@@ -121,15 +121,27 @@ export default async (request) => {
   }
 
   // ── Chargement mémoire utilisateur (server-side) ─────────────
-  // Source de vérité : backend lit directement la table memory.
-  // Remplace le memory_context envoyé par le client — plus sécurisé, toujours frais.
+  // Sprint 3.1 : les deux queries tournent en parallèle pour éviter toute latence additionnelle.
+  // memory  → forces, blocages, contradictions, ikigai, session_notes
+  // sessions → step (absent de la table memory — pas de migration SQL requise)
   let serverMemoryContext = ''
-  const { data: memRow } = await sbAdmin
-    .from('memory')
-    .select('forces, contradictions, blocages, ikigai, session_notes, session_count, step')
-    .eq('user_id', userId)
-    .maybeSingle()
-  if (memRow) serverMemoryContext = buildServerMemoryContext(memRow)
+  const [{ data: memRow }, { data: lastSessionRow }] = await Promise.all([
+    sbAdmin
+      .from('memory')
+      .select('forces, contradictions, blocages, ikigai, session_notes, session_count')
+      .eq('user_id', userId)
+      .maybeSingle(),
+    sbAdmin
+      .from('sessions')
+      .select('step')
+      .eq('user_id', userId)
+      .order('ended_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ])
+  if (memRow || lastSessionRow) {
+    serverMemoryContext = buildServerMemoryContext(memRow, lastSessionRow?.step ?? null)
+  }
 
   try {
     const body = await request.json()
@@ -252,17 +264,19 @@ export default async (request) => {
 // Construit le contexte mémoire à partir de la table memory (côté serveur).
 // Même logique que buildMemoryContext() dans src/lib/supabase.js — dupliqué intentionnellement
 // pour garder le backend indépendant du frontend sans partager de module.
-function buildServerMemoryContext(memory) {
-  if (!memory) return ''
-  const count          = memory.session_count || 0
-  const notes          = (memory.session_notes || []).slice(-5).map(n => `- ${n}`).join('\n')
-  const forces         = (memory.forces || []).join(', ')
-  const contradictions = (memory.contradictions || []).join(', ')
-  const ikigai         = memory.ikigai   || {}
-  const blocages       = memory.blocages || {}
-  const step           = typeof memory.step === 'number' ? memory.step : null
+// Sprint 3.1 : lastStep est lu depuis sessions.step (pas de colonne step dans memory).
+function buildServerMemoryContext(memory, lastStep = null) {
+  if (!memory && lastStep === null) return ''
+  const mem            = memory || {}
+  const count          = mem.session_count || 0
+  const notes          = (mem.session_notes || []).slice(-5).map(n => `- ${n}`).join('\n')
+  const forces         = (mem.forces || []).join(', ')
+  const contradictions = (mem.contradictions || []).join(', ')
+  const ikigai         = mem.ikigai   || {}
+  const blocages       = mem.blocages || {}
+  const step           = lastStep !== null ? lastStep : null
 
-  const hasData = count > 0 || notes || forces || contradictions ||
+  const hasData = count > 0 || notes || forces || contradictions || step !== null ||
     Object.values(ikigai).some(v => v) || Object.values(blocages).some(v => v)
   if (!hasData) return ''
 

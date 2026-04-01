@@ -125,7 +125,7 @@ Règles pour remplir ce bloc :
 - "blocages" : les trois niveaux — laisse "" si pas encore détecté
 - "contradictions" : liste des contradictions repérées (strings courts, max 4)
 - "ikigai" : remplis progressivement — jamais de questions supplémentaires pour ça
-- "session_note" : une phrase sur l'état de la session + style de communication observé
+- "session_note" : synthèse en 2-3 points clés séparés par " | " — état dominant, avancée ou découverte principale, ton observé. Ex: "Peur de décevoir explorée — a nommé son père | Blocage lié au regard des autres nommé | Ton défensif puis ouvert"
 - "next_action" : la tâche concrète donnée en fin de session (vide sinon)
 
 Ce bloc est technique. Il ne fait pas partie de ta réponse. Tu le génères après chaque message, sans l'annoncer, sans en parler.`;
