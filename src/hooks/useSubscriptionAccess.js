@@ -77,21 +77,31 @@ export function useSubscriptionAccess(user) {
       return adminState;
     }
 
-    // Invite beta : token validé au moment du clic sur /invite
-    const inviteToken = sessionStorage.getItem("noema_invite");
-    if (inviteToken) {
-      const inviteState = {
-        loading: false,
-        hasActiveSubscription: true,
-        subscription: { status: "active", plan: "invite" },
-        records: [],
-        isAdmin: false,
-        adminSource: null,
-        profile,
-        error: null,
-      };
-      setState(inviteState);
-      return inviteState;
+    // Invite beta : token validé au moment du clic sur /invite, lié à l'utilisateur connecté
+    const inviteRaw = sessionStorage.getItem("noema_invite");
+    if (inviteRaw) {
+      let invite;
+      try { invite = JSON.parse(inviteRaw); } catch { invite = { token: inviteRaw }; }
+      // Première utilisation : lier le token à cet utilisateur
+      if (!invite.userId) {
+        invite.userId = user.id;
+        sessionStorage.setItem("noema_invite", JSON.stringify(invite));
+      }
+      // Vérifier que l'invite appartient bien à cet utilisateur
+      if (invite.userId === user.id) {
+        const inviteState = {
+          loading: false,
+          hasActiveSubscription: true,
+          subscription: { status: "active", plan: "invite" },
+          records: [],
+          isAdmin: false,
+          adminSource: null,
+          profile,
+          error: null,
+        };
+        setState(inviteState);
+        return inviteState;
+      }
     }
 
     const { data, error } = await sb

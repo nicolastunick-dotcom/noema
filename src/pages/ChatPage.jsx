@@ -110,7 +110,7 @@ export default function ChatPage({ msgs, typing, input, setInput, send, genIkiga
           >Nouvelle session</button>
           {sb && (
             <button
-              onClick={() => sb.auth.signOut()}
+              onClick={() => { sessionStorage.removeItem("noema_invite"); sb.auth.signOut(); }}
               style={{
                 background: "none", border: "none",
                 color: C.outline, cursor: "pointer",

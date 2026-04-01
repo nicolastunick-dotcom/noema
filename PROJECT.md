@@ -152,6 +152,8 @@ CREATE TABLE invites (
 | 31/03/2026 | Claude Code | Fix boucle "Overloaded" Anthropic — suppression reset hasOpened dans catch | ✅ | — |
 | 31/03/2026 | Claude Code | Landing hero paddingTop 192→20px (sphère dès le haut de page) | ✅ | — |
 | 01/04/2026 | Claude Code | Streaming SSE — claude.js retourne text/event-stream, callAPI lit le stream, messages affichés token par token | ✅ | — |
+| 01/04/2026 | Claude Code | Paywall App.jsx rétabli — redirect /pricing si pas d'abonnement actif (sauf DEV) | ✅ | — |
+| 01/04/2026 | Claude Code | Sécurité invitations — token lié à userId au premier login, nettoyage à la déconnexion | ✅ | — |
 
 ---
 

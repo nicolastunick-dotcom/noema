@@ -20,13 +20,20 @@ import { useSubscriptionAccess } from "./hooks/useSubscriptionAccess";
 // ROOT — Gestion navigation + auth + verrou abonnement
 // ─────────────────────────────────────────────────────────────
 export default function App() {
-  const [user, setUser] = useState(null);
-  const [authReady, setAuthReady] = useState(!sb);
-  const [locationState, setLocationState] = useState(() => ({
-    pathname: window.location.pathname,
-    search: window.location.search,
-  }));
-  const [onboardingReady, setOnboardingReady] = useState(false);
+  const DEV_USER = import.meta.env.DEV
+    ? { id: "dev-user", email: "dev@noema.local", user_metadata: { full_name: "Dev" } }
+    : null;
+
+  const [user, setUser] = useState(DEV_USER);
+  const [authReady, setAuthReady] = useState(import.meta.env.DEV || !sb);
+  const [locationState, setLocationState] = useState(() => {
+    if (import.meta.env.DEV) {
+      window.history.replaceState({}, "", "/app/chat");
+      return { pathname: "/app/chat", search: "" };
+    }
+    return { pathname: window.location.pathname, search: window.location.search };
+  });
+  const [onboardingReady, setOnboardingReady] = useState(import.meta.env.DEV);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   const route = useMemo(
@@ -86,6 +93,8 @@ export default function App() {
   }, [syncLocation]);
 
   useEffect(() => {
+    if (import.meta.env.DEV) return; // bypass auth en local — DEV_USER déjà défini
+
     if (!sb) {
       setAuthReady(true);
       return;
@@ -158,6 +167,14 @@ export default function App() {
       if (!user) {
         navigate(buildLocation("/login", { reason: "auth_required", next: currentAppPath }), { replace: true });
         return;
+      }
+
+      if (!import.meta.env.DEV) {
+        if (access.loading) return;
+        if (!access.hasActiveSubscription) {
+          navigate(buildLocation("/pricing", { reason: "subscription_required" }), { replace: true });
+          return;
+        }
       }
 
       if (!onboardingReady) return;
