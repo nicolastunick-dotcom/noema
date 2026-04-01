@@ -124,7 +124,7 @@ export default async (request) => {
           model:             allowed.model,
           prompt_tokens:     data.usage.input_tokens,
           completion_tokens: data.usage.output_tokens,
-        }).catch(e => console.log('[Usage] log failed:', e.message))
+        }).then(() => {}, e => console.log('[Usage] log failed:', e.message))
       }
     }
 
