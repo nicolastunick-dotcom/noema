@@ -86,9 +86,11 @@ Le code est correct (STRIPE_SECRET_KEY lu depuis process.env, Price ID = price_1
 - `STRIPE_SECRET_KEY` (commence par `sk_live_` ou `sk_test_`)
 - `SUPABASE_SERVICE_ROLE_KEY`
 
-### 🟡 PRIORITÉ 2 — Webhook Stripe → table `subscriptions`
-Après que Stripe confirme le paiement, créer/mettre à jour la ligne dans `subscriptions` Supabase.
-Créer `netlify/functions/stripe-webhook.js` + `STRIPE_WEBHOOK_SECRET` dans env vars.
+### 🟡 PRIORITÉ 2 — Webhook Stripe → table `subscriptions` ✅ FAIT
+`netlify/functions/stripe-webhook.js` créé. Écoute `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`.
+**Reste à faire :**
+- Ajouter `STRIPE_WEBHOOK_SECRET` dans Netlify dashboard env vars
+- Configurer l'URL webhook dans Stripe Dashboard (voir bas de fichier)
 
 ### 🟡 PRIORITÉ 3 — Autres
 - Corrections sécurité restantes (voir `codex.md` priorités 2 et 3)
@@ -160,6 +162,7 @@ CREATE TABLE invites (
 | 01/04/2026 | Codex | Durcissement du fix streaming `<_ui>` — accumulation sur flux brut avant `setState` pour éviter les fuites inter-chunks | ✅ | Vérifier visuellement en local / prod |
 | 01/04/2026 | Codex | Abandon du streaming mot à mot — retour aux réponses en bloc + Greffier parallélisé + `max_tokens` réduit pour accélérer la réponse | ✅ | Vérifier le ressenti en prod |
 | 01/04/2026 | Claude Code | Fix mémoire inter-sessions — C1: autosave `beforeunload` + `setInterval` 5min dans AppShell ; C2: `buildMemoryContext` souple (session_count=0 OK) ; C3: Greffier reçoit `sbAdmin` (était `null`) → persist dans `memory` + `sessions` | ✅ | — |
+| 01/04/2026 | Claude Code | Webhook Stripe — `stripe-webhook.js` : checkout.session.completed → upsert subscriptions ; subscription.updated → sync status ; subscription.deleted → cancelled | ✅ | Ajouter `STRIPE_WEBHOOK_SECRET` dans Netlify env vars + configurer URL dans Stripe Dashboard |
 
 ---
 
