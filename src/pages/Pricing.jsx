@@ -126,9 +126,11 @@ export default function Pricing({ onNav, user, accessState, notice = null }) {
 
   const primaryAction = hasActiveSubscription
     ? { label: "Commencer votre introspection", onClick: () => onNav?.("/app/chat"), disabled: false }
-    : checkoutLoading
-      ? { label: "Redirection...", onClick: undefined, disabled: true }
-      : { label: "Commencer maintenant", onClick: handleCheckoutClick, disabled: false };
+    : !user
+      ? { label: "Se connecter pour continuer", onClick: () => onNav?.("/login"), disabled: false }
+      : checkoutLoading
+        ? { label: "Redirection...", onClick: undefined, disabled: true }
+        : { label: "Commencer maintenant", onClick: handleCheckoutClick, disabled: false };
 
   return (
     <div
