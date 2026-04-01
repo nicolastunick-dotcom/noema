@@ -106,10 +106,12 @@ Le projet promet explicitement:
 
 ### 3.2 Ce que le runtime exécute réellement
 
-Mémoire:
-- `buildMemoryContext()` réinjecte seulement `session_notes`, `forces` et des fragments `ikigai`
-- `blocages` et `contradictions` ne reviennent pas dans le prompt principal
-- la promesse "mémoire infinie" est donc `partielle`, pas totalement fausse
+Mémoire (état après Sprint 3):
+- `buildMemoryContext()` réinjecte désormais `forces`, `contradictions`, `blocages` (3 niveaux), `ikigai` (5 champs), `session_notes`, `session_count`, `step`
+- `blocages` et `contradictions` sont maintenant inclus dans le prompt principal
+- `memoryRef.current` est mis à jour en live après chaque réponse `_ui` via `updateMemoryRef()` — le contexte s'enrichit au fil de la session sans attendre `saveSession()`
+- `claude.js` charge la mémoire depuis DB côté serveur (`buildServerMemoryContext`) — ne dépend plus du `memory_context` client
+- la promesse "mémoire infinie" reste `partielle` mais nettement moins creuse
 
 Clôture de session:
 - le prompt demande une tâche concrète en fin de session
@@ -133,7 +135,7 @@ Billing:
 
 | Domaine | Vision / promesse | Runtime réel | Etat |
 |---|---|---|---|
-| Mémoire | continuité totale | mémoire injectée partielle + snapshots | partiel |
+| Mémoire | continuité totale | `forces`, `blocages`, `contradictions`, `ikigai`, `step` injectés — mid-session live via `updateMemoryRef` | réel (Sprint 3) |
 | Guide quotidien | journal guidé + rituel du jour | deux pages statiques | mocké |
 | Cartographie | miroir vivant de progression | Mapping branché au `_ui` | réel mais partiel |
 | Paiement -> accès | activation claire après paiement | vérité dans `subscriptions`, mais `Success` ne vérifie pas | partiel |

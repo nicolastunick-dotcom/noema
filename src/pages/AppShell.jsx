@@ -75,6 +75,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
       const ui    = parseUI(raw);
       const clean = stripUI(raw);
       applyUI(ui);
+      updateMemoryRef(ui);
       setMsgs([{ role: "noema", text: clean, time: getTime() }]);
       history.current.push({ role: "assistant", content: raw });
     } catch (e) {
@@ -109,7 +110,11 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
       if (last) {
         if (last.insights) setInsights(i => ({ ...i, ...last.insights }));
         if (last.ikigai)   setIkigai(k => ({ ...k, ...last.ikigai }));
-        if (typeof last.step === "number") setStep(last.step);
+        if (typeof last.step === "number") {
+          setStep(last.step);
+          // Sprint 3 : injecter le step dans memoryRef pour qu'il soit inclus dans buildMemoryContext()
+          if (memoryRef.current) memoryRef.current = { ...memoryRef.current, step: last.step };
+        }
       }
       await openingMessage();
     })();
@@ -179,6 +184,36 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   }
 
   // ── 5. UI HANDLER ────────────────────────────────────────────
+  // Sprint 3 : met à jour memoryRef.current en live après chaque réponse _ui.
+  // Permet à buildMemoryContext() d'envoyer un contexte enrichi dès le message suivant
+  // dans la même session, sans attendre saveSession() (5 min / beforeunload).
+  function updateMemoryRef(ui) {
+    if (!ui) return;
+    const prev = memoryRef.current || {};
+    memoryRef.current = {
+      ...prev,
+      forces: [...new Set([...(prev.forces || []), ...(ui.forces || [])])].slice(0, 10),
+      contradictions: [...new Set([...(prev.contradictions || []), ...(ui.contradictions || [])])].slice(0, 6),
+      blocages: ui.blocages
+        ? {
+            racine:    ui.blocages.racine    || prev.blocages?.racine    || "",
+            entretien: ui.blocages.entretien || prev.blocages?.entretien || "",
+            visible:   ui.blocages.visible   || prev.blocages?.visible   || "",
+          }
+        : (prev.blocages || {}),
+      ikigai: ui.ikigai
+        ? {
+            aime:    ui.ikigai.aime    || prev.ikigai?.aime    || "",
+            excelle: ui.ikigai.excelle || prev.ikigai?.excelle || "",
+            monde:   ui.ikigai.monde   || prev.ikigai?.monde   || "",
+            paie:    ui.ikigai.paie    || prev.ikigai?.paie    || "",
+            mission: ui.ikigai.mission || prev.ikigai?.mission || "",
+          }
+        : (prev.ikigai || {}),
+      step: typeof ui.step === "number" ? Math.max(prev.step || 0, ui.step) : (prev.step || 0),
+    };
+  }
+
   function applyUI(ui) {
     if (!ui) return;
     if (ui.session_note) lastSessionNote.current = ui.session_note;
@@ -252,6 +287,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
       const ui    = parseUI(raw);
       const clean = stripUI(raw);
       applyUI(ui);
+      updateMemoryRef(ui);
       const hasUpdate = ui && (
         (ui.forces?.length > 0) || (ui.ikigai && Object.values(ui.ikigai).some(v => v)) ||
         (ui.contradictions?.length > 0) || (ui.blocages?.racine)

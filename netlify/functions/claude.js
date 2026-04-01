@@ -120,6 +120,17 @@ export default async (request) => {
     )
   }
 
+  // ── Chargement mémoire utilisateur (server-side) ─────────────
+  // Source de vérité : backend lit directement la table memory.
+  // Remplace le memory_context envoyé par le client — plus sécurisé, toujours frais.
+  let serverMemoryContext = ''
+  const { data: memRow } = await sbAdmin
+    .from('memory')
+    .select('forces, contradictions, blocages, ikigai, session_notes, session_count, step')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (memRow) serverMemoryContext = buildServerMemoryContext(memRow)
+
   try {
     const body = await request.json()
 
@@ -158,12 +169,11 @@ export default async (request) => {
     }
 
     // Whitelist des champs autorisés — ne jamais forwarder le body brut
-    // Le system prompt est toujours NOEMA_SYSTEM (serveur) + memory_context optionnel (client)
-    const memoryContext = typeof body.memory_context === 'string' ? body.memory_context : ''
+    // Le system prompt est toujours NOEMA_SYSTEM + serverMemoryContext (chargé depuis DB ci-dessus)
     const allowed = {
       model:      body.model      || 'claude-sonnet-4-6',
       max_tokens: Math.min(body.max_tokens || 1100, 4096),
-      system:     NOEMA_SYSTEM + memoryContext,
+      system:     NOEMA_SYSTEM + serverMemoryContext,
       messages:   Array.isArray(body.messages) ? body.messages : [],
       stream:     false,
     }
@@ -237,6 +247,46 @@ export default async (request) => {
       { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
     )
   }
+}
+
+// Construit le contexte mémoire à partir de la table memory (côté serveur).
+// Même logique que buildMemoryContext() dans src/lib/supabase.js — dupliqué intentionnellement
+// pour garder le backend indépendant du frontend sans partager de module.
+function buildServerMemoryContext(memory) {
+  if (!memory) return ''
+  const count          = memory.session_count || 0
+  const notes          = (memory.session_notes || []).slice(-5).map(n => `- ${n}`).join('\n')
+  const forces         = (memory.forces || []).join(', ')
+  const contradictions = (memory.contradictions || []).join(', ')
+  const ikigai         = memory.ikigai   || {}
+  const blocages       = memory.blocages || {}
+  const step           = typeof memory.step === 'number' ? memory.step : null
+
+  const hasData = count > 0 || notes || forces || contradictions ||
+    Object.values(ikigai).some(v => v) || Object.values(blocages).some(v => v)
+  if (!hasData) return ''
+
+  const sessionLabel = count > 0
+    ? `${count} session${count > 1 ? 's' : ''} précédente${count > 1 ? 's' : ''}`
+    : 'première session'
+
+  return [
+    `\n\n---\nMÉMOIRE INTER-SESSIONS (${sessionLabel}) :`,
+    notes          ? `Notes des dernières sessions :\n${notes}` : '',
+    forces         ? `Forces identifiées : ${forces}` : '',
+    contradictions ? `Contradictions repérées : ${contradictions}` : '',
+    blocages.racine    ? `Blocage racine : ${blocages.racine}` : '',
+    blocages.entretien ? `Ce qui l'entretient : ${blocages.entretien}` : '',
+    blocages.visible   ? `Manifestation visible : ${blocages.visible}` : '',
+    ikigai.aime    ? `Ikigai — ce qu'il aime : ${ikigai.aime}` : '',
+    ikigai.excelle ? `Ikigai — ce en quoi il excelle : ${ikigai.excelle}` : '',
+    ikigai.monde   ? `Ikigai — besoin du monde : ${ikigai.monde}` : '',
+    ikigai.paie    ? `Ikigai — ce pour quoi il peut être payé : ${ikigai.paie}` : '',
+    ikigai.mission ? `Ikigai — mission : ${ikigai.mission}` : '',
+    step !== null  ? `Progression actuelle : étape ${step}/10` : '',
+    '---',
+    "Appuie-toi sur ces données pour assurer la continuité. Rappelle l'évolution par rapport aux sessions précédentes quand c'est pertinent.",
+  ].filter(Boolean).join('\n')
 }
 
 function corsHeaders() {

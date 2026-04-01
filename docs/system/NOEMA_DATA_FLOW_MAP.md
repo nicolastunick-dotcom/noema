@@ -121,8 +121,9 @@ Références:
 
 `memory`:
 - porte à la fois l'onboarding (`onboarding_done`) et la mémoire conversationnelle
-- `buildMemoryContext()` ne réinjecte que `session_count`, `session_notes`, `forces` et des fragments `ikigai`
-- `contradictions` et `blocages` sont stockés, mais pas réinjectés dans le prompt principal
+- `buildMemoryContext()` réinjecte désormais : `session_count`, `session_notes`, `forces`, `contradictions`, `blocages` (3 niveaux), `ikigai` (5 champs), `step` — Sprint 3
+- `claude.js` charge la mémoire depuis DB côté serveur via `buildServerMemoryContext()` — ne dépend plus du `memory_context` envoyé par le client
+- `AppShell.updateMemoryRef(ui)` enrichit `memoryRef.current` après chaque réponse `_ui`, sans attendre `saveSession()` — le contexte s'accumule mid-session
 
 `sessions`:
 - l'UI ne relit que `insights`, `ikigai`, `step` de la dernière ligne
