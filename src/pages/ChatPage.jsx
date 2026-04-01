@@ -271,8 +271,8 @@ export default function ChatPage({ msgs, typing, input, setInput, send, genIkiga
           </div>
         ))}
 
-        {/* Typing indicator */}
-        {typing && (
+        {/* Typing indicator — masqué dès le premier chunk reçu */}
+        {typing && !msgs.some(m => m.streaming && m.text.length > 0) && (
           <div style={{ alignSelf: "flex-start", padding: "4px 0 4px 4px" }}>
             <NoemaOrb size={50} showText={false} />
           </div>

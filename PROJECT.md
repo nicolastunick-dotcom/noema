@@ -151,6 +151,7 @@ CREATE TABLE invites (
 | 31/03/2026 | Claude Code | NoemaOrb — lettrine N centrée + brume violet clippée + sphère agrandie | ✅ | — |
 | 31/03/2026 | Claude Code | Fix boucle "Overloaded" Anthropic — suppression reset hasOpened dans catch | ✅ | — |
 | 31/03/2026 | Claude Code | Landing hero paddingTop 192→20px (sphère dès le haut de page) | ✅ | — |
+| 01/04/2026 | Claude Code | Streaming SSE — claude.js retourne text/event-stream, callAPI lit le stream, messages affichés token par token | ✅ | — |
 
 ---
 
