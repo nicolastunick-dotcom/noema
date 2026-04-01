@@ -23,3 +23,4 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy        = "strict-origin-when-cross-origin"
     Permissions-Policy     = "camera=(), microphone=(), geolocation=()"
+    Content-Security-Policy = "default-src 'self'; style-src 'self' 'unsafe-inline' https://js.stripe.com; script-src 'self' https://js.stripe.com https://hooks.stripe.com; frame-src 'self' https://js.stripe.com https://hooks.stripe.com"

@@ -172,6 +172,38 @@ END;
 $$;
 
 -- ─────────────────────────────────────────────────────────────
+-- INVITATIONS BETA
+-- Table créée manuellement le 26/03/2026 — formalisée Sprint 1
+-- user_id = lien persistant entre le token et l'utilisateur
+-- (source de vérité accès beta côté backend depuis Sprint 1)
+-- ─────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS invites (
+  id          uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  token       text UNIQUE NOT NULL,
+  label       text,
+  created_by  uuid REFERENCES auth.users(id),
+  created_at  timestamptz DEFAULT now(),
+  active      boolean DEFAULT true,
+  user_id     uuid REFERENCES auth.users(id)  -- null = invite pas encore liée à un compte
+);
+
+ALTER TABLE invites ENABLE ROW LEVEL SECURITY;
+
+-- Un utilisateur peut lire l'invite liée à son compte
+-- (utilisé par useSubscriptionAccess pour vérifier l'accès beta en DB)
+DROP POLICY IF EXISTS "invites: user read own" ON invites;
+CREATE POLICY "invites: user read own" ON invites
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- ─────────────────────────────────────────────────────────────
+-- MIGRATION Sprint 1 — à exécuter si invites existait déjà en prod
+-- ─────────────────────────────────────────────────────────────
+-- ALTER TABLE invites ADD COLUMN IF NOT EXISTS user_id uuid REFERENCES auth.users(id);
+-- DROP POLICY IF EXISTS "invites: user read own" ON invites;
+-- CREATE POLICY "invites: user read own" ON invites FOR SELECT USING (auth.uid() = user_id);
+
+-- ─────────────────────────────────────────────────────────────
 -- DASHBOARD ADMIN: SUIVI CONSOMMATION TOKEN (API USAGE)
 -- ─────────────────────────────────────────────────────────────
 

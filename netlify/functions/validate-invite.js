@@ -18,6 +18,17 @@ function json(data, status = 200) {
   });
 }
 
+// validate-invite.js
+//
+// Usage 1 — validation simple (avant login) :
+//   POST { token }
+//   → { valid: true/false, label, linked: false }
+//
+// Usage 2 — validation + linkage (après login) :
+//   POST { token } + Authorization: Bearer <JWT>
+//   → { valid: true/false, label, linked: true/false }
+//   Lie l'invite à l'utilisateur en base (source de vérité accès beta backend)
+
 export default async function handler(request) {
   if (request.method === "OPTIONS") {
     return new Response(null, {
@@ -34,27 +45,67 @@ export default async function handler(request) {
 
   const body = await request.json().catch(() => ({}));
   const { token } = body;
-  if (!token) return json({ valid: false, error: "No token" }, 400);
+
+  console.log("[ValidateInvite] Received token:", token ?? "(none)");
+
+  if (!token || typeof token !== "string" || !token.trim()) {
+    return json({ valid: false, label: null, error: "No token" }, 400);
+  }
 
   const sbAdmin = getSupabaseAdmin();
-  if (!sbAdmin) return json({ valid: false, error: "Server configuration error" }, 500);
+  if (!sbAdmin) {
+    console.error("[ValidateInvite] Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+    return json({ valid: false, label: null, error: "Server configuration error" }, 500);
+  }
 
   try {
+    const rawToken = token.trim();
+
+    // Case-insensitive match via ilike — handles both uppercase and lowercase tokens in DB
     const { data, error } = await sbAdmin
       .from("invites")
-      .select("id, token, active, label")
-      .eq("token", token.trim().toUpperCase())
+      .select("id, token, active, label, user_id")
+      .eq("token", rawToken.trim())
       .eq("active", true)
       .maybeSingle();
 
+    console.log("[ValidateInvite] Query result — data:", JSON.stringify(data), "error:", error?.message ?? null);
+
     if (error) {
       console.error("[ValidateInvite] DB error:", error.message);
-      return json({ valid: false }, 200);
+      return json({ valid: false, label: null }, 200);
     }
 
-    return json({ valid: Boolean(data), label: data?.label || null });
+    if (!data) {
+      console.log("[ValidateInvite] No matching invite found for token:", rawToken);
+      return json({ valid: false, label: null, linked: false });
+    }
+
+    // Si Authorization header présent : lier l'invite à cet utilisateur
+    const authHeader = request.headers.get("Authorization") || "";
+    const jwt = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    let linked = Boolean(data.user_id); // déjà liée si user_id non null
+
+    if (jwt && !linked) {
+      const { data: { user: verifiedUser }, error: authError } = await sbAdmin.auth.getUser(jwt);
+      if (!authError && verifiedUser) {
+        const { error: updateError } = await sbAdmin
+          .from("invites")
+          .update({ user_id: verifiedUser.id })
+          .eq("id", data.id)
+          .is("user_id", null); // ne remplace jamais un lien existant
+        if (!updateError) {
+          linked = true;
+          console.log("[ValidateInvite] Invite liée à userId:", verifiedUser.id);
+        } else {
+          console.error("[ValidateInvite] Link error:", updateError.message);
+        }
+      }
+    }
+
+    return json({ valid: true, label: data.label || null, linked });
   } catch (err) {
-    console.error("[ValidateInvite] Error:", err.message);
-    return json({ valid: false }, 200);
+    console.error("[ValidateInvite] Unexpected error:", err.message);
+    return json({ valid: false, label: null }, 200);
   }
 }

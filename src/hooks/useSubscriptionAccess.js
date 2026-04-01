@@ -92,18 +92,69 @@ export function useSubscriptionAccess(user) {
       return adminState;
     }
 
-    // Invite beta : token validé au moment du clic sur /invite, lié à l'utilisateur connecté
+    // ── Invite beta ────────────────────────────────────────────────
+    // Sprint 1 : source de vérité = table invites (user_id lié).
+    // Fallback : sessionStorage (utilisateurs existants pas encore liés en base).
+    // Lorsque sessionStorage invite est présent, on tente de le persister en base via
+    // validate-invite (avec JWT) pour que le backend puisse vérifier l'entitlement.
+
+    // 1. Vérification en base (source de vérité après linkage)
+    const { data: dbInvite } = await sb
+      .from("invites")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("active", true)
+      .maybeSingle();
+
+    if (dbInvite) {
+      const inviteState = {
+        loading: false,
+        hasActiveSubscription: true,
+        subscription: { status: "active", plan: "invite" },
+        records: [],
+        isAdmin: false,
+        adminSource: null,
+        profile,
+        error: null,
+      };
+      setState(inviteState);
+      return inviteState;
+    }
+
+    // 2. Fallback sessionStorage + tentative de persistance en base
     const inviteRaw = sessionStorage.getItem("noema_invite");
     if (inviteRaw) {
       let invite;
       try { invite = JSON.parse(inviteRaw); } catch { invite = { token: inviteRaw }; }
-      // Première utilisation : lier le token à cet utilisateur
+
+      // Lier à cet utilisateur dans sessionStorage si pas encore fait
       if (!invite.userId) {
         invite.userId = user.id;
         sessionStorage.setItem("noema_invite", JSON.stringify(invite));
       }
-      // Vérifier que l'invite appartient bien à cet utilisateur
+
       if (invite.userId === user.id) {
+        // Persister le lien en base pour que le backend (claude.js) puisse vérifier l'entitlement
+        if (invite.token) {
+          try {
+            const { data: { session: authSession } } = await sb.auth.getSession();
+            if (authSession?.access_token) {
+              const baseUrl = import.meta.env.VITE_NETLIFY_URL || window.location.origin;
+              fetch(`${baseUrl}/.netlify/functions/validate-invite`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${authSession.access_token}`,
+                },
+                body: JSON.stringify({ token: invite.token }),
+              }).catch(e => console.warn("[Noema] Invite linkage failed:", e.message));
+              // Fire-and-forget : on n'attend pas la réponse pour ne pas bloquer l'UI
+            }
+          } catch (e) {
+            console.warn("[Noema] Impossible de récupérer la session pour linkage invite:", e.message);
+          }
+        }
+
         const inviteState = {
           loading: false,
           hasActiveSubscription: true,
@@ -119,6 +170,7 @@ export function useSubscriptionAccess(user) {
       }
     }
 
+    // ── Abonnement Stripe ──────────────────────────────────────────
     const { data, error } = await sb
       .from("subscriptions")
       .select("id, user_id, stripe_customer_id, stripe_subscription_id, plan, status, current_period_end, cancel_at_period_end, created_at, updated_at")

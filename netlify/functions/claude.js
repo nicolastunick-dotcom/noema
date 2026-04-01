@@ -63,43 +63,98 @@ export default async (request) => {
     )
   }
 
+  // ── Résolution d'entitlement ──────────────────────────────────
+  // Autorité finale d'accès : backend uniquement.
+  // Un JWT valide ne suffit pas — l'entitlement produit doit être vérifié ici.
+  // Ordre de vérification : admin → abonnement actif → invite beta persistée
+  let hasEntitlement = false
+  let isAdmin = false
+
+  // 1. Admin via profiles.is_admin
+  const { data: profile } = await sbAdmin
+    .from('profiles')
+    .select('is_admin')
+    .eq('id', userId)
+    .maybeSingle()
+  if (profile?.is_admin === true) {
+    hasEntitlement = true
+    isAdmin = true
+  }
+
+  // 2. Bypass admin email legacy (transitoire — à retirer une fois profiles.is_admin généralisé)
+  if (!hasEntitlement) {
+    const adminEmail = process.env.VITE_ADMIN_EMAIL || ''
+    if (adminEmail && verifiedUser.email === adminEmail) {
+      hasEntitlement = true
+      isAdmin = true
+    }
+  }
+
+  // 3. Abonnement actif ou en période d'essai
+  if (!hasEntitlement) {
+    const { data: sub } = await sbAdmin
+      .from('subscriptions')
+      .select('status')
+      .eq('user_id', userId)
+      .in('status', ['active', 'trialing'])
+      .maybeSingle()
+    if (sub) hasEntitlement = true
+  }
+
+  // 4. Invite beta liée en base (persistée via validate-invite.js avec JWT)
+  if (!hasEntitlement) {
+    const { data: invite } = await sbAdmin
+      .from('invites')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('active', true)
+      .maybeSingle()
+    if (invite) hasEntitlement = true
+  }
+
+  if (!hasEntitlement) {
+    console.log('[claude] accès refusé — pas d\'entitlement pour userId:', userId)
+    return new Response(
+      JSON.stringify({ error: { message: 'Accès non autorisé. Un abonnement actif ou une invitation valide est requis.' } }),
+      { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
+    )
+  }
+
   try {
     const body = await request.json()
 
-    // ── Limite de session (25 messages par user par jour) ────────
-    // userId est déjà extrait du JWT vérifié — on n'utilise plus body.user_id
-    const adminEmail = process.env.VITE_ADMIN_EMAIL || ''
-    const isAdminUser = adminEmail && verifiedUser.email === adminEmail
-    if (userId && !isAdminUser) {
-      const sbAdmin = getSupabaseAdmin()
-      if (sbAdmin) {
-        const today = new Date().toISOString().slice(0, 10)
-        const { data: rl } = await sbAdmin
-          .from('rate_limits')
-          .select('count')
-          .eq('user_id', userId)
-          .eq('date', today)
-          .maybeSingle()
-        const count = rl?.count || 0
-        if (count >= SESSION_LIMIT) {
-          return new Response(JSON.stringify({
-            content: SESSION_LIMIT_MSG,
-            _greffier: null,
-            _session_limit: true,
-          }), {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-              ...corsHeaders()
-            }
-          })
-        }
-        // Incrément
-        await sbAdmin.from('rate_limits').upsert(
-          { user_id: userId, date: today, count: count + 1 },
-          { onConflict: 'user_id,date' }
-        )
+    // ── Quota produit (25 messages par user par jour) ─────────────
+    // Unique source de vérité : backend seulement depuis Sprint 1.
+    // Le frontend ne lit/écrit plus rate_limits (seulement garde-fou local 30/min).
+    // La limite reste journalière — elle deviendra par session au Sprint 3 (session_id live).
+    // Les admins sont exemptés du quota.
+    if (!isAdmin) {
+      const today = new Date().toISOString().slice(0, 10)
+      const { data: rl } = await sbAdmin
+        .from('rate_limits')
+        .select('count')
+        .eq('user_id', userId)
+        .eq('date', today)
+        .maybeSingle()
+      const count = rl?.count || 0
+      if (count >= SESSION_LIMIT) {
+        return new Response(JSON.stringify({
+          content: SESSION_LIMIT_MSG,
+          _greffier: null,
+          _session_limit: true,
+        }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders()
+          }
+        })
       }
+      // Incrément — seule écriture quota produit dans tout le système
+      await sbAdmin.from('rate_limits').upsert(
+        { user_id: userId, date: today, count: count + 1 },
+        { onConflict: 'user_id,date' }
+      )
     }
 
     // Whitelist des champs autorisés — ne jamais forwarder le body brut
@@ -154,15 +209,12 @@ export default async (request) => {
       : ''
 
     if (userId && data.usage) {
-      const sbAdmin = getSupabaseAdmin()
-      if (sbAdmin) {
-        sbAdmin.from('api_usage').insert({
-          user_id:           userId,
-          model:             allowed.model,
-          prompt_tokens:     data.usage.input_tokens,
-          completion_tokens: data.usage.output_tokens,
-        }).then(() => {}, e => console.log('[Usage] log failed:', e.message))
-      }
+      sbAdmin.from('api_usage').insert({
+        user_id:           userId,
+        model:             allowed.model,
+        prompt_tokens:     data.usage.input_tokens,
+        completion_tokens: data.usage.output_tokens,
+      }).then(() => {}, e => console.log('[Usage] log failed:', e.message))
     }
 
     console.log('[Greffier] déclenchement, msgs:', messages.length, 'userId:', userId)

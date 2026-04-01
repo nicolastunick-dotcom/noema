@@ -210,22 +210,14 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   }
 
   // ── 6. RATE LIMIT ────────────────────────────────────────────
-  async function checkRateLimit() {
+  // Sprint 1 : le frontend ne lit/écrit plus rate_limits en Supabase.
+  // Le quota produit (25/jour) est appliqué uniquement par claude.js côté backend.
+  // Ce garde-fou local (30/minute) protège seulement contre le spam réseau immédiat.
+  function checkRateLimit() {
     const now = Date.now();
     minuteTimestamps.current = minuteTimestamps.current.filter(t => now - t < 60_000);
     if (minuteTimestamps.current.length >= 30) {
       return "Tu envoies trop de messages. Attends une minute avant de continuer.";
-    }
-    if (sb && user) {
-      const today = new Date().toISOString().slice(0, 10);
-      const { data, error } = await sb.from("rate_limits").select("count").eq("user_id", user.id).eq("date", today).maybeSingle();
-      if (error) console.error("[Noema] Erreur rate_limits lecture:", error);
-      const currentCount = data?.count || 0;
-      if (currentCount >= 100) return "Tu as atteint ta limite pour aujourd'hui. Reviens demain pour continuer.";
-      await sb.from("rate_limits").upsert(
-        { user_id: user.id, date: today, count: currentCount + 1 },
-        { onConflict: "user_id,date" }
-      );
     }
     minuteTimestamps.current.push(now);
     return null;
@@ -238,7 +230,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
     setInput("");
     if (taRef.current) taRef.current.style.height = "auto";
 
-    const rateLimitMsg = await checkRateLimit();
+    const rateLimitMsg = checkRateLimit();
     if (rateLimitMsg) {
       setMsgs(m => [...m, {role:"noema", text:rateLimitMsg, time:getTime(), isErr:true}]);
       return;
