@@ -82,21 +82,14 @@ export default async (request) => {
           .maybeSingle()
         const count = rl?.count || 0
         if (count >= SESSION_LIMIT) {
-          // Retourner le message de limite comme un stream SSE pour uniformité
-          const limitStream = new ReadableStream({
-            start(controller) {
-              const encoder = new TextEncoder()
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'delta', text: SESSION_LIMIT_MSG })}\n\n`))
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', _greffier: null, _session_limit: true })}\n\n`))
-              controller.close()
-            }
-          })
-          return new Response(limitStream, {
+          return new Response(JSON.stringify({
+            content: SESSION_LIMIT_MSG,
+            _greffier: null,
+            _session_limit: true,
+          }), {
             status: 200,
             headers: {
-              'Content-Type': 'text/event-stream',
-              'Transfer-Encoding': 'chunked',
-              'Cache-Control': 'no-cache',
+              'Content-Type': 'application/json',
               ...corsHeaders()
             }
           })
@@ -114,15 +107,24 @@ export default async (request) => {
     const memoryContext = typeof body.memory_context === 'string' ? body.memory_context : ''
     const allowed = {
       model:      body.model      || 'claude-sonnet-4-6',
-      max_tokens: Math.min(body.max_tokens || 1400, 4096),
+      max_tokens: Math.min(body.max_tokens || 1100, 4096),
       system:     NOEMA_SYSTEM + memoryContext,
       messages:   Array.isArray(body.messages) ? body.messages : [],
-      stream:     true,
+      stream:     false,
     }
 
     const messages   = allowed.messages
     const sessionId  = body.session_id || null
     const userMemory = body.user_memory && typeof body.user_memory === 'object' ? body.user_memory : {}
+    const greffierPromise = runGreffier({ apiKey, sb: null, userId, sessionId, history: messages, userMemory })
+      .then((result) => {
+        console.log('[Greffier] succès:', JSON.stringify(result)?.slice(0, 120))
+        return result
+      })
+      .catch((e) => {
+        console.error('[Greffier] erreur:', e.message)
+        return null
+      })
 
     const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -143,101 +145,36 @@ export default async (request) => {
       )
     }
 
-    // ── Stream SSE ────────────────────────────────────────────────
-    const encoder = new TextEncoder()
-    let fullText = ''
-    let usageData = null
+    const data = await anthropicResponse.json()
+    const fullText = Array.isArray(data.content)
+      ? data.content
+        .filter((block) => block?.type === 'text' && typeof block.text === 'string')
+        .map((block) => block.text)
+        .join('')
+      : ''
 
-    const stream = new ReadableStream({
-      async start(controller) {
-        const reader = anthropicResponse.body.getReader()
-        const decoder = new TextDecoder()
-        let buffer = ''
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
-
-            buffer += decoder.decode(value, { stream: true })
-            const lines = buffer.split('\n')
-            // Garde la dernière ligne incomplète dans le buffer
-            buffer = lines.pop()
-
-            for (const line of lines) {
-              const trimmed = line.trim()
-              if (!trimmed.startsWith('data:')) continue
-              const raw = trimmed.slice(5).trim()
-              if (raw === '[DONE]') continue
-              let evt
-              try { evt = JSON.parse(raw) } catch { continue }
-
-              if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta' && evt.delta?.text) {
-                fullText += evt.delta.text
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'delta', text: evt.delta.text })}\n\n`))
-              } else if (evt.type === 'message_delta' && evt.usage) {
-                usageData = evt.usage
-              }
-            }
-          }
-
-          // Vider le buffer restant
-          if (buffer.trim()) {
-            const trimmed = buffer.trim()
-            if (trimmed.startsWith('data:')) {
-              const raw = trimmed.slice(5).trim()
-              if (raw && raw !== '[DONE]') {
-                let evt
-                try { evt = JSON.parse(raw) } catch { evt = null }
-                if (evt?.type === 'content_block_delta' && evt.delta?.type === 'text_delta' && evt.delta?.text) {
-                  fullText += evt.delta.text
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'delta', text: evt.delta.text })}\n\n`))
-                }
-              }
-            }
-          }
-
-          // ── Log usage Sonnet dans api_usage ──────────────────────────
-          if (userId && usageData) {
-            const sbAdmin = getSupabaseAdmin()
-            if (sbAdmin) {
-              sbAdmin.from('api_usage').insert({
-                user_id:           userId,
-                model:             allowed.model,
-                prompt_tokens:     usageData.input_tokens,
-                completion_tokens: usageData.output_tokens,
-              }).then(() => {}, e => console.log('[Usage] log failed:', e.message))
-            }
-          }
-
-          // ── Greffier — analyse silencieuse (chaque message) ─────────
-          console.log('[Greffier] déclenchement, msgs:', messages.length, 'userId:', userId)
-          let greffierResult = null
-          try {
-            greffierResult = await runGreffier({ apiKey, sb: null, userId, sessionId, history: messages, userMemory })
-            console.log('[Greffier] succès:', JSON.stringify(greffierResult)?.slice(0, 120))
-          } catch (e) {
-            console.error('[Greffier] erreur:', e.message)
-          }
-
-          // Envoyer l'événement "done" avec le résultat du Greffier
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', _greffier: greffierResult })}\n\n`))
-          controller.close()
-
-        } catch (err) {
-          console.error('[claude] Erreur stream:', err.message)
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: err.message })}\n\n`))
-          controller.close()
-        }
+    if (userId && data.usage) {
+      const sbAdmin = getSupabaseAdmin()
+      if (sbAdmin) {
+        sbAdmin.from('api_usage').insert({
+          user_id:           userId,
+          model:             allowed.model,
+          prompt_tokens:     data.usage.input_tokens,
+          completion_tokens: data.usage.output_tokens,
+        }).then(() => {}, e => console.log('[Usage] log failed:', e.message))
       }
-    })
+    }
 
-    return new Response(stream, {
+    console.log('[Greffier] déclenchement, msgs:', messages.length, 'userId:', userId)
+    const greffierResult = await greffierPromise
+
+    return new Response(JSON.stringify({
+      content: fullText,
+      _greffier: greffierResult,
+    }), {
       status: 200,
       headers: {
-        'Content-Type': 'text/event-stream',
-        'Transfer-Encoding': 'chunked',
-        'Cache-Control': 'no-cache',
+        'Content-Type': 'application/json',
         ...corsHeaders()
       }
     })

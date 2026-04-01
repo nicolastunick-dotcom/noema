@@ -3,7 +3,7 @@ import { sb, buildMemoryContext, buildSystemPrompt } from "../lib/supabase";
 import { ANTHROPIC_PROXY } from "../constants/config";
 import { QUOTES } from "../constants/prompt";
 import { applyTheme, mapEtat } from "../constants/themes";
-import { getTime, fmt, parseUI, stripUI, stripUIStreaming, trimHistory } from "../utils/helpers";
+import { getTime, fmt, parseUI, stripUI, trimHistory } from "../utils/helpers";
 import StateBadge    from "../components/StateBadge";
 import InsightsPane  from "../components/InsightsPane";
 import ProgressPane  from "../components/ProgressPane";
@@ -65,20 +65,8 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
     const trigger = `[SYSTÈME — ne pas afficher] Démarre la session. Ouvre avec cette citation de ${q.author} : "${q.text}" — intègre-la naturellement dans ton message d'accueil en créant un lien personnel avec l'utilisateur. Pose ensuite une première question ouverte pour commencer l'exploration.`;
     history.current.push({ role: "user", content: trigger });
     setTyping(true);
-    // Ajoute le message streaming vide immédiatement
-    setMsgs([{ role: "noema", text: "", rawText: "", time: getTime(), streaming: true }]);
     try {
-      const raw = await callAPI((chunk) => {
-        setMsgs(m => {
-          const last = m[m.length - 1];
-          if (last && last.streaming) {
-            const accumulated = (last.rawText || "") + chunk;
-            const visible = stripUIStreaming(accumulated);
-            return [...m.slice(0, -1), { ...last, rawText: accumulated, text: visible }];
-          }
-          return m;
-        });
-      });
+      const raw = await callAPI();
       const ui    = parseUI(raw);
       const clean = stripUI(raw);
       applyUI(ui);
@@ -131,7 +119,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   }, [msgs, typing]);
 
   // ── 4. API ───────────────────────────────────────────────────
-  async function callAPI(onChunk) {
+  async function callAPI() {
     const h = trimHistory(history.current);
     const memory_context = buildMemoryContext(memoryRef.current);
     const headers = { "Content-Type":"application/json" };
@@ -142,46 +130,20 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
         headers["Authorization"] = `Bearer ${session.access_token}`;
       }
     }
-    const bodyPayload = { model:"claude-sonnet-4-6", max_tokens:1400, memory_context, messages:h };
+    const bodyPayload = { model:"claude-sonnet-4-6", max_tokens:1100, memory_context, messages:h };
     const res = await fetch(ANTHROPIC_PROXY, {
       method:"POST", headers,
       body: JSON.stringify(bodyPayload),
     });
-    if (!res.ok) { const e=await res.json().catch(()=>{}); throw new Error(e?.error?.message||`HTTP ${res.status}`); }
-
-    // ── Lecture du stream SSE ─────────────────────────────────
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let fullText = "";
-    let buffer = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop(); // ligne incomplète conservée
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith("data:")) continue;
-        const raw = trimmed.slice(5).trim();
-        if (!raw) continue;
-        let evt;
-        try { evt = JSON.parse(raw); } catch { continue; }
-
-        if (evt.type === "delta" && evt.text) {
-          fullText += evt.text;
-          if (onChunk) onChunk(evt.text);
-        } else if (evt.type === "done") {
-          if (evt._greffier) { lastGreffierLog.current = evt._greffier; setGreffierLogTick(t => t + 1); }
-          return fullText;
-        } else if (evt.type === "error") {
-          throw new Error(evt.message || "Erreur stream SSE");
-        }
-      }
+    const payload = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new Error(payload?.error?.message || `HTTP ${res.status}`);
     }
-    return fullText;
+    if (payload?._greffier) {
+      lastGreffierLog.current = payload._greffier;
+      setGreffierLogTick(t => t + 1);
+    }
+    return typeof payload?.content === "string" ? payload.content : "";
   }
 
   // ── 5. UI HANDLER ────────────────────────────────────────────
@@ -259,24 +221,10 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
     history.current.push({role:"user", content:t});
     setTyping(true);
 
-    // Ajoute immédiatement le message streaming vide
     const streamTime = getTime();
-    setMsgs(m => [...m, {role:"noema", text:"", rawText:"", time:streamTime, streaming:true}]);
 
     try {
-      const raw = await callAPI((chunk) => {
-        setMsgs(m => {
-          const last = m[m.length - 1];
-          if (last && last.streaming) {
-            const accumulated = (last.rawText || "") + chunk;
-            const visible = stripUIStreaming(accumulated);
-            // Dès le premier chunk visible, on retire typing (orbe disparaît)
-            if (last.text === "" && visible) setTyping(false);
-            return [...m.slice(0, -1), { ...last, rawText: accumulated, text: visible }];
-          }
-          return m;
-        });
-      });
+      const raw = await callAPI();
       const ui    = parseUI(raw);
       const clean = stripUI(raw);
       applyUI(ui);
@@ -284,23 +232,10 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
         (ui.forces?.length > 0) || (ui.ikigai && Object.values(ui.ikigai).some(v => v)) ||
         (ui.contradictions?.length > 0) || (ui.blocages?.racine)
       );
-      // Remplace le message streaming par la version finale (sans flag streaming)
-      setMsgs(m => {
-        const last = m[m.length - 1];
-        if (last && last.streaming) {
-          return [...m.slice(0, -1), {role:"noema", text:clean, time:streamTime, hasUpdate}];
-        }
-        return [...m, {role:"noema", text:clean, time:streamTime, hasUpdate}];
-      });
+      setMsgs(m => [...m, {role:"noema", text:clean, time:streamTime, hasUpdate}]);
       history.current.push({role:"assistant", content:raw});
     } catch(e) {
-      setMsgs(m => {
-        const last = m[m.length - 1];
-        if (last && last.streaming) {
-          return [...m.slice(0, -1), {role:"noema", text:"Une erreur est survenue. Réessaie dans un instant.", time:streamTime, isErr:true}];
-        }
-        return [...m, {role:"noema", text:"Une erreur est survenue. Réessaie dans un instant.", time:streamTime, isErr:true}];
-      });
+      setMsgs(m => [...m, {role:"noema", text:"Une erreur est survenue. Réessaie dans un instant.", time:streamTime, isErr:true}]);
       console.error(e);
     }
     setTyping(false);
