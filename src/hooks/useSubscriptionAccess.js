@@ -24,6 +24,21 @@ export function useSubscriptionAccess(user) {
       return INITIAL_STATE;
     }
 
+    if (ADMIN_EMAIL && user.email === ADMIN_EMAIL) {
+      const adminState = {
+        loading: false,
+        hasActiveSubscription: true,
+        subscription: { status: "active", plan: "admin" },
+        records: [],
+        isAdmin: true,
+        adminSource: "legacy_email",
+        profile: null,
+        error: null,
+      };
+      setState(adminState);
+      return adminState;
+    }
+
     if (!sb) {
       const hasLegacyAdminAccess = Boolean(ADMIN_EMAIL && user.email === ADMIN_EMAIL);
       const nextState = {
