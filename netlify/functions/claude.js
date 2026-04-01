@@ -68,7 +68,9 @@ export default async (request) => {
 
     // ── Limite de session (25 messages par user par jour) ────────
     // userId est déjà extrait du JWT vérifié — on n'utilise plus body.user_id
-    if (userId) {
+    const adminEmail = process.env.VITE_ADMIN_EMAIL || ''
+    const isAdminUser = adminEmail && verifiedUser.email === adminEmail
+    if (userId && !isAdminUser) {
       const sbAdmin = getSupabaseAdmin()
       if (sbAdmin) {
         const today = new Date().toISOString().slice(0, 10)
