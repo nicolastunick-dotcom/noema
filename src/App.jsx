@@ -233,7 +233,11 @@ export default function App() {
     user,
   ]);
 
+  // Sprint 1.1 : bloquer le rendu d'AppShell tant que l'entitlement n'est pas résolu (prod uniquement).
+  // Sans ce garde, AppShell peut monter avec accessState.loading=true et déclencher openingMessage()
+  // avant que useSubscriptionAccess ait terminé son check admin/sub/invite.
   const shouldBlockForChecks = !authReady
+    || (!import.meta.env.DEV && route.page === "app" && user && access.loading)
     || ((route.page === "app" || route.page === "login" || route.page === "onboarding") && user && !onboardingReady);
 
   if (shouldBlockForChecks) {

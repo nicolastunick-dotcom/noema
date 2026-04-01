@@ -158,6 +158,56 @@ Tests de non-regression:
 - faux negatifs d'entitlement si le webhook Stripe n'a pas encore synchronise `subscriptions`
 - support necessaire pour les comptes beta deja invites avant le changement de schema
 
+# 2.1 Sprint 1.1 — Correction race condition bootstrap ✅ EXÉCUTÉ (01/04/2026)
+
+## Symptôme corrigé
+
+Sur les comptes invités (et potentiellement abonnés sur connexions lentes), `openingMessage()` déclenchait
+un appel à `/.netlify/functions/claude` avant que l'entitlement soit résolu côté backend.
+Résultat : 403 au chargement, puis chat fonctionnel quelques instants plus tard.
+
+## Cause identifiée
+
+Race condition en trois couches :
+1. `INITIAL_STATE.loading = false` dans `useSubscriptionAccess` → le hook signalait "pas en cours de chargement"
+   avant même que `refresh()` soit lancé. En React, les effets des enfants (AppShell) tirent avant ceux des parents
+   (App.jsx/useSubscriptionAccess), donc `openingMessage()` partait avant que `refresh()` démarre.
+2. `AppShell.useEffect([user])` ne vérifiait pas `accessState?.loading` → lançait toujours `openingMessage()`
+   quelle que soit l'état de résolution de l'entitlement.
+3. Pour les comptes sessionStorage-only (première connexion invite), le linkage `invites.user_id` était
+   fire-and-forget → `claude.js` ne trouvait pas encore `invites.user_id` quand `openingMessage()` appelait le backend.
+
+## Correctif appliqué
+
+### `src/hooks/useSubscriptionAccess.js`
+- `INITIAL_STATE.loading` passe de `false` à `true` : le hook commence toujours en état "en cours de chargement"
+- La branche "no user" retourne explicitement `loading: false` (avant elle retournait INITIAL_STATE)
+- Le linkage sessionStorage passe de fire-and-forget à `await fetch(...)` : `loading` reste `true`
+  jusqu'à confirmation que `invites.user_id` est bien lié en base
+
+### `src/pages/AppShell.jsx`
+- Ajout d'un guard `if (accessState?.loading) return` dans `useEffect([user, accessState?.loading])`
+- `accessState?.loading` ajouté aux dépendances de l'effet : l'effet se relance quand `loading` passe à `false`
+
+### `src/App.jsx`
+- `shouldBlockForChecks` étend sa condition : `(!import.meta.env.DEV && route.page === "app" && user && access.loading)`
+- AppShell n'est plus monté du tout en prod tant que l'entitlement n'est pas résolu
+- Ceinture + bretelles : même si AppShell se montait, le guard AppShell l'arrêterait
+
+## Ce qui est maintenant vrai
+
+- `openingMessage()` ne part jamais avant que `accessState.loading = false`
+- Pour les comptes invités sessionStorage : le linkage `invites.user_id` est confirmé avant la résolution
+- `claude.js` trouve l'entitlement → 200 sur le message d'ouverture
+- Admin, abonnés, comptes sans droit : comportement identique à avant (pas de régression)
+- DEV non impacté (`!import.meta.env.DEV` exclut le blocage App.jsx en local)
+
+## Fichiers modifiés
+
+- `src/hooks/useSubscriptionAccess.js`
+- `src/pages/AppShell.jsx`
+- `src/App.jsx`
+
 # 3. Sprint 2 — Unification du systeme
 
 ## Objectif

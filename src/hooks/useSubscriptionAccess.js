@@ -3,7 +3,10 @@ import { sb } from "../lib/supabase";
 import { hasActiveSubscriptionRecord } from "../lib/access";
 
 const INITIAL_STATE = {
-  loading: false,
+  // Sprint 1.1 : loading: true dès le départ pour bloquer openingMessage() tant que
+  // l'entitlement n'est pas résolu. Évite le faux 403 sur les comptes invités.
+  // Tous les chemins de refresh() posent explicitement loading: false avant de retourner.
+  loading: true,
   hasActiveSubscription: false,
   subscription: null,
   records: [],
@@ -20,8 +23,10 @@ export function useSubscriptionAccess(user) {
 
   const refresh = useCallback(async () => {
     if (!user?.id) {
-      setState(INITIAL_STATE);
-      return INITIAL_STATE;
+      // Pas d'utilisateur → rien à charger, on nettoie et on sort avec loading: false
+      const noUserState = { ...INITIAL_STATE, loading: false };
+      setState(noUserState);
+      return noUserState;
     }
 
     if (ADMIN_EMAIL && user.email === ADMIN_EMAIL) {
@@ -136,22 +141,27 @@ export function useSubscriptionAccess(user) {
       if (invite.userId === user.id) {
         // Persister le lien en base pour que le backend (claude.js) puisse vérifier l'entitlement
         if (invite.token) {
+          // Sprint 1.1 : linkage ATTENDU (plus fire-and-forget).
+          // invites.user_id doit être lié AVANT que loading passe à false,
+          // sinon claude.js ne trouve pas l'entitlement et retourne 403 sur openingMessage().
           try {
             const { data: { session: authSession } } = await sb.auth.getSession();
             if (authSession?.access_token) {
               const baseUrl = import.meta.env.VITE_NETLIFY_URL || window.location.origin;
-              fetch(`${baseUrl}/.netlify/functions/validate-invite`, {
+              await fetch(`${baseUrl}/.netlify/functions/validate-invite`, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
                   "Authorization": `Bearer ${authSession.access_token}`,
                 },
                 body: JSON.stringify({ token: invite.token }),
-              }).catch(e => console.warn("[Noema] Invite linkage failed:", e.message));
-              // Fire-and-forget : on n'attend pas la réponse pour ne pas bloquer l'UI
+              });
+              console.log("[Noema] Invite linkage confirmé avant résolution entitlement.");
             }
           } catch (e) {
-            console.warn("[Noema] Impossible de récupérer la session pour linkage invite:", e.message);
+            // Non-bloquant sur erreur réseau : accès frontend accordé quand même.
+            // La prochaine session re-tentera automatiquement.
+            console.warn("[Noema] Invite linkage failed:", e.message);
           }
         }
 

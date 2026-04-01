@@ -43,14 +43,15 @@ Etat global du système chat (post Sprint 1):
 - `partiel`: Greffier comme source de vérité, cohérence prompt/UI, persistance session live, exploitation de `memory` complète, DEV runtime, linkage `invites.user_id` (migration SQL à exécuter en prod)
 - `legacy`: `src/App.original.jsx`, `src/constants/prompt-greffier.js`, panneaux latéraux V1, imports/états orphelins dans `AppShell`
 - `résolu Sprint 1`: double comptage quota client/serveur supprimé ; entitlement backend ajouté ; `invites` formalisée dans le schéma
+- `résolu Sprint 1.1`: race condition bootstrap corrigée — `openingMessage()` ne part plus avant résolution entitlement ; linkage invite sessionStorage bloquant avant ouverture chat
 
 ## 2. Vue d'ensemble du flux
 
 Pipeline global réel:
 
 1. L'utilisateur atteint `/app/chat` via `src/App.jsx` et `src/lib/access.js`.
-2. `App.jsx` vérifie auth, abonnement et onboarding, puis monte `AppShell`.
-3. `AppShell` hydrate `memory`, hydrate la dernière ligne `sessions`, puis lance `openingMessage()`.
+2. `App.jsx` vérifie auth, abonnement et onboarding, puis monte `AppShell`. En prod, `shouldBlockForChecks` inclut `access.loading` : AppShell n'est pas monté tant que l'entitlement n'est pas résolu (Sprint 1.1).
+3. `AppShell` attend `accessState.loading === false` (guard dans `useEffect`), puis hydrate `memory`, hydrate la dernière ligne `sessions`, puis lance `openingMessage()`.
 4. `openingMessage()` injecte un faux message système dans `history.current`, appelle `callAPI()`, parse `_ui`, affiche la réponse nettoyée.
 5. Lors d'un vrai envoi utilisateur, `send(text)` nettoie le texte, applique le garde-fou local (30/min), pousse le message dans `msgs` et `history.current`, puis appelle `callAPI()`.
 6. `callAPI()` tronque l'historique, construit `memory_context`, récupère le JWT Supabase, envoie un POST JSON vers `ANTHROPIC_PROXY`.

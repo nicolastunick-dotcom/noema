@@ -89,6 +89,11 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   // ── 3. EFFECTS ───────────────────────────────────────────────
   useEffect(() => {
     if (!sb || !user) return;
+    // Sprint 1.1 : ne pas ouvrir le chat avant que l'entitlement soit résolu.
+    // accessState.loading reste true pendant que useSubscriptionAccess vérifie admin/sub/invite.
+    // Pour les comptes invités sessionStorage, il reste true jusqu'à la fin du linkage invites.user_id.
+    // Cela garantit que claude.js trouve l'entitlement et ne retourne pas un faux 403.
+    if (accessState?.loading) return;
     (async () => {
       const { data: mem, error: memErr } = await sb.from("memory").select("*").eq("user_id", user.id).maybeSingle();
       if (memErr) console.error("[Noema] Erreur chargement memory:", memErr);
@@ -108,7 +113,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
       }
       await openingMessage();
     })();
-  }, [user]);
+  }, [user, accessState?.loading]);
 
   useEffect(() => {
     if (user) return;
