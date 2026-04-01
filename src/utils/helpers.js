@@ -25,6 +25,11 @@ export function stripUI(raw) {
   return raw.replace(/<_ui>[\s\S]*?<\/_ui>/g, "").trim();
 }
 
+// Comme stripUI mais supprime aussi les blocs partiels en cours de streaming
+export function stripUIStreaming(raw) {
+  return raw.replace(/<_ui>[\s\S]*?<\/_ui>/g, "").replace(/<_ui>[\s\S]*$/, "").trim();
+}
+
 export function trimHistory(h) {
   if (h.length <= MAX_HISTORY) return h;
   return [h[0], ...h.slice(-(MAX_HISTORY - 1))];

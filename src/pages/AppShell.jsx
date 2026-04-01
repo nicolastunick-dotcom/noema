@@ -3,7 +3,7 @@ import { sb, buildMemoryContext, buildSystemPrompt } from "../lib/supabase";
 import { ANTHROPIC_PROXY } from "../constants/config";
 import { QUOTES } from "../constants/prompt";
 import { applyTheme, mapEtat } from "../constants/themes";
-import { getTime, fmt, parseUI, stripUI, trimHistory } from "../utils/helpers";
+import { getTime, fmt, parseUI, stripUI, stripUIStreaming, trimHistory } from "../utils/helpers";
 import StateBadge    from "../components/StateBadge";
 import InsightsPane  from "../components/InsightsPane";
 import ProgressPane  from "../components/ProgressPane";
@@ -72,7 +72,8 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
         setMsgs(m => {
           const last = m[m.length - 1];
           if (last && last.streaming) {
-            return [...m.slice(0, -1), { ...last, text: last.text + chunk }];
+            const accumulated = last.text + chunk;
+            return [...m.slice(0, -1), { ...last, text: stripUIStreaming(accumulated) }];
           }
           return m;
         });
@@ -266,9 +267,11 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
         setMsgs(m => {
           const last = m[m.length - 1];
           if (last && last.streaming) {
-            // Dès le premier chunk, on retire typing (orbe disparaît)
-            if (last.text === "" && chunk) setTyping(false);
-            return [...m.slice(0, -1), { ...last, text: last.text + chunk }];
+            const accumulated = last.text + chunk;
+            const visible = stripUIStreaming(accumulated);
+            // Dès le premier chunk visible, on retire typing (orbe disparaît)
+            if (last.text === "" && visible) setTyping(false);
+            return [...m.slice(0, -1), { ...last, text: visible }];
           }
           return m;
         });
