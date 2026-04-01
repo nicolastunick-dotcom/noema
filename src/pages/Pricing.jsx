@@ -100,7 +100,7 @@ export default function Pricing({ onNav, user, accessState, notice = null }) {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ priceId: "price_1TAZhkQh5xN0PliA3dUAqyqP" }),
+        body: JSON.stringify({ priceId: "price_1TAZhkQh5xNOPliA3dUAqyqP" }),
       });
 
       const data = await res.json();

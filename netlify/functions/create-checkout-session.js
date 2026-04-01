@@ -47,7 +47,7 @@ export default async function handler(request) {
   if (authError || !verifiedUser) return json({ error: "Unauthorized" }, 401);
 
   const body = await request.json().catch(() => ({}));
-  const priceId = body.priceId || "price_1TAZhkQh5xN0PliA3dUAqyqP";
+  const priceId = body.priceId || "price_1TAZhkQh5xNOPliA3dUAqyqP";
 
   const stripeKey = process.env.STRIPE_SECRET_KEY;
   if (!stripeKey) return json({ error: "Stripe not configured" }, 500);
