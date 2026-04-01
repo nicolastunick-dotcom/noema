@@ -53,6 +53,11 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   const lastGreffierLog = useRef(null); // admin: dernier log Greffier
   const [greffierLogTick, setGreffierLogTick] = useState(0); // force re-render quand log maj
 
+  // Refs miroirs pour les valeurs d'état — toujours à jour dans les closures async/événements
+  const insightsRef = useRef(insights);
+  const ikigaiRef   = useRef(ikigai);
+  const stepRef     = useRef(step);
+
   useEffect(() => {
     setNavTab(initialTab || "chat");
   }, [initialTab]);
@@ -110,6 +115,11 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
     openingMessage();
   }, []);
 
+  // Sync des refs miroirs à chaque changement d'état
+  useEffect(() => { insightsRef.current = insights; }, [insights]);
+  useEffect(() => { ikigaiRef.current   = ikigai;   }, [ikigai]);
+  useEffect(() => { stepRef.current     = step;     }, [step]);
+
   useEffect(() => { applyTheme(mstate); }, [mstate]);
 
   useEffect(() => {
@@ -117,6 +127,23 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
       if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight;
     });
   }, [msgs, typing]);
+
+  // ── Sauvegarde automatique ────────────────────────────────────
+  // beforeunload : sauvegarde quand l'utilisateur ferme ou recharge
+  // setInterval  : sauvegarde silencieuse toutes les 5 minutes
+  useEffect(() => {
+    const doSave = () =>
+      saveSession(insightsRef.current, ikigaiRef.current, stepRef.current);
+
+    window.addEventListener("beforeunload", doSave);
+    const timer = setInterval(doSave, 5 * 60 * 1000);
+
+    return () => {
+      window.removeEventListener("beforeunload", doSave);
+      clearInterval(timer);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── 4. API ───────────────────────────────────────────────────
   async function callAPI() {

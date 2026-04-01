@@ -116,7 +116,7 @@ export default async (request) => {
     const messages   = allowed.messages
     const sessionId  = body.session_id || null
     const userMemory = body.user_memory && typeof body.user_memory === 'object' ? body.user_memory : {}
-    const greffierPromise = runGreffier({ apiKey, sb: null, userId, sessionId, history: messages, userMemory })
+    const greffierPromise = runGreffier({ apiKey, sb: sbAdmin, userId, sessionId, history: messages, userMemory })
       .then((result) => {
         console.log('[Greffier] succès:', JSON.stringify(result)?.slice(0, 120))
         return result

@@ -20,21 +20,34 @@ function createSB() {
 export const sb = createSB();
 
 export function buildMemoryContext(memory) {
-  if (!memory || !memory.session_count) return "";
+  // Retourne vide seulement si l'objet est absent — session_count à 0 ou null est acceptable
+  if (!memory) return "";
+
+  const count  = memory.session_count || 0;
   const notes  = (memory.session_notes || []).slice(-6).map(n => `- ${n}`).join("\n");
   const forces = (memory.forces || []).join(", ");
   const ikigai = memory.ikigai || {};
+
+  // Vérifie qu'il y a au moins une donnée exploitable avant de construire le contexte
+  const hasData = count > 0 || notes || forces ||
+    Object.values(ikigai).some(v => v);
+  if (!hasData) return "";
+
+  const sessionLabel = count > 0
+    ? `${count} session${count > 1 ? "s" : ""} précédente${count > 1 ? "s" : ""}`
+    : "première session";
+
   return [
-    `\n\n---\nMÉMOIRE INTER-SESSIONS (${memory.session_count} session${memory.session_count > 1 ? "s" : ""} précédente${memory.session_count > 1 ? "s" : ""}) :`,
+    `\n\n---\nMÉMOIRE INTER-SESSIONS (${sessionLabel}) :`,
     notes  ? `Notes des dernières sessions :\n${notes}` : "",
-    forces ? `Forces identifiées jusqu'ici : ${forces}` : "",
-    ikigai.aime    ? `Ikigai — ce qu'il aime : ${ikigai.aime}`                   : "",
+    forces ? `Forces identifiées jusqu\'ici : ${forces}` : "",
+    ikigai.aime    ? `Ikigai — ce qu\'il aime : ${ikigai.aime}`                   : "",
     ikigai.excelle ? `Ikigai — ce en quoi il excelle : ${ikigai.excelle}`         : "",
     ikigai.monde   ? `Ikigai — besoin du monde : ${ikigai.monde}`                 : "",
     ikigai.paie    ? `Ikigai — ce pour quoi il peut être payé : ${ikigai.paie}`   : "",
     ikigai.mission ? `Ikigai — mission : ${ikigai.mission}`                       : "",
     "---",
-    "Appuie-toi sur ces données pour assurer la continuité. Rappelle l'évolution par rapport aux sessions précédentes quand c'est pertinent.",
+    "Appuie-toi sur ces données pour assurer la continuité. Rappelle l\'évolution par rapport aux sessions précédentes quand c\'est pertinent.",
   ].filter(Boolean).join("\n");
 }
 
