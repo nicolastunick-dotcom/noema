@@ -61,7 +61,7 @@ export default async function handler(request) {
   try {
     const rawToken = token.trim();
 
-    // Case-insensitive match via ilike — handles both uppercase and lowercase tokens in DB
+    // Correspondance exacte — tokens toujours en majuscules (générés par create-invite.js)
     const { data, error } = await sbAdmin
       .from("invites")
       .select("id, token, active, label, user_id")

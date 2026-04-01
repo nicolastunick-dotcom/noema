@@ -208,6 +208,29 @@ Race condition en trois couches :
 - `src/pages/AppShell.jsx`
 - `src/App.jsx`
 
+# 2.2 Nettoyage final Sprint 1 ✅ EXÉCUTÉ (01/04/2026)
+
+## Actions
+
+- `src/hooks/useSubscriptionAccess.js` : vérification `res.ok` sur le fetch vers `validate-invite`.
+  Si HTTP 4xx/5xx, l'erreur est maintenant loggée (`console.error`) au lieu d'être silencieuse.
+  Le flow utilisateur n'est pas interrompu (l'accès frontend est accordé quand même — le catch reste).
+- `netlify/functions/validate-invite.js` : commentaire corrigé ligne 64 — `ilike` → `eq` exact,
+  avec mention que les tokens sont toujours en majuscules (générés par `create-invite.js`).
+- Migration SQL `invites.user_id` exécutée en prod (hors code — action manuelle confirmée).
+
+## Sprint 1 clos
+
+Tous les livrables Sprint 1 sont en production et nettoyés :
+- entitlement backend (admin / abonnement / invite)
+- quota backend unique
+- race condition bootstrap résolue
+- linkage `invites.user_id` fonctionnel
+- robustesse fetch linkage améliorée
+- documentation à jour
+
+**Sprint 2 peut démarrer.**
+
 # 3. Sprint 2 — Unification du systeme
 
 ## Objectif

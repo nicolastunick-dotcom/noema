@@ -148,7 +148,7 @@ export function useSubscriptionAccess(user) {
             const { data: { session: authSession } } = await sb.auth.getSession();
             if (authSession?.access_token) {
               const baseUrl = import.meta.env.VITE_NETLIFY_URL || window.location.origin;
-              await fetch(`${baseUrl}/.netlify/functions/validate-invite`, {
+              const res = await fetch(`${baseUrl}/.netlify/functions/validate-invite`, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
@@ -156,7 +156,12 @@ export function useSubscriptionAccess(user) {
                 },
                 body: JSON.stringify({ token: invite.token }),
               });
-              console.log("[Noema] Invite linkage confirmé avant résolution entitlement.");
+              if (!res.ok) {
+                const errText = await res.text().catch(() => String(res.status));
+                console.error("[Noema] Invite linkage HTTP error:", errText);
+              } else {
+                console.log("[Noema] Invite linkage confirmé avant résolution entitlement.");
+              }
             }
           } catch (e) {
             // Non-bloquant sur erreur réseau : accès frontend accordé quand même.

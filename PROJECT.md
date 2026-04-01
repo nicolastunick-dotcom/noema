@@ -282,6 +282,7 @@ CREATE TABLE invites (
 | 01/04/2026 | Claude Code | Infrastructure documentaire — déplacement NOEMA_*.md → `docs/system/`, création `README.md` + `NOEMA_DOCUMENTATION_POLICY.md`, refonte section Documentation `PROJECT.md` + checklist validation | ✅ | Appliquer la politique documentaire à chaque run touchant un domaine système |
 | 01/04/2026 | Claude Code | Sprint 1 Alignement — entitlement backend dans `claude.js` (admin/sub/invite → 403 si absent) + quota backend unifié (suppression rate_limits frontend dans `AppShell`) + `invites.user_id` + linkage `validate-invite` + `useSubscriptionAccess` check DB | ✅ | Avant déploiement : exécuter migration SQL `ALTER TABLE invites ADD COLUMN IF NOT EXISTS user_id` en prod. Puis lancer Sprint 2. |
 | 01/04/2026 | Claude Code | Sprint 1.1 Race condition bootstrap — faux 403 sur `openingMessage()` pour comptes invités corrigé : `INITIAL_STATE.loading=true` + guard `accessState?.loading` dans AppShell + linkage sessionStorage invite bloquant (plus fire-and-forget) + `shouldBlockForChecks` étendu à `access.loading` en prod | ✅ | Vérifier en prod : plus de 403 console au chargement pour compte invité. Chat et admin non régressés. |
+| 01/04/2026 | Claude Code | Sprint 1 nettoyage final — vérification `res.ok` sur le fetch validate-invite dans `useSubscriptionAccess` (erreur HTTP désormais loggée) + commentaire corrigé dans `validate-invite.js` (ilike → eq exact). Migration SQL `invites.user_id` exécutée en prod. Sprint 1 clos. | ✅ | Sprint 2 peut démarrer. |
 	
   Document ajouté : NOEMA_RUNTIME_GAPS.md
 	•	Motif :
