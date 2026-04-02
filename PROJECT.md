@@ -66,11 +66,12 @@ Tous les documents techniques sont centralisés dans [`docs/system/`](docs/syste
 | Document | Rôle |
 |---|---|
 | [`NOEMA_SYSTEM_MAP.md`](docs/system/NOEMA_SYSTEM_MAP.md) | Structure globale du codebase réel |
+| [`NOEMA_VISION.md`](docs/system/NOEMA_VISION.md) | Nature cible de Noema — 4 phases, rôle du mapping, ce qui est là vs ce qui manque |
 | [`NOEMA_CHAT_ORCHESTRATION_MAP.md`](docs/system/NOEMA_CHAT_ORCHESTRATION_MAP.md) | Moteur conversationnel complet |
 | [`NOEMA_DATA_FLOW_MAP.md`](docs/system/NOEMA_DATA_FLOW_MAP.md) | Flux de données réels, tables, sources de vérité |
 | [`NOEMA_RUNTIME_GAPS.md`](docs/system/NOEMA_RUNTIME_GAPS.md) | Écarts runtime vs vision vs documentation |
 | [`NOEMA_ALIGNMENT_PLAN.md`](docs/system/NOEMA_ALIGNMENT_PLAN.md) | Décisions d'alignement système |
-| [`NOEMA_ALIGNMENT_EXECUTION_PLAN.md`](docs/system/NOEMA_ALIGNMENT_EXECUTION_PLAN.md) | Plan d'implémentation sprint par sprint |
+| [`NOEMA_ALIGNMENT_EXECUTION_PLAN.md`](docs/system/NOEMA_ALIGNMENT_EXECUTION_PLAN.md) | Plan d'implémentation sprint par sprint (inclut Sprint 9-13) |
 
 **Règle** : toute modification touchant l'architecture, l'accès, les quotas, le prompt, l'état `_ui`, le Greffier, le mapping, la mémoire, les sessions, le billing, Journal, Today ou une table Supabase doit être accompagnée d'une mise à jour des documents concernés dans `docs/system/`. Voir [`NOEMA_DOCUMENTATION_POLICY.md`](docs/system/NOEMA_DOCUMENTATION_POLICY.md) pour le process complet.
 
@@ -237,6 +238,26 @@ Les documents système sont maintenant dans `docs/system/`. Les références ci-
 ---
 
 ## En cours / Priorités
+
+### Direction produit clarifiée — Noema comme système de transformation
+
+Noema n'est plus un "chat avec mémoire". C'est un système de progression sur 4 phases :
+1. **Voir** — clarification, prise de conscience, premiers schémas
+2. **Comprendre** — contradictions, croyances, comportements répétitifs, nettoyage
+3. **S'aligner** — ikigai réel, ambition, direction
+4. **Agir** — coaching d'action, accountability, réussite mesurable
+
+Le prompt Phase 1 / Phase 2 existe déjà. La mémoire inter-sessions existe. Le mapping existe.
+Ce qui manque : que Phase 2 soit visible dans l'UI, que les schémas cross-sessions remontent, que le mapping devienne un miroir de progression et non juste d'état courant.
+
+Prochaines étapes dans l'ordre (voir `NOEMA_ALIGNMENT_EXECUTION_PLAN.md` section 11) :
+- Sprint 9 : Phase 2 visible dans l'UI (indicateur de phase + ouverture adaptée)
+- Sprint 10 : Check-in de session basé sur `next_action` précédente
+- Sprint 11 : Schémas cross-sessions — détection et réinjection dans le contexte
+- Sprint 12 : Mapping évolutif — timeline de progression et schémas persistants
+- Sprint 13 : Semantic memory (si validé)
+
+---
 
 ### 🔴 BUG RÉSOLU — Boucle "Overloaded" Anthropic
 `hasOpened.current = false` dans le catch d'`openingMessage` causait une boucle infinie de requêtes Anthropic lors des rechargements HMR (ou si l'API renvoyait 529 Overloaded). Fix : le reset a été supprimé — si l'opening message échoue, il ne réessaie plus automatiquement.
@@ -415,6 +436,8 @@ servir de référence pour toute IA ou développeur afin d’éviter les mauvais
 	•	désalignement prompt/UI
 	•	accès frontend vs backend
 ---
+
+| 02/04/2026 | Claude Code | Débat architecture produit + mise à jour documentation vision : création `NOEMA_VISION.md` (4 phases, rôle mapping, ce qui est là vs ce qui manque), Sprint 9-13 dans `NOEMA_ALIGNMENT_EXECUTION_PLAN.md`, résumé exécutif `NOEMA_SYSTEM_MAP.md` mis à jour pour refléter Noema comme système de progression, direction produit clarifiée dans `PROJECT.md` | ✅ | Démarrer Sprint 9 : Phase 2 visible dans l'UI |
 
 > **RÈGLE** : Tout agent qui commence une tâche ajoute une ligne dans le Journal.
 > Tout agent qui termine met à jour le statut et indique la suite.

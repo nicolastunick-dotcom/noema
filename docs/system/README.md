@@ -12,11 +12,12 @@ Toute modification structurelle du projet doit entraîner la mise à jour des do
 Pour comprendre Noema en 5 minutes :
 
 1. [NOEMA_SYSTEM_MAP.md](NOEMA_SYSTEM_MAP.md) — structure globale du codebase réel
-2. [NOEMA_CHAT_ORCHESTRATION_MAP.md](NOEMA_CHAT_ORCHESTRATION_MAP.md) — moteur conversationnel (AppShell → claude.js → Greffier → Supabase)
-3. [NOEMA_DATA_FLOW_MAP.md](NOEMA_DATA_FLOW_MAP.md) — flux de données réels (tables, lectures, écritures, vérités d'accès)
-4. [NOEMA_RUNTIME_GAPS.md](NOEMA_RUNTIME_GAPS.md) — écarts entre vision produit et runtime réel
-5. [NOEMA_ALIGNMENT_PLAN.md](NOEMA_ALIGNMENT_PLAN.md) — décisions d'alignement système
-6. [NOEMA_ALIGNMENT_EXECUTION_PLAN.md](NOEMA_ALIGNMENT_EXECUTION_PLAN.md) — plan d'implémentation séquencé, sprint par sprint
+2. [NOEMA_VISION.md](NOEMA_VISION.md) — nature cible de Noema, 4 phases, ce qui est là vs ce qui manque
+3. [NOEMA_CHAT_ORCHESTRATION_MAP.md](NOEMA_CHAT_ORCHESTRATION_MAP.md) — moteur conversationnel (AppShell → claude.js → Greffier → Supabase)
+4. [NOEMA_DATA_FLOW_MAP.md](NOEMA_DATA_FLOW_MAP.md) — flux de données réels (tables, lectures, écritures, vérités d'accès)
+5. [NOEMA_RUNTIME_GAPS.md](NOEMA_RUNTIME_GAPS.md) — écarts entre vision produit et runtime réel
+6. [NOEMA_ALIGNMENT_PLAN.md](NOEMA_ALIGNMENT_PLAN.md) — décisions d'alignement système
+7. [NOEMA_ALIGNMENT_EXECUTION_PLAN.md](NOEMA_ALIGNMENT_EXECUTION_PLAN.md) — plan d'implémentation séquencé, sprint par sprint (inclut Sprint 9-13)
 
 ---
 
@@ -25,6 +26,7 @@ Pour comprendre Noema en 5 minutes :
 | Document | Rôle |
 |---|---|
 | `NOEMA_SYSTEM_MAP.md` | Cartographie structurelle, fonctionnelle et produit — pages, fonctions, tables, état réel vs mocké |
+| `NOEMA_VISION.md` | Nature cible de Noema — 4 phases du parcours, rôle du mapping, ce qui est déjà là, ce qui manque, dans quel ordre aller |
 | `NOEMA_CHAT_ORCHESTRATION_MAP.md` | Flux complet du chat : frontend → AppShell → claude.js → Anthropic → Greffier → Supabase → UI |
 | `NOEMA_DATA_FLOW_MAP.md` | Tables Supabase, qui lit quoi, qui écrit quoi, sources de vérité par domaine |
 | `NOEMA_RUNTIME_GAPS.md` | Désalignements entre prompts, UI, schéma, code et documentation — ce qui est branché vs mocké vs legacy |

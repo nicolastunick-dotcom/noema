@@ -17,36 +17,44 @@ Principe:
 
 ## 1. Résumé exécutif
 
-Noema n'est pas, dans le code actuel, un "système produit complet d'accompagnement introspectif". C'est surtout:
+Noema est un **système de progression personnelle**, pas un simple chat avec mémoire.
+
+Sa nature cible : accompagner une transformation intérieure réelle sur la durée — comprendre qui on est vraiment, nettoyer ce qui bloque, faire émerger une ambition réelle, puis agir de façon alignée et mesurable.
+
+Techniquement, c'est :
 - une application React/Vite sans `react-router`, routée à la main par `src/App.jsx` et `src/lib/access.js`
 - un coeur métier concentré dans `src/pages/AppShell.jsx`
-- un chat branché à Anthropic via `netlify/functions/claude.js`
+- un chat branché à Anthropic via `netlify/functions/claude.js` avec un prompt Phase 1 / Phase 2 structuré
 - une mémoire utilisateur persistée dans Supabase via `memory` et des snapshots de sessions via `sessions`
-- un paywall Stripe/Supabase réellement branché, mais avec des bypass legacy/admin/invite
-- un écran Mapping réellement alimenté
-- des écrans `Journal` et `Today` désormais reliés à une couche de preuve et d'impact simple
+- un paywall Stripe/Supabase réellement branché, avec trial layer (essai gratuit) pour tous les utilisateurs
+- un écran Mapping réellement alimenté par le bloc `_ui` du modèle principal
+- des écrans `Journal` et `Today` branchés sur des données réelles (post-Sprint 5)
+- une preuve produit différentielle visible dans Chat et Today
 
-Etat réel du produit aujourd'hui:
-- `réel`: auth, signup, reset password, invite beta, paywall, checkout initiation, webhook Stripe, chat, mémoire, mapping, onboarding, admin panel partiel
-- `partiel`: Greffier, billing global, accès admin, accès invitation, cohérence prompt/UI, cohérence docs/code
+Etat réel du produit aujourd'hui (post-Sprint 8) :
+- `réel`: auth, signup, reset password, invite beta, paywall, checkout, webhook Stripe, chat, mémoire inter-sessions, mapping, onboarding, trial layer, proof layer, journal réel, today réel, bloc de reprise visible, admin panel partiel
+- `partiel`: Greffier (enrichit la mémoire, ne pilote pas le Mapping), billing global, Phase 2 visible dans l'UI (dans le prompt mais pas dans les surfaces)
 - `mocké`: offre Pro
-- `réel partiel`: Journal (persistance réelle, prompt guidé par `next_action`)
-- `réel`: Today (consomme `next_action` live, charge dernière entrée journal, fallback honnête, preuve et impact visibles)
-- `réel`: trial layer (essai gratuit journalier via `rate_limits`) et proof layer (assemblage UI local sans LLM)
-- `mort / legacy`: `src/App.original.jsx`, plusieurs composants de panneaux latéraux, `src/constants/prompt-greffier.js`, une partie de la logique `access_codes`
+- `mort / legacy`: `src/App.original.jsx`, `src/constants/prompt-greffier.js`, plusieurs composants de panneaux latéraux, une partie de la logique `access_codes`
 
-Point de vérité produit:
+Point de vérité produit :
 - côté frontend: `src/App.jsx` + `src/lib/access.js` + `src/pages/AppShell.jsx`
 - côté backend IA: `netlify/functions/claude.js`
-- côté données utilisateur: `memory`, `sessions`, `subscriptions`, `rate_limits`
+- côté données utilisateur: `memory`, `sessions`, `subscriptions`, `rate_limits`, `journal_entries`
 - côté trial/proof: `src/lib/entitlements.js` + `src/lib/productProof.js`
+- côté vision produit: `docs/system/NOEMA_VISION.md`
 
-Limites structurantes:
-- le produit raconte encore plusieurs versions de Noema à la fois
-- le prompt principal attend une couche `_ui` Phase 1/Phase 2, mais l'UI actuelle n'en consomme qu'une partie
-- le Greffier existe réellement, mais n'est pas la source de vérité du Mapping affiché
-- les quotas ne sont plus incohérents, mais restent volontairement simples et journaliers
-- la notion de "session" persistée est en réalité un snapshot, pas un objet session live stable
+Les 4 phases du parcours utilisateur (vision cible) :
+1. **Voir** — clarification, prise de conscience, premiers schémas
+2. **Comprendre** — contradictions, croyances, comportements répétitifs, nettoyage
+3. **S'aligner** — ikigai réel, ambition, direction
+4. **Agir** — coaching d'action, accountability, réussite mesurable
+
+Limites structurantes actuelles :
+- la Phase 2 du prompt (Le Stratège) existe et fonctionne, mais l'UI ne la distingue pas encore visuellement
+- le Mapping est un miroir d'état courant, pas encore de progression cross-sessions
+- la détection de schémas répétitifs cross-sessions n'est pas encore implémentée
+- la notion de "session" persistée est un snapshot, pas un objet session live arbitrairement stable
 
 ## 2. Vue système globale
 

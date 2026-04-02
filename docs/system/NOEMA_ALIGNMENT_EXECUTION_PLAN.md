@@ -1066,3 +1066,124 @@ Le plan est considere execute seulement si:
 - un `session_id` runtime existe et porte le quota
 - les surfaces mockees ne sont plus vendues comme reelles
 - `Journal` et `Today` n'utilisent plus de donnees statiques, ou restent explicitement declares non branches
+
+---
+
+# 11. Sprint 9 et au-delà — Prochaines étapes produit (vision transformation)
+
+## Contexte
+
+Post-Sprint 8, le socle technique est stable :
+- accès backend verrouillé
+- mémoire inter-sessions réelle
+- Journal et Today branchés sur des données réelles
+- preuve produit différentielle visible
+- trial layer opérationnel
+
+La prochaine trajectoire n'est plus un alignement technique.
+C'est une transformation de Noema en véritable système de progression :
+non plus un chat avec mémoire, mais un guide qui détecte les schémas, revient sur ce qui est évité, et accompagne une transformation réelle sur des mois.
+
+## Sprint 9 — Phase 2 visible dans l'UI
+
+**Objectif :** rendre la bascule Phase 1 → Phase 2 perceptible pour l'utilisateur.
+
+**Pourquoi maintenant :** le prompt Phase 2 existe déjà et fonctionne. L'UI ne distingue pas les deux postures. L'utilisateur ne sait pas quand il est passé en mode "construction".
+
+**Actions :**
+1. Ajouter un indicateur de phase dans MappingPage (Phase 1 / Phase 2), dérivé de `step` >= 7
+2. Adapter le message d'accueil de l'opening message selon la phase détectée
+3. Modifier le wording des surfaces (Today, Journal) pour refléter la posture active vs exploratoire
+4. Aucune migration SQL, aucun nouvel appel LLM
+
+**Fichiers :**
+- `src/pages/MappingPage.jsx`
+- `src/pages/AppShell.jsx` (`openingMessage`)
+- `src/pages/TodayPage.jsx`
+
+**Livrable :** un utilisateur en Phase 2 voit et ressent une différence de posture dans le produit.
+
+---
+
+## Sprint 10 — Check-in de session basé sur `next_action` précédente
+
+**Objectif :** que Noema commence chaque session en vérifiant ce qui avait été demandé.
+
+**Pourquoi maintenant :** `next_action` est déjà dans `sessions` et dans la mémoire injectée côté serveur. Mais il n'est pas utilisé dans l'ouverture de session comme point de vérification explicite.
+
+**Actions :**
+1. Modifier `openingMessage()` dans AppShell pour envoyer `next_action` précédent au prompt d'ouverture
+2. Ou : enrichir `buildServerMemoryContext` pour signaler au modèle que la première réponse doit vérifier le suivi
+3. Tester que la continuité ne force pas l'utilisateur dans une direction non souhaitée (garde-fou : si l'utilisateur change de sujet, Noema s'adapte)
+
+**Fichiers :**
+- `src/pages/AppShell.jsx`
+- `netlify/functions/claude.js` (`buildServerMemoryContext`)
+- `src/constants/prompt.js` (optionnel : ajouter une règle de check-in en début Phase 2)
+
+**Livrable :** Noema pose systématiquement une question sur la tâche précédente en début de session, si une `next_action` existe.
+
+---
+
+## Sprint 11 — Schémas cross-sessions : détection et réinjection
+
+**Objectif :** détecter ce qui revient depuis plusieurs sessions (même blocage, même contradiction, même évitement) et le réinjecter dans le contexte.
+
+**Pourquoi maintenant :** c'est l'étape qui transforme Noema d'un guide de session en système de progression. Sans cette capacité, Noema recommence depuis le début à chaque session au lieu de faire avancer un fil.
+
+**Actions :**
+1. Dans `claude.js`, ajouter une requête SQL sur les 5 derniers `sessions.session_notes` et `sessions.insights`
+2. Extraire les thèmes récurrents (blocages qui apparaissent dans plusieurs sessions successives)
+3. Injecter dans `buildServerMemoryContext` une section "Schémas persistants" lisible par le modèle
+4. 0 nouveau LLM, 0 migration SQL — seulement une requête supplémentaire sur `sessions` déjà existante
+
+**Fichiers :**
+- `netlify/functions/claude.js`
+- `src/lib/supabase.js` (optionnel : fonction dédiée)
+
+**Coût :** latence légèrement augmentée côté backend (1 requête SQL supplémentaire). Acceptable.
+
+**Livrable :** Noema revient proactivement sur ce qu'il a détecté sur plusieurs sessions, sans que l'utilisateur ait besoin d'en parler.
+
+---
+
+## Sprint 12 — Mapping évolutif : timeline et schémas persistants
+
+**Objectif :** transformer le Mapping d'une photo instantanée en miroir de progression.
+
+**Actions :**
+1. Ajouter dans MappingPage une timeline simple du `step` sur les dernières sessions (depuis `sessions.step`)
+2. Marquer visuellement les blocages qui apparaissent dans plusieurs sessions successives (depuis `sessions.insights`)
+3. Ajouter un indicateur "dernière mise à jour" par dimension de l'ikigai
+4. Aucune table nouvelle — données déjà dans `sessions.insights`, `sessions.ikigai`, `sessions.step`
+
+**Fichiers :**
+- `src/pages/MappingPage.jsx`
+- `src/pages/AppShell.jsx` (chargement des dernières sessions au mount pour la timeline)
+
+**Livrable :** le Mapping montre l'évolution, pas juste l'état. Un utilisateur qui revient après 10 sessions voit son chemin parcouru.
+
+---
+
+## Sprint 13 — Semantic memory (si validé)
+
+**Objectif :** activer `semantic_memory` pour la détection de patterns fins sur longue durée.
+
+**Condition préalable :** Sprints 9-12 stables. Patterns cross-sessions déjà visibles via SQL simple.
+
+**Actions :**
+1. Brancher la table `semantic_memory` déjà dans le schéma
+2. Implémenter les embeddings et la fonction `match_semantic_memory()`
+3. Utiliser en complément (pas en remplacement) de la mémoire structurée actuelle
+
+**Attention :** coût Anthropic significatif. À décider après mesure de l'usage réel.
+
+---
+
+## Règles pour ces sprints
+
+- Un sprint par domaine, pas de sprint fourre-tout
+- Aucun sprint ne brise la promesse précédente
+- Chaque sprint peut être testé seul (rollback possible)
+- La mémoire et le prompt restent la source de vérité — les surfaces en dérivent
+- Pas de gamification, pas de score, pas de streak
