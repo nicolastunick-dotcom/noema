@@ -379,7 +379,7 @@ export default function Landing({ onNav }) {
             >
               timeline
             </span>
-            <span style={styles.heroBadgeText}>Conversation continue, cadre clair</span>
+            <span style={styles.heroBadgeText}>Conversation continue, cadre clair, essai gratuit disponible</span>
           </div>
 
           <h1 style={styles.heroH1}>
@@ -391,6 +391,7 @@ export default function Landing({ onNav }) {
             Noema t'aide a reprendre une conversation, faire ressortir les points qui
             comptent, et transformer une intention en action concrete. Pas de promesse
             magique : un chat, un mapping, un journal et un rituel du jour deja relies.
+            L'essai gratuit est la pour te laisser vivre cela avant de payer.
           </p>
 
           <div style={styles.heroBtns}>

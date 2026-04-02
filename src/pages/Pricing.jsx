@@ -26,11 +26,12 @@ const monthlyFeatures = [
   "Mapping mis a jour au fil des echanges",
   "Journal guide deja inclus",
   "Rituel du jour deja inclus",
+  "Essai gratuit disponible avant paiement",
   "25 messages par jour",
 ];
 
 const proFeatures = [
-  "Un abonnement actif est requis pour entrer dans l'app",
+  "L'abonnement sert a continuer apres l'essai gratuit",
   "Le quota actuel est simple et annonce clairement",
   "Aucune promesse de memoire illimitee",
   "Pas de date annoncee pour un plan superieur",
@@ -85,6 +86,8 @@ export default function Pricing({ onNav, user, accessState, notice = null }) {
 
   const isCheckingAccess = Boolean(user && accessState?.loading);
   const hasActiveSubscription = Boolean(accessState?.hasActiveSubscription);
+  const hasProductAccess = Boolean(accessState?.hasProductAccess);
+  const accessTier = accessState?.accessTier || "anonymous";
 
   const handleCheckoutClick = async () => {
     setCheckoutLoading(true);
@@ -116,11 +119,13 @@ export default function Pricing({ onNav, user, accessState, notice = null }) {
     if (notice) return notice;
     if (isCheckingAccess) return "Verification de votre acces en cours.";
     if (hasActiveSubscription) return "Votre abonnement est actif. Vous pouvez entrer dans Noema.";
-    if (user) return "Votre acces a Noema necessite un abonnement actif.";
+    if (accessTier === "trial" && user) return "Votre essai gratuit est deja actif. L'abonnement sert a continuer quand vous etes pret.";
+    if (hasProductAccess) return "Votre acces a Noema est deja ouvert.";
+    if (user) return "Votre essai gratuit est disponible maintenant. L'abonnement sert a continuer ensuite.";
     return "Connectez-vous pour associer l'abonnement a votre espace Noema et verifier votre acces.";
-  }, [hasActiveSubscription, isCheckingAccess, notice, user]);
+  }, [accessTier, hasActiveSubscription, hasProductAccess, isCheckingAccess, notice, user]);
 
-  const topAction = hasActiveSubscription
+  const topAction = hasProductAccess
     ? { label: "Acceder a Noema", onClick: () => onNav?.("/app/chat") }
     : { label: "Accueil", onClick: () => onNav?.("/") };
 

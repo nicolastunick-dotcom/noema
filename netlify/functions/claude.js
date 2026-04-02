@@ -1,11 +1,12 @@
 // netlify/functions/claude.js
 // Proxy sécurisé — la clé API Anthropic ne passe jamais côté client
 import { NOEMA_SYSTEM } from '../../src/constants/prompt.js'
+import { buildQuotaState, getDailyLimitForTier, isTrialTier, resolveAccessTier } from '../../src/lib/entitlements.js'
 import { runGreffier } from './greffier.js'
 import { createClient } from '@supabase/supabase-js'
 
-const SESSION_LIMIT = 25
-const SESSION_LIMIT_MSG = "La session du jour est terminée. Mais pas ton évolution. Reviens demain pour continuer ton ascension."
+const FULL_ACCESS_LIMIT_MSG = "La limite du jour est atteinte. Reviens demain pour continuer."
+const TRIAL_LIMIT_MSG = "Ton essai gratuit du jour est termine. Tu peux continuer avec Noema des maintenant."
 
 function getSupabaseAdmin() {
   const url = process.env.VITE_SUPABASE_URL
@@ -65,10 +66,11 @@ export default async (request) => {
 
   // ── Résolution d'entitlement ──────────────────────────────────
   // Autorité finale d'accès : backend uniquement.
-  // Un JWT valide ne suffit pas — l'entitlement produit doit être vérifié ici.
-  // Ordre de vérification : admin → abonnement actif → invite beta persistée
-  let hasEntitlement = false
+  // Depuis Sprint 8, tout utilisateur authentifié entre au moins en essai gratuit.
+  // Les accès complets restent résolus ici: admin → abonnement actif → invite beta persistée.
   let isAdmin = false
+  let hasInvite = false
+  let hasSubscription = false
 
   // 1. Admin via profiles.is_admin
   const { data: profile } = await sbAdmin
@@ -77,48 +79,45 @@ export default async (request) => {
     .eq('id', userId)
     .maybeSingle()
   if (profile?.is_admin === true) {
-    hasEntitlement = true
     isAdmin = true
   }
 
   // 2. Bypass admin email legacy (transitoire — à retirer une fois profiles.is_admin généralisé)
-  if (!hasEntitlement) {
+  if (!isAdmin) {
     const adminEmail = process.env.VITE_ADMIN_EMAIL || ''
     if (adminEmail && verifiedUser.email === adminEmail) {
-      hasEntitlement = true
       isAdmin = true
     }
   }
 
   // 3. Abonnement actif ou en période d'essai
-  if (!hasEntitlement) {
+  if (!isAdmin) {
     const { data: sub } = await sbAdmin
       .from('subscriptions')
       .select('status')
       .eq('user_id', userId)
       .in('status', ['active', 'trialing'])
       .maybeSingle()
-    if (sub) hasEntitlement = true
+    if (sub) hasSubscription = true
   }
 
   // 4. Invite beta liée en base (persistée via validate-invite.js avec JWT)
-  if (!hasEntitlement) {
+  if (!isAdmin && !hasSubscription) {
     const { data: invite } = await sbAdmin
       .from('invites')
       .select('id')
       .eq('user_id', userId)
       .eq('active', true)
       .maybeSingle()
-    if (invite) hasEntitlement = true
+    if (invite) hasInvite = true
   }
 
-  if (!hasEntitlement) {
-    console.log('[claude] accès refusé — pas d\'entitlement pour userId:', userId)
-    return new Response(
-      JSON.stringify({ error: { message: 'Accès non autorisé. Un abonnement actif ou une invitation valide est requis.' } }),
-      { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
-    )
-  }
+  const accessTier = resolveAccessTier({
+    isAuthenticated: true,
+    isAdmin,
+    hasInvite,
+    hasSubscription,
+  })
 
   // ── Chargement mémoire utilisateur (server-side) ─────────────
   // Sprint 3.1 : les deux queries tournent en parallèle pour éviter toute latence additionnelle.
@@ -145,13 +144,15 @@ export default async (request) => {
 
   try {
     const body = await request.json()
+    const shouldConsumeQuota = body.consume_quota !== false
 
-    // ── Quota produit (25 messages par user par jour) ─────────────
+    // ── Quota produit (journalier) ────────────────────────────────
     // Unique source de vérité : backend seulement depuis Sprint 1.
-    // Le frontend ne lit/écrit plus rate_limits (seulement garde-fou local 30/min).
-    // La limite reste journalière — elle deviendra par session au Sprint 3 (session_id live).
-    // Les admins sont exemptés du quota.
-    if (!isAdmin) {
+    // Sprint 8 : le tier d'accès pilote maintenant la limite journalière.
+    const dailyLimit = getDailyLimitForTier(accessTier)
+    let quotaUsed = 0
+
+    if (dailyLimit != null) {
       const today = new Date().toISOString().slice(0, 10)
       const { data: rl } = await sbAdmin
         .from('rate_limits')
@@ -159,12 +160,16 @@ export default async (request) => {
         .eq('user_id', userId)
         .eq('date', today)
         .maybeSingle()
-      const count = rl?.count || 0
-      if (count >= SESSION_LIMIT) {
+      quotaUsed = rl?.count || 0
+
+      if (shouldConsumeQuota && quotaUsed >= dailyLimit) {
         return new Response(JSON.stringify({
-          content: SESSION_LIMIT_MSG,
+          content: isTrialTier(accessTier) ? TRIAL_LIMIT_MSG : FULL_ACCESS_LIMIT_MSG,
           _greffier: null,
+          _quota: buildQuotaState({ tier: accessTier, used: quotaUsed }),
+          _access: { tier: accessTier },
           _session_limit: true,
+          _trial_ended: isTrialTier(accessTier),
         }), {
           status: 200,
           headers: {
@@ -173,12 +178,18 @@ export default async (request) => {
           }
         })
       }
-      // Incrément — seule écriture quota produit dans tout le système
-      await sbAdmin.from('rate_limits').upsert(
-        { user_id: userId, date: today, count: count + 1 },
-        { onConflict: 'user_id,date' }
-      )
+
+      if (shouldConsumeQuota) {
+        quotaUsed += 1
+        // Incrément — seule écriture quota produit dans tout le système
+        await sbAdmin.from('rate_limits').upsert(
+          { user_id: userId, date: today, count: quotaUsed },
+          { onConflict: 'user_id,date' }
+        )
+      }
     }
+
+    const quota = buildQuotaState({ tier: accessTier, used: quotaUsed })
 
     // Whitelist des champs autorisés — ne jamais forwarder le body brut
     // Le system prompt est toujours NOEMA_SYSTEM + serverMemoryContext (chargé depuis DB ci-dessus)
@@ -251,6 +262,8 @@ export default async (request) => {
     return new Response(JSON.stringify({
       content: fullText,
       _greffier: greffierResult,
+      _quota: quota,
+      _access: { tier: accessTier },
     }), {
       status: 200,
       headers: {

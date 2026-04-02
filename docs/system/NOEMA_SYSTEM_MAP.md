@@ -24,25 +24,28 @@ Noema n'est pas, dans le code actuel, un "système produit complet d'accompagnem
 - une mémoire utilisateur persistée dans Supabase via `memory` et des snapshots de sessions via `sessions`
 - un paywall Stripe/Supabase réellement branché, mais avec des bypass legacy/admin/invite
 - un écran Mapping réellement alimenté
-- des écrans `Journal` et `Today` encore principalement mockés
+- des écrans `Journal` et `Today` désormais reliés à une couche de preuve et d'impact simple
 
 Etat réel du produit aujourd'hui:
 - `réel`: auth, signup, reset password, invite beta, paywall, checkout initiation, webhook Stripe, chat, mémoire, mapping, onboarding, admin panel partiel
-- `partiel`: Greffier, billing global, logique de quotas, accès admin, accès invitation, cohérence prompt/UI, cohérence docs/code
+- `partiel`: Greffier, billing global, accès admin, accès invitation, cohérence prompt/UI, cohérence docs/code
 - `mocké`: offre Pro
-- `réel partiel`: Journal (persistance réelle, prompt guidé par `next_action`), Today (consomme `next_action` live, charge dernière entrée journal, fallback honnête)
+- `réel partiel`: Journal (persistance réelle, prompt guidé par `next_action`)
+- `réel`: Today (consomme `next_action` live, charge dernière entrée journal, fallback honnête, preuve et impact visibles)
+- `réel`: trial layer (essai gratuit journalier via `rate_limits`) et proof layer (assemblage UI local sans LLM)
 - `mort / legacy`: `src/App.original.jsx`, plusieurs composants de panneaux latéraux, `src/constants/prompt-greffier.js`, une partie de la logique `access_codes`
 
 Point de vérité produit:
 - côté frontend: `src/App.jsx` + `src/lib/access.js` + `src/pages/AppShell.jsx`
 - côté backend IA: `netlify/functions/claude.js`
 - côté données utilisateur: `memory`, `sessions`, `subscriptions`, `rate_limits`
+- côté trial/proof: `src/lib/entitlements.js` + `src/lib/productProof.js`
 
 Limites structurantes:
 - le produit raconte encore plusieurs versions de Noema à la fois
 - le prompt principal attend une couche `_ui` Phase 1/Phase 2, mais l'UI actuelle n'en consomme qu'une partie
 - le Greffier existe réellement, mais n'est pas la source de vérité du Mapping affiché
-- les quotas sont incohérents entre frontend et backend
+- les quotas ne sont plus incohérents, mais restent volontairement simples et journaliers
 - la notion de "session" persistée est en réalité un snapshot, pas un objet session live stable
 
 ## 2. Vue système globale
@@ -52,18 +55,34 @@ Limites structurantes:
 | Couche | Fichiers centraux | Rôle réel | Etat |
 |---|---|---|---|
 | Routage + garde d'accès | `src/App.jsx`, `src/lib/access.js` | Auth, paywall, onboarding, navigation SPA | réel |
-| App privée | `src/pages/AppShell.jsx` | Orchestration chat, mémoire, quotas, save session, tabs | réel |
-| UI chat | `src/pages/ChatPage.jsx` | Affichage messages + saisie + logout | réel |
+| App privée | `src/pages/AppShell.jsx`, `src/lib/entitlements.js`, `src/lib/productProof.js` | Orchestration chat, mémoire, quota trial/full, preuve produit, save session, tabs | réel |
+| UI chat | `src/pages/ChatPage.jsx` | Affichage messages + saisie + essai gratuit + preuve visible + CTA pricing | réel |
 | Mapping | `src/pages/MappingPage.jsx` | Lecture visuelle de `insights`, `ikigai`, `step` | réel |
 | Journal | `src/pages/JournalPage.jsx` | Lecture/écriture `journal_entries` Supabase, pré-rempli avec `next_action` session | réel (Sprint 5) |
-| Today | `src/pages/TodayPage.jsx` | Consomme `next_action` live depuis AppShell + charge dernière entrée journal | réel partiel (Sprint 5) |
+| Today | `src/pages/TodayPage.jsx` | Consomme `next_action` live depuis AppShell + charge dernière entrée journal + expose impact/proof | réel |
 | Supabase client | `src/lib/supabase.js` | Client Supabase + construction de contexte mémoire | réel |
-| IA principale | `netlify/functions/claude.js` | Vérif JWT, quota serveur, appel Anthropic, lancement Greffier | réel |
+| IA principale | `netlify/functions/claude.js` | Vérif JWT, résolution du tier d'accès, quota serveur, appel Anthropic, lancement Greffier | réel |
 | Greffier | `netlify/functions/greffier.js` | Extraction secondaire Haiku + écritures DB partielles | partiel |
 | Billing | `src/pages/Pricing.jsx`, `create-checkout-session.js`, `stripe-webhook.js` | Checkout + sync abonnement | réel |
 | Admin | `src/components/AdminPanel.jsx`, `admin-tools.js` | Outils admin + simulations | partiel |
 
-### 2.2 Frontend / backend / data
+### 2.2 Trial layer
+
+Le trial layer est maintenant réel et minimal :
+- tout utilisateur authentifié sans abonnement actif devient `trial`
+- la limite gratuite réutilise `rate_limits`
+- le backend reste seule autorité pour le quota
+- aucun nouvel objet métier, aucune table nouvelle
+
+### 2.3 Proof layer
+
+Le proof layer est maintenant réel et non génératif :
+- `ChatPage` et `TodayPage` affichent `Ce que Noema comprend de toi`
+- l'assemblage vient uniquement de `insights`, `next_action`, `step`
+- `TodayPage` ajoute des indicateurs d'impact depuis `journal_entries` et `sessions`
+- aucun appel LLM supplémentaire
+
+### 2.4 Frontend / backend / data
 
 Frontend:
 - React 18 + Vite
@@ -79,7 +98,7 @@ Data/Auth:
 - Supabase Auth pour login/signup/reset/OAuth
 - Supabase Postgres pour mémoire, snapshots, quotas, abonnements, invites, coûts API
 
-### 2.3 V1 vs V2
+### 2.5 V1 vs V2
 
 V1:
 - monolithe `src/App.original.jsx`
@@ -122,10 +141,10 @@ Transitions inachevées:
 
 | Route | Fichier | Rôle réel | Données | APIs | Etat |
 |---|---|---|---|---|---|
-| `/app/chat` | `src/pages/ChatPage.jsx` via `AppShell.jsx` | coeur métier | `msgs`, `history`, `memory`, `sessions`, `rate_limits` | `/.netlify/functions/claude`, Supabase | réel |
+| `/app/chat` | `src/pages/ChatPage.jsx` via `AppShell.jsx` | coeur métier + essai gratuit + preuve visible | `msgs`, `history`, `memory`, `sessions`, `rate_limits`, `quota` | `/.netlify/functions/claude`, Supabase | réel |
 | `/app/mapping` | `src/pages/MappingPage.jsx` via `AppShell.jsx` | lecture visuelle du mapping | props issues de `AppShell` | aucune directe | réel mais dépendant du chat |
 | `/app/journal` | `src/pages/JournalPage.jsx` via `AppShell.jsx` | journal guidé : lecture/écriture `journal_entries`, prompt `next_action` | `journal_entries`, `next_action` prop, `sessionId` | Supabase direct client | réel (Sprint 5) |
-| `/app/today` | `src/pages/TodayPage.jsx` via `AppShell.jsx` | rituel du jour : `next_action` live + dernière entrée journal | `next_action` prop, `journal_entries` | Supabase direct client | réel partiel (Sprint 5) |
+| `/app/today` | `src/pages/TodayPage.jsx` via `AppShell.jsx` | rituel du jour : `next_action` live + dernière entrée journal + impact/proof | `next_action`, `insights`, `step`, `journal_entries`, `sessions`, `quota` | Supabase direct client | réel |
 
 ### 3.3 Détails utiles par page
 
@@ -142,7 +161,8 @@ Login:
 Pricing:
 - checkout mensuel branché
 - offre Pro présentée mais non branchée
-- `Journal` / `Today` présentés comme à venir, pas comme surfaces déjà runtime
+- essai gratuit mentionné explicitement avant paiement
+- l'abonnement est présenté comme suite de l'expérience, pas comme prérequis d'entrée
 - dépend du webhook pour rendre l'accès réellement actif
 
 Success:
@@ -167,6 +187,11 @@ Today (post Sprint 6):
 - question du jour adaptée si entrée journal existe aujourd'hui
 - indicateur discret `Jour X de ton parcours` dérivé du nombre d'entrées journal
 - repère du jour sobre, sans checkbox ni gamification artificielle
+- bloc de preuve visible à partir de `insights`, `next_action`, `step`
+- indicateurs d'impact sobres :
+  - jours de suivi
+  - intentions clarifiées
+  - fil en cours
 
 ## 4. Flux complet du chat
 
@@ -174,6 +199,7 @@ Today (post Sprint 6):
 
 1. `AppShell` hydrate `memory` et la dernière ligne de `sessions`, puis lance `openingMessage()`.
 2. `openingMessage()` ajoute en historique un faux message système sous forme de message `user` invisible à l'écran.
+   - depuis Sprint 8, ce message d'ouverture ne consomme pas le quota journalier
 3. `send(text)` dans `src/pages/AppShell.jsx`:
    - nettoie le texte (`<...>` supprimé, trim, max 2000 chars)
    - appelle `checkRateLimit()`
@@ -187,16 +213,18 @@ Today (post Sprint 6):
    - POST vers `ANTHROPIC_PROXY`
 5. `netlify/functions/claude.js`:
    - vérifie le JWT via Supabase
+   - résout le tier d'accès (`trial` / `subscriber` / `invite` / `admin`)
    - applique un quota serveur sur `rate_limits`
    - construit `system = NOEMA_SYSTEM + memory_context`
    - lance `runGreffier()` en parallèle
    - appelle Anthropic Sonnet
    - loggue `api_usage`
-   - renvoie `{ content, _greffier }`
+   - renvoie `{ content, _greffier, _quota }`
 6. Frontend:
    - `parseUI(raw)` extrait `<_ui>...</_ui>`
    - `stripUI(raw)` retire le bloc caché
    - `applyUI(ui)` fusionne l'état visible
+   - met à jour la surface trial/proof via `_quota`, `insights`, `next_action`, `step`
    - ajoute la réponse assistant à `msgs`
    - ajoute la réponse brute à `history.current`
 

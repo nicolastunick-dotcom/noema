@@ -816,6 +816,109 @@ Tests non-regression :
 - `Today` / `Journal` toujours accessibles
 - navigation footer toujours fonctionnelle
 
+## Sprint 8 — Proof & Trial Layer ✅ EXÉCUTÉ (02/04/2026)
+
+## Pourquoi ce sprint etait necessaire
+
+Le debat multi-agents a confirme un point simple :
+- la continuite existe deja dans Noema
+- la memoire existe deja
+- mais la valeur n'etait pas encore suffisamment vecue avant paiement
+
+Le frein principal n'etait donc pas un manque de fonctionnalites, mais un manque de preuve produit avant conversion.
+
+## Objectif
+
+Permettre a un utilisateur de vivre Noema avant de payer, ressentir un benefice concret en 1 a 2 jours, et voir pourquoi il pourrait revenir.
+
+## Actions appliquees
+
+### Trial layer
+- `useSubscriptionAccess()` ne reserve plus l'app aux seuls abonnes :
+  - `admin`
+  - `subscriber`
+  - `invite`
+  - `trial`
+- tout utilisateur authentifie sans abonnement actif devient `trial`
+- aucune table nouvelle :
+  - reutilisation de `rate_limits`
+  - reutilisation du gate backend dans `claude.js`
+- `claude.js` choisit maintenant la limite journaliere selon le tier d'acces
+- le message d'ouverture automatique ne consomme pas le quota gratuit
+- le frontend recoit `_quota` a chaque reponse et n'invente plus l'etat restant
+
+### Proof layer
+- ajout d'un bloc discret `Ce que Noema comprend de toi` dans `Chat`
+- meme preuve visible aussi dans `Today`
+- preuve assemblee uniquement a partir de :
+  - `insights`
+  - `next_action`
+  - `step`
+- aucune generation LLM supplementaire
+
+### Impact layer
+- `Today` affiche maintenant des indicateurs sobres :
+  - jours de suivi
+  - intentions clarifiees
+  - fil en cours
+- sources uniquement :
+  - `journal_entries`
+  - `sessions`
+  - `next_action`
+- aucune gamification ajoutee
+
+### Conversion layer
+- quand le quota gratuit est atteint :
+  - message clair
+  - CTA vers `Pricing`
+  - continuité deja construite toujours visible
+- pas de blocage brutal de l'app entiere
+
+### Surfaces marketing
+- `Landing` mentionne maintenant explicitement l'essai gratuit
+- `Pricing` ne pretend plus qu'un abonnement est necessaire avant toute experience
+
+## Ce qui a ete ajoute
+
+- `src/lib/entitlements.js`
+- `src/lib/productProof.js`
+- tier `trial` dans le runtime d'acces
+- retour `_quota` depuis `claude.js`
+- blocs UI de preuve et d'impact dans `Chat` / `Today`
+
+## Ce qui n'a PAS ete ajoute
+
+- aucune table nouvelle
+- aucun backend lourd
+- aucun appel LLM supplementaire
+- aucun refactor profond de la memoire
+- aucun systeme de score, badge ou streak
+
+## Tests cibles
+
+Tests essai :
+- utilisateur authentifie sans abonnement -> acces app autorise
+- quota gratuit limite visible dans le chat
+- message d'ouverture non decompte du quota
+
+Tests preuve :
+- bloc `Ce que Noema comprend de toi` visible
+- contenu issu uniquement de `insights`, `next_action`, `step`
+
+Tests impact :
+- `Today` affiche des indicateurs cohérents avec `journal_entries`, `sessions`, `next_action`
+- aucun score artificiel
+
+Tests conversion :
+- quota gratuit epuise -> CTA pricing visible
+- navigation vers `Pricing` fluide
+
+Tests non-regression :
+- chat toujours operant
+- `Today` et `Journal` toujours operants
+- aucun appel LLM supplementaire
+- aucun changement de schema necessaire
+
 # 7. Ordre réel d'exécution (état au 02/04/2026)
 
 | # | Chantier | Sprint | Statut |
@@ -831,6 +934,7 @@ Tests non-regression :
 | 9 | Journal / Today réels | Sprint 5 | ✅ |
 | 10 | Continuité utile & expérience vivante | Sprint 6 | ✅ |
 | 11 | Surface continuity + product truth alignment | Sprint 7 | ✅ |
+| 12 | Proof & Trial Layer | Sprint 8 | ✅ |
 
 Règle de merge (toujours valide) :
 - Sprint 4 UX a ete livre apres stabilisation de Sprint 4.1

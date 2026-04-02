@@ -56,7 +56,7 @@ CREATE POLICY "sessions: user access" ON sessions
 CREATE POLICY "memory: user access" ON memory
   FOR ALL USING (auth.uid() = user_id);
 
--- Compteurs de rate limiting (un par utilisateur par jour)
+-- Compteurs de quota journalier (essai gratuit + accès complet, un par utilisateur par jour)
 CREATE TABLE IF NOT EXISTS rate_limits (
   id         uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id    uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,

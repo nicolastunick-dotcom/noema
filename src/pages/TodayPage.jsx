@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { buildImpactStats } from "../lib/productProof";
 
 // ─────────────────────────────────────────────────────────────
 // TODAY PAGE — Rituel quotidien
@@ -27,10 +28,12 @@ const TODAY_ISO = new Date().toISOString().slice(0, 10);
 
 const FALLBACK_QUESTION = "Qu'est-ce que tu évites de regarder en face depuis quelques jours ?";
 
-export default function TodayPage({ user, sb, nextAction = "", onJournal, onChat }) {
+export default function TodayPage({ user, sb, nextAction = "", onJournal, onChat, proofState, quota }) {
   const [lastJournalEntry, setLastJournalEntry] = useState(null); // { content, next_action, entry_date }
   const [loading, setLoading] = useState(true);
   const [journeyDay, setJourneyDay] = useState(null);
+  const [sessionCount, setSessionCount] = useState(0);
+  const [clarifiedIntentions, setClarifiedIntentions] = useState(0);
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -42,7 +45,7 @@ export default function TodayPage({ user, sb, nextAction = "", onJournal, onChat
     }
 
     (async () => {
-      const [entryResult, countResult] = await Promise.all([
+      const [entryResult, countResult, sessionCountResult, intentionCountResult] = await Promise.all([
         sb.from("journal_entries")
           .select("content, next_action, entry_date")
           .eq("user_id", user.id)
@@ -52,11 +55,21 @@ export default function TodayPage({ user, sb, nextAction = "", onJournal, onChat
         sb.from("journal_entries")
           .select("id", { count: "exact", head: true })
           .eq("user_id", user.id),
+        sb.from("sessions")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id),
+        sb.from("sessions")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .not("next_action", "is", null)
+          .neq("next_action", ""),
       ]);
 
       if (entryResult.error) console.error("[Today] Erreur chargement journal:", entryResult.error);
       if (entryResult.data) setLastJournalEntry(entryResult.data);
       if (countResult.count != null && countResult.count > 0) setJourneyDay(countResult.count);
+      if (sessionCountResult.count != null) setSessionCount(sessionCountResult.count);
+      if (intentionCountResult.count != null) setClarifiedIntentions(intentionCountResult.count);
       setLoading(false);
     })();
 
@@ -109,7 +122,17 @@ export default function TodayPage({ user, sb, nextAction = "", onJournal, onChat
           label: "Clarifier avec Noema",
           icon: "chat",
           onClick: () => onChat && onChat(),
-        };
+      };
+
+  const impactStats = useMemo(
+    () => buildImpactStats({
+      journalDays: journeyDay || 0,
+      clarifiedIntentions,
+      hasActiveThread: Boolean(intentionSource),
+      sessionCount,
+    }),
+    [clarifiedIntentions, intentionSource, journeyDay, sessionCount]
+  );
 
   const glass = {
     position: "relative", overflow: "hidden", borderRadius: 24,
@@ -158,6 +181,78 @@ export default function TodayPage({ user, sb, nextAction = "", onJournal, onChat
           </div>
         ) : (
           <>
+            {quota && (
+              <div style={{
+                borderRadius: 18,
+                padding: "16px 18px",
+                background: quota.isTrial ? "rgba(189,194,255,0.08)" : "rgba(30,31,37,0.55)",
+                border: `1px solid ${quota.isTrial ? "rgba(189,194,255,0.18)" : "rgba(69,70,85,0.18)"}`,
+              }}>
+                <p style={{ margin: 0, fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.18em", color: quota.isTrial ? C.primary : C.onSurfaceVariant, fontWeight: 700 }}>
+                  {quota.label}
+                </p>
+                <p style={{ margin: "8px 0 0", fontSize: "0.84rem", color: C.onSurface, lineHeight: 1.6 }}>
+                  {quota.remainingLabel}
+                </p>
+              </div>
+            )}
+
+            {impactStats.length > 0 && (
+              <div style={{ ...glass, padding: 24 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize:"0.875rem", color:C.primary, fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>timeline</span>
+                  <h3 style={{ fontSize:"0.6rem", letterSpacing:"0.2em", textTransform:"uppercase", color:C.onSurfaceVariant, fontWeight:700, margin:0 }}>
+                    Impact deja visible
+                  </h3>
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(160px, 1fr))", gap:12 }}>
+                  {impactStats.map((stat) => (
+                    <div key={stat.label} style={{
+                      borderRadius: 16,
+                      padding: "16px 14px",
+                      background: "rgba(17,19,24,0.45)",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                    }}>
+                      <p style={{ margin: 0, fontSize: "1.35rem", color: C.primary, fontFamily:"'Instrument Serif', serif", fontStyle:"italic" }}>
+                        {stat.value}
+                      </p>
+                      <p style={{ margin: "8px 0 0", fontSize: "0.8rem", lineHeight: 1.6, color: C.onSurface }}>
+                        {stat.label}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {proofState?.hasData && (
+              <div style={{ ...glass, padding: 24 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize:"0.875rem", color:C.primary, fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>visibility</span>
+                  <h3 style={{ fontSize:"0.6rem", letterSpacing:"0.2em", textTransform:"uppercase", color:C.onSurfaceVariant, fontWeight:700, margin:0 }}>
+                    {proofState.title}
+                  </h3>
+                </div>
+                <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                  {proofState.items.map((item) => (
+                    <div key={`${item.label}-${item.value}`} style={{
+                      borderRadius: 14,
+                      padding: "14px 16px",
+                      background: "rgba(17,19,24,0.45)",
+                      border: "1px solid rgba(255,255,255,0.05)",
+                    }}>
+                      <p style={{ margin: 0, fontSize: "0.62rem", letterSpacing: "0.18em", textTransform: "uppercase", color: C.outline, fontWeight: 700 }}>
+                        {item.label}
+                      </p>
+                      <p style={{ margin: "8px 0 0", fontSize: "0.88rem", lineHeight: 1.65, color: C.onSurface }}>
+                        {item.value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Card 1 — Intention */}
             <div style={glass}>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>

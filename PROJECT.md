@@ -43,12 +43,14 @@ src/constants/
 
 src/lib/
   supabase.js          — Client Supabase, buildMemoryContext, buildSystemPrompt
+  entitlements.js      — Tiers d'accès et quotas journaliers (trial / invite / abonnement / admin)
+  productProof.js      — Assemblage local de preuve produit et d'indicateurs d'impact
 
 src/components/
   AdminPanel.jsx       — Panel admin (profiles.is_admin + fallback email transitoire)
 
 netlify/functions/
-  claude.js            — Proxy IA principal (auth JWT, rate limit, Greffier)
+  claude.js            — Proxy IA principal (auth JWT, entitlement, quota journalier, Greffier)
   greffier.js          — Agent extraction silencieuse (Haiku)
   verify-code.js       — Vérification codes admin côté serveur
   admin-tools.js       — Actions admin sécurisées (coûts API, reset mémoire)
@@ -85,6 +87,49 @@ Tous les documents techniques sont centralisés dans [`docs/system/`](docs/syste
 - [ ] Journal des tâches `PROJECT.md` mis à jour
 
 ---
+
+## Sprint 8 — Trial & Proof Layer ✅
+
+### Objectif
+
+Permettre a un utilisateur de vivre la valeur de Noema avant de payer, ressentir un benefice concret en 1 a 2 jours, et comprendre pourquoi il pourrait revenir.
+
+### Logique d'essai gratuit
+
+- tout utilisateur authentifie sans abonnement actif entre maintenant dans l'app en tier `trial`
+- aucune table nouvelle : le quota gratuit reutilise `rate_limits`
+- `claude.js` reste l'unique source de verite pour le quota journalier
+- message d'ouverture non compte dans le quota, pour que l'essai commence sur une vraie interaction utilisateur
+- tiers d'acces runtime :
+  - `trial` -> quota journalier gratuit limite
+  - `subscriber` / `invite` -> quota normal
+  - `admin` -> non limite
+
+### Logique de preuve produit
+
+- bloc `Ce que Noema comprend de toi` visible dans le chat et dans `Today`
+- assemble uniquement des donnees deja existantes :
+  - `insights`
+  - `next_action`
+  - `step`
+- aucun appel LLM supplementaire, aucun resume complexe
+
+### Indicateurs d'impact
+
+- surfaces discretes dans `Today`
+- derives uniquement de donnees existantes :
+  - `journal_entries` -> jours de suivi
+  - `sessions.next_action` -> intentions clarifiees
+  - `next_action` live -> fil en cours
+- pas de score, pas de streak, pas de gamification
+
+### Ce qui n'a pas ete ajoute
+
+- aucun backend lourd
+- aucune table nouvelle
+- aucun appel LLM supplementaire
+- aucune refonte memoire
+- aucune complexification de `useSubscriptionAccess` au-dela du tier d'acces et du quota courant
 
 ### Documentation maîtresse (anciens chemins — redirigés)
 
@@ -159,6 +204,7 @@ Les documents système sont maintenant dans `docs/system/`. Les références ci-
 - Panel Admin : simulation de phase, logs Greffier, coûts API
 - Réponses du chat en bloc (plus de mot à mot), avec temps de réponse optimisé côté frontend/backend
 - Débat rétention produit documenté dans `RETENTION.md` (3 angles : growth, psychologie produit, PM)
+- Sprint 8 : essai gratuit limité branché sur `rate_limits`, preuve produit visible dans Chat/Today, CTA pricing après épuisement d'essai
 - Audit sécurité (codex.md) — 3 corrections prioritaires appliquées :
   - Correction 1 : JWT Supabase vérifié côté serveur sur `/claude`
   - Correction 2 : DOMPurify sur `dangerouslySetInnerHTML` dans ChatPage

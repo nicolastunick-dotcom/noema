@@ -34,9 +34,27 @@ const DEFAULT_PROMPTS = [
   "Je veux mieux comprendre ce que je veux vraiment",
 ];
 
-export default function ChatPage({ msgs, typing, input, setInput, send, genIkigai, onNav, newSession, user, sb, taRef, continuity }) {
+export default function ChatPage({
+  msgs,
+  typing,
+  input,
+  setInput,
+  send,
+  genIkigai,
+  onNav,
+  newSession,
+  user,
+  sb,
+  taRef,
+  continuity,
+  proofState,
+  quota,
+  onPricing,
+}) {
   const msgsRef = useRef(null);
   const continuityMode = continuity?.mode || "welcome";
+  const isQuotaBlocked = Boolean(quota?.exhausted);
+  const isTrial = Boolean(quota?.isTrial);
   const continuityPrompts = continuityMode === "resume" && continuity?.prompt
     ? [`Reprenons: ${continuity.prompt}`, ...DEFAULT_PROMPTS.slice(1)]
     : continuityMode === "restart"
@@ -229,6 +247,78 @@ export default function ChatPage({ msgs, typing, input, setInput, send, genIkiga
           </div>
         )}
 
+        {quota && (
+          <div style={{
+            alignSelf: "stretch",
+            padding: "16px 18px",
+            borderRadius: 18,
+            background: isTrial ? "rgba(189,194,255,0.08)" : "rgba(30,31,37,0.72)",
+            border: `1px solid ${isTrial ? "rgba(189,194,255,0.18)" : "rgba(255,255,255,0.06)"}`,
+            boxShadow: "0 14px 30px rgba(0,0,0,0.14)",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <div>
+                <p style={{
+                  margin: 0,
+                  fontSize: "0.62rem",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.18em",
+                  color: isTrial ? C.primary : C.onSurfaceVariant,
+                  fontWeight: 700,
+                }}>
+                  {quota.label}
+                </p>
+                <p style={{ margin: "8px 0 0", fontSize: "0.84rem", lineHeight: 1.6, color: C.onSurface }}>
+                  {quota.remainingLabel}
+                </p>
+              </div>
+              <p style={{ margin: 0, fontSize: "0.72rem", color: C.onSurfaceVariant, letterSpacing: "0.04em" }}>
+                {quota.usageLabel}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {proofState?.hasData && (
+          <div style={{
+            alignSelf: "stretch",
+            padding: "18px 20px",
+            borderRadius: 18,
+            background: "rgba(30,31,37,0.72)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            boxShadow: "0 16px 36px rgba(0,0,0,0.18)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <span style={{
+                fontSize: "0.62rem",
+                textTransform: "uppercase",
+                letterSpacing: "0.18em",
+                color: C.primary,
+                fontWeight: 700,
+              }}>
+                {proofState.title}
+              </span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {proofState.items.map((item) => (
+                <div key={`${item.label}-${item.value}`} style={{
+                  padding: "12px 14px",
+                  borderRadius: 14,
+                  background: "rgba(17,19,24,0.55)",
+                  border: "1px solid rgba(255,255,255,0.05)",
+                }}>
+                  <p style={{ margin: 0, fontSize: "0.62rem", letterSpacing: "0.16em", textTransform: "uppercase", color: C.outline, fontWeight: 700 }}>
+                    {item.label}
+                  </p>
+                  <p style={{ margin: "8px 0 0", fontSize: "0.88rem", lineHeight: 1.65, color: C.onSurface }}>
+                    {item.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Welcome state */}
         {msgs.length === 0 && !typing && (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: 20, padding: "48px 0", textAlign: "center" }}>
@@ -346,6 +436,62 @@ export default function ChatPage({ msgs, typing, input, setInput, send, genIkiga
             <NoemaOrb size={50} showText={false} />
           </div>
         )}
+
+        {isQuotaBlocked && isTrial && (
+          <div style={{
+            alignSelf: "stretch",
+            padding: "20px 22px",
+            borderRadius: 20,
+            background: "rgba(255,182,138,0.08)",
+            border: "1px solid rgba(255,182,138,0.2)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 14,
+          }}>
+            <div>
+              <p style={{ margin: 0, fontSize: "0.62rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "#ffb68a", fontWeight: 700 }}>
+                Essai gratuit termine
+              </p>
+              <p style={{ margin: "10px 0 0", fontSize: "0.92rem", lineHeight: 1.7, color: C.onSurface }}>
+                Tu peux continuer avec Noema si tu veux garder ce fil vivant. Rien n'est perdu dans ce qui s'est deja clarifie.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button
+                onClick={() => onPricing?.()}
+                style={{
+                  padding: "12px 18px",
+                  borderRadius: 9999,
+                  border: "none",
+                  cursor: "pointer",
+                  fontWeight: 700,
+                  fontSize: "0.82rem",
+                  color: "#332100",
+                  background: "linear-gradient(135deg, #ffddb7 0%, #ffb68a 100%)",
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                }}
+              >
+                Voir l'abonnement
+              </button>
+              <button
+                onClick={() => onNav?.("today")}
+                style={{
+                  padding: "12px 18px",
+                  borderRadius: 9999,
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  fontSize: "0.82rem",
+                  color: C.onSurface,
+                  background: "rgba(17,19,24,0.45)",
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                }}
+              >
+                Relire aujourd'hui
+              </button>
+            </div>
+          </div>
+        )}
         </div>
       </main>
 
@@ -377,9 +523,9 @@ export default function ChatPage({ msgs, typing, input, setInput, send, genIkiga
               <textarea
                 ref={taRef}
                 rows={1}
-                placeholder="Partagez vos pensées…"
+                placeholder={isQuotaBlocked ? "Essai du jour termine" : "Partagez vos pensées…"}
                 value={input}
-                disabled={typing}
+                disabled={typing || isQuotaBlocked}
                 onChange={handleInput}
                 onKeyDown={handleKeyDown}
                 maxLength={2000}
@@ -401,25 +547,25 @@ export default function ChatPage({ msgs, typing, input, setInput, send, genIkiga
               />
               <button
                 onClick={() => send(input)}
-                disabled={!input.trim() || typing}
+                disabled={!input.trim() || typing || isQuotaBlocked}
                 style={{
                   width: 40, height: 40, flexShrink: 0,
                   borderRadius: 10,
-                  background: input.trim() && !typing
+                  background: input.trim() && !typing && !isQuotaBlocked
                     ? "linear-gradient(135deg, #bdc2ff 0%, #7886ff 100%)"
                     : "rgba(69,70,85,0.3)",
                   border: "none",
-                  cursor: input.trim() && !typing ? "pointer" : "not-allowed",
+                  cursor: input.trim() && !typing && !isQuotaBlocked ? "pointer" : "not-allowed",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   transition: "all 0.2s",
                   transform: "scale(1)",
                 }}
-                onMouseEnter={e => input.trim() && !typing && (e.currentTarget.style.transform = "scale(0.95)")}
+                onMouseEnter={e => input.trim() && !typing && !isQuotaBlocked && (e.currentTarget.style.transform = "scale(0.95)")}
                 onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
               >
                 <span className="material-symbols-outlined" style={{
                   fontSize: "1.125rem",
-                  color: input.trim() && !typing ? "#00118c" : C.outline,
+                  color: input.trim() && !typing && !isQuotaBlocked ? "#00118c" : C.outline,
                   fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24",
                 }}>arrow_upward</span>
               </button>
@@ -429,11 +575,13 @@ export default function ChatPage({ msgs, typing, input, setInput, send, genIkiga
             margin: "10px 4px 0",
             fontSize: "0.68rem",
             lineHeight: 1.5,
-            color: C.outline,
+            color: isQuotaBlocked ? "#ffb68a" : C.outline,
             textAlign: "center",
             letterSpacing: "0.03em",
           }}>
-            Cadre du moment: 25 messages par jour. La continuite reste visible d'une session a l'autre.
+            {quota
+              ? `${quota.label} · ${quota.remainingLabel}. La continuite reste visible d'une session a l'autre.`
+              : "Cadre du moment: quota journalier simple. La continuite reste visible d'une session a l'autre."}
           </p>
         </div>
       </div>

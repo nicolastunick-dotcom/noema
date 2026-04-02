@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { sb, buildMemoryContext } from "../lib/supabase";
 import { ANTHROPIC_PROXY } from "../constants/config";
 import { QUOTES } from "../constants/prompt";
 import { applyTheme, mapEtat } from "../constants/themes";
 import { getTime, parseUI, stripUI, trimHistory } from "../utils/helpers";
+import { buildProofState } from "../lib/productProof";
 import ChatPage      from "./ChatPage";
 import MappingPage   from "./MappingPage";
 import JournalPage   from "./JournalPage";
@@ -97,6 +98,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   const [ikigai,      setIkigai]      = useState({aime:"",excelle:"",monde:"",paie:"",mission:""});
   const [nextAction,  setNextAction]  = useState("");
   const [chatContinuity, setChatContinuity] = useState(() => buildContinuityState("welcome"));
+  const [quotaState, setQuotaState] = useState(() => accessState?.quota || null);
 
   const history         = useRef([]);
   const sessionIdRef    = useRef(crypto.randomUUID()); // Sprint 4 : identifiant stable pour toute la session active
@@ -119,6 +121,17 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
     setNavTab(initialTab || "chat");
   }, [initialTab]);
 
+  useEffect(() => {
+    if (accessState?.quota) {
+      setQuotaState(accessState.quota);
+    }
+  }, [accessState?.quota]);
+
+  const proofState = useMemo(
+    () => buildProofState({ insights, nextAction, step }),
+    [insights, nextAction, step]
+  );
+
   // ── 2. OPENING MESSAGE ───────────────────────────────────────
   async function openingMessage() {
     if (hasOpened.current) return;
@@ -128,7 +141,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
     history.current.push({ role: "user", content: trigger });
     setTyping(true);
     try {
-      const raw = await callAPI();
+      const { content: raw } = await callAPI({ consumeQuota: false });
       const ui    = parseUI(raw);
       const clean = stripUI(raw);
       applyUI(ui);
@@ -178,9 +191,9 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
       } else {
         setChatContinuity(buildContinuityState("welcome"));
       }
-      if (!last) await openingMessage();
+      if (!last && !accessState?.quota?.exhausted) await openingMessage();
     })();
-  }, [user, accessState?.loading]);
+  }, [user, accessState?.loading, accessState?.quota?.exhausted]);
 
   useEffect(() => {
     if (user) return;
@@ -221,7 +234,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   }, []);
 
   // ── 4. API ───────────────────────────────────────────────────
-  async function callAPI() {
+  async function callAPI(options = {}) {
     const h = trimHistory(history.current);
     const memory_context = buildMemoryContext(memoryRef.current);
     const headers = { "Content-Type":"application/json" };
@@ -232,7 +245,14 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
         headers["Authorization"] = `Bearer ${session.access_token}`;
       }
     }
-    const bodyPayload = { model:"claude-sonnet-4-6", max_tokens:1100, memory_context, messages:h, session_id:sessionIdRef.current };
+    const bodyPayload = {
+      model:"claude-sonnet-4-6",
+      max_tokens:1100,
+      memory_context,
+      messages:h,
+      session_id:sessionIdRef.current,
+      consume_quota: options.consumeQuota !== false,
+    };
     const res = await fetch(ANTHROPIC_PROXY, {
       method:"POST", headers,
       body: JSON.stringify(bodyPayload),
@@ -245,7 +265,15 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
       lastGreffierLog.current = payload._greffier;
       setGreffierLogTick(t => t + 1);
     }
-    return typeof payload?.content === "string" ? payload.content : "";
+    if (payload?._quota) {
+      setQuotaState(payload._quota);
+    }
+    return {
+      content: typeof payload?.content === "string" ? payload.content : "",
+      quota: payload?._quota || null,
+      access: payload?._access || null,
+      sessionLimit: Boolean(payload?._session_limit),
+    };
   }
 
   // ── 5. UI HANDLER ────────────────────────────────────────────
@@ -332,6 +360,10 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   const send = useCallback(async (text) => {
     const t = text.replace(/<[^>]*>/g, "").trim().slice(0, 2000);
     if (!t || typing) return;
+    if (quotaState?.exhausted) {
+      setMsgs(m => [...m, { role:"noema", text:quotaState.exhaustedMessage, time:getTime(), isErr:true }]);
+      return;
+    }
     setInput("");
     if (taRef.current) taRef.current.style.height = "auto";
 
@@ -348,7 +380,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
     const streamTime = getTime();
 
     try {
-      const raw = await callAPI();
+      const { content: raw } = await callAPI();
       const ui    = parseUI(raw);
       const clean = stripUI(raw);
       applyUI(ui);
@@ -364,7 +396,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
       console.error(e);
     }
     setTyping(false);
-  }, [typing]);
+  }, [quotaState, typing]);
 
   // ── 8. SAVE SESSION ──────────────────────────────────────────
   async function saveSession(currentInsights, currentIkigai, currentStep) {
@@ -476,6 +508,8 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
             user={user}
             sb={sb}
             nextAction={nextAction}
+            proofState={proofState}
+            quota={quotaState}
             onJournal={() => changeTab("journal")}
             onChat={() => changeTab("chat")}
           />
@@ -495,6 +529,9 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
             sb={sb}
             taRef={taRef}
             continuity={chatContinuity}
+            proofState={proofState}
+            quota={quotaState}
+            onPricing={() => onNav("pricing")}
           />
         );
     }

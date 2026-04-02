@@ -77,7 +77,7 @@ export default function App() {
     }
 
     if (route.reason === "subscription_required") {
-      return "Votre acces a Noema necessite un abonnement actif.";
+      return "Votre acces a Noema commence par un essai gratuit. L'abonnement sert ensuite a continuer.";
     }
 
     return null;
@@ -114,7 +114,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!user || !access.hasActiveSubscription) {
+    if (!user || !access.hasProductAccess) {
       setNeedsOnboarding(false);
       setOnboardingReady(true);
       return;
@@ -153,7 +153,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, access.hasActiveSubscription]);
+  }, [user?.id, access.hasProductAccess]);
 
   useEffect(() => {
     if (!authReady) return;
@@ -171,7 +171,7 @@ export default function App() {
 
       if (!import.meta.env.DEV) {
         if (access.loading) return;
-        if (!access.hasActiveSubscription) {
+        if (!access.hasProductAccess) {
           navigate(buildLocation("/pricing", { reason: "subscription_required" }), { replace: true });
           return;
         }
@@ -210,7 +210,7 @@ export default function App() {
     // Utilisateur connecté + abonnement actif sur la landing → redirige vers l'app
     if (route.page === "landing" && user && authReady) {
       if (access.loading) return;
-      if (!access.hasActiveSubscription) return; // pas d'abonnement → reste sur landing
+      if (!access.hasProductAccess) return;
 
       if (!onboardingReady) return;
 
@@ -220,7 +220,7 @@ export default function App() {
       navigate(needsOnboarding ? buildLocation("/onboarding", { next: getAppPath("chat") }) : getAppPath("chat"), { replace: true });
     }
   }, [
-    access.hasActiveSubscription,
+    access.hasProductAccess,
     access.loading,
     authReady,
     currentAppPath,

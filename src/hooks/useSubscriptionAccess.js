@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { sb } from "../lib/supabase";
 import { hasActiveSubscriptionRecord } from "../lib/access";
+import { buildQuotaState, hasProductAccessForTier, isFullAccessTier, resolveAccessTier } from "../lib/entitlements";
 
 const INITIAL_STATE = {
   // Sprint 1.1 : loading: true dès le départ pour bloquer openingMessage() tant que
@@ -9,11 +10,15 @@ const INITIAL_STATE = {
   // Tous les chemins de refresh() posent explicitement loading: false avant de retourner.
   loading: true,
   hasActiveSubscription: false,
+  hasFullAccess: false,
+  hasProductAccess: false,
+  accessTier: "anonymous",
   subscription: null,
   records: [],
   isAdmin: false,
   adminSource: null,
   profile: null,
+  quota: buildQuotaState({ tier: "anonymous", used: 0 }),
   error: null,
 };
 
@@ -31,14 +36,19 @@ export function useSubscriptionAccess(user) {
     }
 
     if (ADMIN_EMAIL && user.email === ADMIN_EMAIL) {
+      const accessTier = resolveAccessTier({ isAuthenticated: true, isAdmin: true });
       const adminState = {
         loading: false,
-        hasActiveSubscription: true,
+        hasActiveSubscription: false,
+        hasFullAccess: true,
+        hasProductAccess: true,
+        accessTier,
         subscription: { status: "active", plan: "admin" },
         records: [],
         isAdmin: true,
         adminSource: "legacy_email",
         profile: null,
+        quota: buildQuotaState({ tier: accessTier, used: 0 }),
         error: null,
       };
       setState(adminState);
@@ -47,14 +57,22 @@ export function useSubscriptionAccess(user) {
 
     if (!sb) {
       const hasLegacyAdminAccess = Boolean(ADMIN_EMAIL && user.email === ADMIN_EMAIL);
+      const accessTier = resolveAccessTier({
+        isAuthenticated: true,
+        isAdmin: hasLegacyAdminAccess,
+      });
       const nextState = {
         loading: false,
-        hasActiveSubscription: hasLegacyAdminAccess,
+        hasActiveSubscription: false,
+        hasFullAccess: isFullAccessTier(accessTier),
+        hasProductAccess: hasProductAccessForTier(accessTier),
+        accessTier,
         subscription: hasLegacyAdminAccess ? { status: "active", plan: "admin" } : null,
         records: [],
         isAdmin: hasLegacyAdminAccess,
         adminSource: hasLegacyAdminAccess ? "legacy_email" : null,
         profile: null,
+        quota: buildQuotaState({ tier: accessTier, used: 0 }),
         error: "SUPABASE_UNAVAILABLE",
       };
       setState(nextState);
@@ -66,6 +84,10 @@ export function useSubscriptionAccess(user) {
     let profile = null;
     let isAdmin = Boolean(ADMIN_EMAIL && user.email === ADMIN_EMAIL);
     let adminSource = isAdmin ? "legacy_email" : null;
+    let hasInvite = false;
+    let subscription = null;
+    let records = [];
+    let errorMessage = null;
 
     const { data: profileData, error: profileError } = await sb
       .from("profiles")
@@ -83,21 +105,6 @@ export function useSubscriptionAccess(user) {
       }
     }
 
-    if (isAdmin) {
-      const adminState = {
-        loading: false,
-        hasActiveSubscription: true,
-        subscription: { status: "active", plan: "admin" },
-        records: [],
-        isAdmin: true,
-        adminSource,
-        profile,
-        error: null,
-      };
-      setState(adminState);
-      return adminState;
-    }
-
     // ── Invite beta ────────────────────────────────────────────────
     // Sprint 1 : source de vérité = table invites (user_id lié).
     // Fallback : sessionStorage (utilisateurs existants pas encore liés en base).
@@ -105,31 +112,23 @@ export function useSubscriptionAccess(user) {
     // validate-invite (avec JWT) pour que le backend puisse vérifier l'entitlement.
 
     // 1. Vérification en base (source de vérité après linkage)
-    const { data: dbInvite } = await sb
-      .from("invites")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("active", true)
-      .maybeSingle();
+    if (!isAdmin) {
+      const { data: dbInvite } = await sb
+        .from("invites")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("active", true)
+        .maybeSingle();
 
-    if (dbInvite) {
-      const inviteState = {
-        loading: false,
-        hasActiveSubscription: true,
-        subscription: { status: "active", plan: "invite" },
-        records: [],
-        isAdmin: false,
-        adminSource: null,
-        profile,
-        error: null,
-      };
-      setState(inviteState);
-      return inviteState;
+      if (dbInvite) {
+        hasInvite = true;
+        subscription = { status: "active", plan: "invite" };
+      }
     }
 
     // 2. Fallback sessionStorage + tentative de persistance en base
-    const inviteRaw = sessionStorage.getItem("noema_invite");
-    if (inviteRaw) {
+    const inviteRaw = !isAdmin && !hasInvite ? sessionStorage.getItem("noema_invite") : null;
+    if (inviteRaw && !hasInvite) {
       let invite;
       try { invite = JSON.parse(inviteRaw); } catch { invite = { token: inviteRaw }; }
 
@@ -171,55 +170,67 @@ export function useSubscriptionAccess(user) {
           }
         }
 
-        const inviteState = {
-          loading: false,
-          hasActiveSubscription: true,
-          subscription: { status: "active", plan: "invite" },
-          records: [],
-          isAdmin: false,
-          adminSource: null,
-          profile,
-          error: null,
-        };
-        setState(inviteState);
-        return inviteState;
+        hasInvite = true;
+        subscription = { status: "active", plan: "invite" };
       }
     }
 
     // ── Abonnement Stripe ──────────────────────────────────────────
-    const { data, error } = await sb
-      .from("subscriptions")
-      .select("id, user_id, stripe_customer_id, stripe_subscription_id, plan, status, current_period_end, cancel_at_period_end, created_at, updated_at")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+    if (!isAdmin && !hasInvite) {
+      const { data, error } = await sb
+        .from("subscriptions")
+        .select("id, user_id, stripe_customer_id, stripe_subscription_id, plan, status, current_period_end, cancel_at_period_end, created_at, updated_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("[Noema] Erreur verification abonnement:", error);
-      const nextState = {
-        loading: false,
-        hasActiveSubscription: false,
-        subscription: null,
-        records: [],
-        isAdmin,
-        adminSource,
-        profile,
-        error: error.message || "SUBSCRIPTION_CHECK_FAILED",
-      };
-      setState(nextState);
-      return nextState;
+      if (error) {
+        console.error("[Noema] Erreur verification abonnement:", error);
+        errorMessage = error.message || "SUBSCRIPTION_CHECK_FAILED";
+      } else {
+        records = data || [];
+        subscription = records.find(hasActiveSubscriptionRecord) || records[0] || null;
+      }
     }
 
-    const records = data || [];
-    const subscription = records.find(hasActiveSubscriptionRecord) || records[0] || null;
+    const hasActiveSubscription = hasActiveSubscriptionRecord(subscription);
+    const accessTier = resolveAccessTier({
+      isAuthenticated: true,
+      isAdmin,
+      hasInvite,
+      hasSubscription: hasActiveSubscription,
+    });
+
+    let quota = buildQuotaState({ tier: accessTier, used: 0 });
+    if (!quota.isUnlimited) {
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: rateLimitRow, error: rateLimitError } = await sb
+        .from("rate_limits")
+        .select("count")
+        .eq("user_id", user.id)
+        .eq("date", today)
+        .maybeSingle();
+
+      if (rateLimitError) {
+        console.error("[Noema] Erreur lecture quota:", rateLimitError);
+        if (!errorMessage) errorMessage = rateLimitError.message || "RATE_LIMIT_CHECK_FAILED";
+      } else {
+        quota = buildQuotaState({ tier: accessTier, used: rateLimitRow?.count || 0 });
+      }
+    }
+
     const nextState = {
       loading: false,
-      hasActiveSubscription: hasActiveSubscriptionRecord(subscription),
+      hasActiveSubscription,
+      hasFullAccess: isFullAccessTier(accessTier),
+      hasProductAccess: hasProductAccessForTier(accessTier),
+      accessTier,
       subscription,
       records,
       isAdmin,
       adminSource,
       profile,
-      error: null,
+      quota,
+      error: errorMessage,
     };
 
     setState(nextState);
