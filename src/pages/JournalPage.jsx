@@ -20,6 +20,7 @@ const C = {
 
 const TODAY = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
 
+// Prompt statique — pas encore généré depuis les conversations
 const STATIC_PROMPT = "En quoi cette situation rejoint ce qu'on a découvert sur toi lors de notre dernière séance ?";
 
 const ALTERNATIVE_PROMPTS = [
@@ -46,6 +47,7 @@ export default function JournalPage() {
     return () => { document.body.style.overflow = prev; };
   }, []);
 
+  // Sauvegarde non implémentée — aperçu statique
   function handleSave() {
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -109,6 +111,7 @@ export default function JournalPage() {
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20 }}>
                 <span className="material-symbols-outlined" style={{ fontSize:"0.875rem", color:C.primary, fontVariationSettings:"'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>psychology</span>
                 <span style={{ fontSize:"0.6rem", letterSpacing:"0.2em", textTransform:"uppercase", color:"rgba(189,194,255,0.8)", fontWeight:600 }}>Suggestion de Noema</span>
+                <span style={{ fontSize:"0.55rem", letterSpacing:"0.1em", textTransform:"uppercase", color:"rgba(197,197,216,0.35)", marginLeft:"auto" }}>statique</span>
               </div>
               <blockquote style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"1.3rem", color:"#dfe0ff", lineHeight:1.5, margin:"0 0 16px" }}>
                 "{activePrompt}"
@@ -122,7 +125,7 @@ export default function JournalPage() {
           {/* ── Editor Surface ── */}
           <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"0 4px" }}>
-              <span style={{ fontSize:"0.6rem", letterSpacing:"0.2em", textTransform:"uppercase", color:C.outline, fontWeight:600 }}>Journalisation en cours</span>
+              <span style={{ fontSize:"0.6rem", letterSpacing:"0.2em", textTransform:"uppercase", color:C.outline, fontWeight:600 }}>Réflexion libre</span>
               <span style={{ fontSize:"0.6rem", letterSpacing:"0.2em", textTransform:"uppercase", color:C.outline }}>{wordCount} mot{wordCount !== 1 ? "s" : ""}</span>
             </div>
             <div style={{ ...glass, padding:28, minHeight:360, position:"relative", overflow:"hidden" }}>

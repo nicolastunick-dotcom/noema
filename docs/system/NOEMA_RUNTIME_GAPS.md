@@ -33,10 +33,10 @@ Les écarts structurants les plus importants sont aujourd'hui:
 - le repo contient encore des reliquats V1/V2 (`App.original.jsx`, `prompt-greffier.js`, alias legacy, imports orphelins) capables de tromper une IA qui ne lirait pas les bons points de vérité
 - plusieurs documents historiques (`ROADMAP.md`, `DEBATE.md`, parties de `PROJECT.md`, parties de `codex.md`) décrivent un Noema plus cohérent, plus branché ou plus ancien que le runtime actuel
 
-Ce que Noema est réellement aujourd'hui (post Sprint 4.1) :
+Ce que Noema est réellement aujourd'hui (post Sprint 4) :
 - `réel`: auth, accès backend verrouillé (entitlement admin/sub/invite), quota backend unique, chat, mémoire inter-sessions, snapshots, Mapping, onboarding, admin panel partiel
-- `partiel`: Greffier comme moteur secondaire de persistance, billing post-checkout (Success mocké), `invites.user_id` linkage (migration à exécuter en prod), documentation globale du projet
-- `mocké`: `Journal`, `Today`, état confirmé de `Success`, partie du discours "rituel quotidien" et "journal guidé par Noema"
+- `partiel`: Greffier comme moteur secondaire de persistance, billing post-checkout (Success plus fiable mais toujours dépendant du webhook), `invites.user_id` linkage (migration à exécuter en prod), documentation globale du projet
+- `mocké`: `Journal`, `Today`, partie du discours "rituel quotidien" et "journal guidé par Noema"
 - `legacy`: `App.original.jsx`, `prompt-greffier.js`, une partie de `access_codes`, les commentaires Greffier sur `user_insights` / `ikigai_state`
 
 Écart résiduel Sprint 1 :
@@ -69,8 +69,8 @@ Modèle de données vs runtime:
 
 Surfaces visibles vs branchement réel:
 - `Mapping` est réellement alimenté
-- `Journal` et `Today` sont surtout visuels
-- `Success` affirme plus que ce qu'il vérifie
+- `Journal` et `Today` sont surtout visuels — assumés comme aperçus statiques dans l'UI (Sprint 4 ✅) — données réelles cibles Sprint 5
+- ~~`Success` affirme plus que ce qu'il vérifie~~ **RÉSOLU Sprint 4** : relit `subscriptions.status`, distingue confirmé vs activation en cours
 
 Legacy vs source de vérité:
 - des reliquats V1/V2 restent présents et plausibles
@@ -80,7 +80,7 @@ Legacy vs source de vérité:
 
 - `src/constants/prompt.js` vs `src/pages/AppShell.jsx`
 - `src/App.jsx` / `src/hooks/useSubscriptionAccess.js` vs `netlify/functions/claude.js`
-- `ROADMAP.md` / `RETENTION.md` / `src/pages/Landing.jsx` / `src/pages/Onboarding.jsx` vs `src/pages/JournalPage.jsx` / `src/pages/TodayPage.jsx`
+- `ROADMAP.md` / `RETENTION.md` / `src/pages/Onboarding.jsx` vs `src/pages/JournalPage.jsx` / `src/pages/TodayPage.jsx` _(Landing et Pricing réalignés Sprint 4 ✅)_
 - `supabase-schema.sql` vs `netlify/functions/create-invite.js` / `validate-invite.js`
 - `src/App.original.jsx` / `src/constants/prompt-greffier.js` vs runtime V2 réel
 
@@ -128,17 +128,17 @@ Mapping:
 
 Billing:
 - le checkout et le webhook existent
-- la page `Success` ne vérifie rien en base
-- la confirmation visuelle post-paiement reste donc `mockée`
+- `Success` relit maintenant `subscriptions.status`
+- la confirmation visuelle post-paiement est plus fiable, mais reste dépendante de la synchronisation webhook
 
 ### 3.3 Écarts par domaine
 
 | Domaine | Vision / promesse | Runtime réel | Etat |
 |---|---|---|---|
 | Mémoire | continuité totale | `forces`, `blocages`, `contradictions`, `ikigai`, `step` injectés — mid-session live via `updateMemoryRef` | réel (Sprint 3) |
-| Guide quotidien | journal guidé + rituel du jour | deux pages statiques | mocké |
+| Guide quotidien | journal guidé + rituel du jour | deux pages statiques assumées comme aperçus / espaces libres | mocké |
 | Cartographie | miroir vivant de progression | Mapping branché au `_ui` | réel mais partiel |
-| Paiement -> accès | activation claire après paiement | vérité dans `subscriptions`, mais `Success` ne vérifie pas | partiel |
+| Paiement -> accès | activation claire après paiement | vérité dans `subscriptions`, relue par `Success`, avec état d'attente si webhook non synchronisé | partiel |
 | Session | 25 messages / session | 25/jour serveur, 100/jour client + 30/min local | contradictoire |
 | Phase 2 | bascule guide -> stratège | prompt la décrit, UI ne l'incarne presque pas | partiel |
 
@@ -383,40 +383,42 @@ Références:
 
 | Surface | Ce qu'elle laisse croire | Ce qu'elle fait réellement | Niveau de branchement |
 |---|---|---|---|
-| Landing | produit complet de continuité introspective | marketing + promesses de `Journal` / cartographie / accompagnement | partiel |
-| Pricing | accès mensuel + surfaces complètes | checkout mensuel réel, plan Pro visuel seulement | partiel |
-| Success | abonnement activé et prêt | message statique, pas de relecture `subscriptions` | mocké |
+| Landing | produit complet de continuité introspective | marketing réaligné, sans présenter `Journal` / `Today` comme déjà branchés | partiel |
+| Pricing | accès mensuel + surfaces complètes | checkout mensuel réel, `Journal` / `Today` marqués comme à venir, plan Pro visuel seulement | partiel |
+| Success | abonnement activé et prêt | relit `subscriptions.status`, distingue confirmé vs activation en cours | partiel |
 | Chat | coeur produit vivant | surface la plus réellement branchée | réel |
 | Mapping | miroir analytique de progression | consomme l'état React alimenté par `<_ui>` | réel mais dépendant du chat |
-| Journal | journal guidé par Noema | prompts statiques, save local visuel | mocké |
-| Today | rituel personnalisé du jour | `STATIC_DATA` + prénom user | mocké |
+| Journal | journal guidé par Noema | espace libre statique assumé, prompts statiques, save local visuel | mocké |
+| Today | rituel personnalisé du jour | aperçu statique assumé, `STATIC_DATA` + prénom user | mocké |
 | AdminPanel | pilotage admin global | simulations locales + quelques appels admin réels, coûts non globaux | partiel |
 
 ### 7.1 Surface par surface
 
 Landing:
-- vend une cartographie psychique, un journal guidé et un produit de continuité
-- ne permet pas de vérifier qu'ils sont branchés
+- discours marketing réaligné avec l'état réel
+- ne présente plus `Journal` / `Today` comme des surfaces déjà branchées
 
 Pricing:
-- liste `Journal guide` et `Rituel personnalise` comme features du plan mensuel
-- ces surfaces ne sont pas réellement branchées aux données produit
+- liste `Journal` et `Rituel quotidien` comme éléments à venir
+- ne laisse plus entendre qu'ils sont déjà branchés aux données produit
 
 Success:
-- texte affirmatif "Ton abonnement est activé"
-- aucun fetch, aucune vérification Supabase, aucune lecture de `accessState`
+- relit `subscriptions.status`
+- affiche un état confirmé ou un état d'activation en cours
+- devient plus fidèle à la vérité billing visible, sans la rendre parfaite
 
 Mapping:
 - lit bien des données runtime
 - mais ces données viennent du dernier flux chat, pas d'un moteur autonome ni d'une requête dédiée
 
 Journal:
-- suggestion de Noema statique
+- suggestion de Noema statique assumée comme telle
 - tags statiques
 - bouton save purement visuel
 
 Today:
 - intention, question, défi, citation statiques
+- mention explicite d'aperçu / personnalisation à venir
 - bouton vers Journal sans préremplissage
 
 Références:

@@ -29,7 +29,7 @@ Noema n'est pas, dans le code actuel, un "système produit complet d'accompagnem
 Etat réel du produit aujourd'hui:
 - `réel`: auth, signup, reset password, invite beta, paywall, checkout initiation, webhook Stripe, chat, mémoire, mapping, onboarding, admin panel partiel
 - `partiel`: Greffier, billing global, logique de quotas, accès admin, accès invitation, cohérence prompt/UI, cohérence docs/code
-- `mocké`: Journal, Today, Success, une partie du Landing, offre Pro
+- `mocké`: Journal, Today, offre Pro
 - `mort / legacy`: `src/App.original.jsx`, plusieurs composants de panneaux latéraux, `src/constants/prompt-greffier.js`, une partie de la logique `access_codes`
 
 Point de vérité produit:
@@ -106,10 +106,10 @@ Transitions inachevées:
 |---|---|---|---|---|---|
 | `/` | `src/pages/Landing.jsx` | Landing marketing + CTA vers login/pricing/onboarding preview | hardcodées | aucune | statique |
 | `/login` | `src/pages/Login.jsx` | login, signup, reset email, OAuth Google, code d'accès | Supabase Auth, `access_codes` | Supabase, `/.netlify/functions/verify-code` | réel, avec branche legacy |
-| `/pricing` | `src/pages/Pricing.jsx` | paywall + checkout | `user`, `accessState` | `/.netlify/functions/create-checkout-session` | réel pour mensuel, Pro visuel |
+| `/pricing` | `src/pages/Pricing.jsx` | paywall + checkout | `user`, `accessState` | `/.netlify/functions/create-checkout-session` | réel pour mensuel, Pro visuel, surfaces à venir assumées |
 | `/onboarding-preview` | `src/pages/Onboarding.jsx` | démo publique des 4 slides | aucune | aucune | démo |
 | `/onboarding` | `src/pages/Onboarding.jsx` | onboarding post-abonnement | `memory.onboarding_done` | Supabase | réel |
-| `/success` | `src/pages/Success.jsx` | page post-checkout | aucune | aucune | visuelle |
+| `/success` | `src/pages/Success.jsx` | page post-checkout avec verification d'activation | `user`, `subscriptions.status` | Supabase via `sb` client | partiel mais fiable |
 | `/invite` | `src/pages/InvitePage.jsx` | validation invite beta + stockage local du token | `sessionStorage` | `/.netlify/functions/validate-invite` | réel mais transitoire |
 | `/reset-password` | `src/pages/ResetPassword.jsx` | finalisation reset password | session Supabase recovery | Supabase Auth | réel |
 | `/contact` | `src/pages/Contact.jsx` | formulaire contact | form local | `/.netlify/functions/send-contact` | réel |
@@ -123,8 +123,8 @@ Transitions inachevées:
 |---|---|---|---|---|---|
 | `/app/chat` | `src/pages/ChatPage.jsx` via `AppShell.jsx` | coeur métier | `msgs`, `history`, `memory`, `sessions`, `rate_limits` | `/.netlify/functions/claude`, Supabase | réel |
 | `/app/mapping` | `src/pages/MappingPage.jsx` via `AppShell.jsx` | lecture visuelle du mapping | props issues de `AppShell` | aucune directe | réel mais dépendant du chat |
-| `/app/journal` | `src/pages/JournalPage.jsx` via `AppShell.jsx` | journal guidé affiché | state local uniquement | aucune | mocké |
-| `/app/today` | `src/pages/TodayPage.jsx` via `AppShell.jsx` | rituel du jour affiché | state local + prénom user | aucune | mocké |
+| `/app/journal` | `src/pages/JournalPage.jsx` via `AppShell.jsx` | espace de réflexion libre affiché | state local uniquement | aucune | mocké mais assumé |
+| `/app/today` | `src/pages/TodayPage.jsx` via `AppShell.jsx` | aperçu du rituel du jour | state local + prénom user | aucune | mocké mais assumé |
 
 ### 3.3 Détails utiles par page
 
@@ -141,20 +141,24 @@ Login:
 Pricing:
 - checkout mensuel branché
 - offre Pro présentée mais non branchée
+- `Journal` / `Today` présentés comme à venir, pas comme surfaces déjà runtime
 - dépend du webhook pour rendre l'accès réellement actif
 
 Success:
-- n'interroge pas `subscriptions`
-- ne vérifie pas l'état réel d'abonnement
+- reçoit `user` et `sb` depuis `App.jsx`
+- relit `subscriptions.status`
+- affiche un état confirmé ou un état d'activation en cours
 
 Journal:
 - `STATIC_PROMPT`, `ALTERNATIVE_PROMPTS`, `STATIC_TAGS`
+- le caractère statique est explicitement assumé dans l'UI
 - `handleSave()` ne persiste rien
 - aucune table `journal` dans `supabase-schema.sql`
 
 Today:
 - `STATIC_DATA`
 - seule donnée réellement dynamique: `firstName`
+- le caractère d'aperçu statique est explicitement assumé dans l'UI
 - checkbox défi purement locale
 
 ## 4. Flux complet du chat

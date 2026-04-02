@@ -609,8 +609,7 @@ export default function Landing({ onNav }) {
                   lineHeight: 1.7,
                 }}
               >
-                Transformez vos pensées brutes en structure. Des prompts quotidiens basés
-                sur vos conversations passées.
+                Transformez vos pensées brutes en structure. Un espace pour écrire, réfléchir, et garder une trace de votre chemin.
               </p>
             </div>
 

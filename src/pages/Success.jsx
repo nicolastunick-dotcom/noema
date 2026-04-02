@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const COLORS = {
   background: "#0D0F14",
@@ -11,11 +11,29 @@ const COLORS = {
   onPrimaryContainer: "#00118c",
 };
 
-export default function Success({ onNav }) {
+export default function Success({ onNav, user, sb }) {
+  const [subStatus, setSubStatus] = useState("loading"); // "loading" | "active" | "pending"
+
   useEffect(() => {
     document.body.style.overflow = "auto";
     return () => { document.body.style.overflow = ""; };
   }, []);
+
+  useEffect(() => {
+    if (!user || !sb) { setSubStatus("pending"); return; }
+    let cancelled = false;
+    sb.from("subscriptions")
+      .select("status")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        const s = data?.status;
+        setSubStatus(s === "active" || s === "trialing" ? "active" : "pending");
+      })
+      .catch(() => { if (!cancelled) setSubStatus("pending"); });
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   return (
     <div
@@ -100,7 +118,9 @@ export default function Success({ onNav }) {
             marginBottom: 20,
           }}
         >
-          Ton exploration commence maintenant.
+          {subStatus === "active"
+            ? "Ton exploration commence maintenant."
+            : "Merci pour ton abonnement."}
         </h1>
 
         <p
@@ -111,7 +131,11 @@ export default function Success({ onNav }) {
             marginBottom: 48,
           }}
         >
-          Ton abonnement est activé. Bienvenue dans Noema — un espace conçu pour te connaître vraiment.
+          {subStatus === "loading"
+            ? "Vérification de ton accès en cours…"
+            : subStatus === "active"
+            ? "Ton abonnement est confirmé. Bienvenue dans Noema — un espace conçu pour te connaître vraiment."
+            : "Activation en cours — cela peut prendre quelques instants. Si tu viens de payer, ton accès sera actif dans un moment."}
         </p>
 
         <button

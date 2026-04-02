@@ -24,8 +24,8 @@ const monthlyFeatures = [
   "Acces complet",
   "Memoire illimitee",
   "Cartographie complete",
-  "Journal guide",
-  "Rituel personnalise",
+  "Journal (bientot)",
+  "Rituel quotidien (bientot)",
   "25 messages/session",
 ];
 

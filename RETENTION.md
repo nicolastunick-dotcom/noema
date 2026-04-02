@@ -266,3 +266,223 @@ Le meilleur ordre pragmatique est donc :
 4. Rendre l'expérience `mobile` vraiment fluide
 5. Ouvrir ensuite un `essai 7 jours`
 
+---
+
+## Addendum — Débat mis à jour au 02/04/2026 depuis `docs/system/`
+
+> Cette section met à jour le débat initial à partir de `docs/system/NOEMA_SYSTEM_MAP.md`, `docs/system/NOEMA_RUNTIME_GAPS.md`, `docs/system/NOEMA_DATA_FLOW_MAP.md` et `docs/system/NOEMA_ALIGNMENT_EXECUTION_PLAN.md`.
+
+### Ce que les docs système changent dans la lecture rétention
+
+Le diagnostic a évolué.
+Le problème principal n'est plus seulement "le coeur du produit tient-il ?"
+Le coeur tient mieux qu'avant.
+
+Le nouveau problème est :
+"comment transformer un noyau chat + mémoire + mapping plus cohérent en boucle de retour quotidienne ?"
+
+Les docs système montrent en effet que :
+
+- l'accès backend et le quota backend ont été sécurisés
+- le contrat `_ui` est en cours d'unification
+- la mémoire et la session avancent dans la bonne direction
+- mais `Journal`, `Today` et `Success` restent en retard sur le noyau réel
+
+Autrement dit :
+la rétention n'est plus bloquée seulement par une promesse cassée.
+Elle est maintenant bloquée par une continuité encore incomplètement distribuée dans l'expérience.
+
+---
+
+## Agent 1 — Growth Hacker, version 02/04/2026
+
+### Nouveau diagnostic
+
+Je change mon diagnostic principal.
+Avant, je pensais surtout :
+"branchez `Journal` et `Today`, sinon Noema reste un beau chat."
+
+Je le pense toujours, mais avec une nuance plus importante :
+les docs système montrent que le projet est en train de devenir plus crédible dans son coeur.
+Donc le chantier rétention n'est plus seulement un chantier d'invention.
+C'est un chantier de distribution de valeur.
+
+La valeur existe davantage qu'avant dans :
+
+- le chat
+- la mémoire
+- le mapping
+
+Le problème est qu'elle ne déborde pas encore assez dans les surfaces de retour.
+
+### Ce qui devient prioritaire
+
+Pour moi, la priorité absolue rétention devient :
+
+1. rendre `next_action` visible et réutilisable
+2. brancher `Journal`
+3. dériver `Today` du même état
+
+Pourquoi ?
+Parce que la boucle la plus naturelle est déjà là en germe dans le système :
+
+`conversation -> compréhension -> next_action -> retour`
+
+Aujourd'hui, cette boucle se casse après le chat.
+La rétention se gagne précisément à cet endroit.
+
+### Ce que je repousse encore
+
+Je repousse encore plus fort qu'avant :
+
+- les effets de glow
+- les raffinements hover
+- les mécaniques d'essai si elles arrivent avant la continuité réelle
+
+Si on ouvre plus fort le funnel avant d'avoir fermé la boucle de retour, on fera entrer plus de gens dans une expérience qui n'a pas encore son moteur d'habitude.
+
+---
+
+## Agent 2 — Psychologue produit, version 02/04/2026
+
+### Ce que l'évolution change psychologiquement
+
+Les docs système me rassurent sur un point fondamental :
+le projet commence à réduire l'écart entre ce qu'il dit et ce qu'il fait.
+
+Pour la rétention, c'est majeur.
+Un produit introspectif perd instantanément la confiance s'il semble manipuler la perception ou vendre une profondeur qu'il ne porte pas réellement.
+
+Le fait que l'équipe assume maintenant explicitement que `Journal` et `Today` sont encore mockés est sain.
+Ça crée les conditions psychologiques d'une vraie confiance future.
+
+### Ce qui manque encore pour l'attachement
+
+Le lien émotionnel ne se produit pas encore complètement.
+
+Pourquoi ?
+Parce que l'utilisateur peut vivre une bonne session, mais il n'habite pas encore une continuité.
+Il n'a pas encore :
+
+- un endroit où la session d'hier se transforme en trace
+- un endroit où le pas suivant lui revient naturellement
+- un rituel quotidien qui soit réellement nourri par ce qu'il a vécu
+
+Le coeur psychologique de la rétention n'est donc pas "plus d'insights".
+C'est "plus de continuité ressentie".
+
+### Ma priorité
+
+Je veux que l'évolution du projet reste douce dans sa forme.
+Oui à `next_action`.
+Oui à `Journal`.
+Oui à `Today`.
+
+Mais il faut les brancher comme des espaces de continuité, pas comme des obligations de performance.
+Le retour ne doit pas ressembler à :
+"tu n'as pas fait ton devoir".
+Il doit ressembler à :
+"voilà le fil que tu es en train de tisser".
+
+---
+
+## Agent 3 — Product Manager, version 02/04/2026
+
+### Ce que les docs système changent dans ma roadmap
+
+Les docs système me forcent à être plus rigoureux.
+Je ne peux plus penser en "features rétention" isolées.
+Je dois penser en dépendances.
+
+Le plan d'exécution le montre bien :
+
+1. coeur backend stabilisé
+2. contrat `_ui`
+3. session live
+4. réalignement UX
+5. extension `Journal` / `Today`
+
+Donc mon ordre produit rétention change légèrement.
+
+### Nouvel ordre PM
+
+1. finir ce qui rend la session réellement exploitable partout
+2. brancher `Journal` à des données vraies
+3. brancher `Today` à partir des mêmes données
+4. seulement ensuite enrichir la dramaturgie de progression
+5. ensuite mobile et acquisition
+
+Pourquoi ce changement ?
+Parce qu'un `Journal` branché trop tôt sur un contrat instable créera de la dette produit au lieu de créer de la rétention.
+
+### Ce que je défends le plus fort
+
+Je défends une idée simple :
+la prochaine feature rétention n'est pas une feature écran.
+C'est un raccordement de système.
+
+Le meilleur investissement n'est pas de dessiner un meilleur `Today`.
+C'est de faire en sorte que `Today` dérive vraiment du même état que le chat.
+
+---
+
+## Le nouveau débat
+
+### Growth Hacker -> Product Manager
+
+"Je comprends mieux maintenant pourquoi tu refuses d'ouvrir tous les chantiers en même temps. Les docs système montrent qu'il y a une vraie logique de dépendance. Mais je maintiens que tant que `next_action` ne sort pas du chat, la rétention plafonne."
+
+### Product Manager -> Growth Hacker
+
+"Je suis d'accord. Mais le bon geste n'est pas juste 'ajouter `next_action` à l'écran'. Le bon geste, c'est rendre `next_action` fiable, puis l'utiliser dans `Journal` et `Today`."
+
+### Psychologue produit -> Growth Hacker
+
+"Et je rajoute : si `next_action` devient un simple mécanisme de rappel, on perd l'âme du produit. Il faut que ce soit une continuité personnelle, pas une to-do list."
+
+### Growth Hacker -> Psychologue produit
+
+"Oui. La rétention n'est pas l'habitude vide. C'est le retour vers une conversation qui a laissé une trace."
+
+### Product Manager -> Psychologue produit
+
+"C'est pour ça que les docs système sont utiles. Elles nous empêchent de maquiller une promesse émotionnelle avec une surface qui ne serait pas reliée au vrai état du système."
+
+### Psychologue produit -> Product Manager
+
+"Alors notre règle devrait être simple : aucune surface de continuité ne doit mentir sur sa source de vérité."
+
+---
+
+## Verdict mis à jour
+
+La rétention de Noema n'est plus principalement bloquée par la qualité de la conversation.
+Elle est maintenant bloquée par l'absence de continuité visible et fiable après la conversation.
+
+Le projet est en train d'évoluer de manière saine :
+
+- le noyau devient plus cohérent
+- la valeur devient plus réelle
+- mais la boucle quotidienne n'est pas encore branchée
+
+### Nouveau top 5 rétention
+
+1. **Sortir `next_action` du chat et en faire une donnée réutilisable**
+   C'est le pont naturel entre session et retour.
+
+2. **Brancher `Journal` sur des données réelles**
+   Pour transformer la session en trace personnelle.
+
+3. **Brancher `Today` sur le même état réel**
+   Pour transformer la trace en point de retour quotidien.
+
+4. **Rendre la continuité lisible sans la rendre scolaire**
+   Le produit doit accompagner, pas noter.
+
+5. **Accélérer ensuite mobile et acquisition**
+   Une fois la boucle de retour réelle stabilisée.
+
+### Formule la plus juste aujourd'hui
+
+Noema n'a plus surtout besoin de "plus d'idées de rétention".
+Noema a besoin que son système réel devienne enfin une expérience de continuité visible.

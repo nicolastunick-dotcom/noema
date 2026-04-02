@@ -265,7 +265,7 @@ export default function App() {
   }
 
   if (route.page === "success") {
-    return <Success onNav={handleNav} />;
+    return <Success onNav={handleNav} user={user} sb={sb} />;
   }
 
   if (route.page === "reset-password") {

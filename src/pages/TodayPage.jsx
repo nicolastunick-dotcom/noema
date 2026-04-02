@@ -75,6 +75,7 @@ export default function TodayPage({ user, onJournal }) {
             Bonjour {firstName}.<br />Voici ton espace du jour.
           </h2>
           <p style={{ fontSize:"0.625rem", letterSpacing:"0.2em", textTransform:"uppercase", color:"rgba(197,197,216,0.7)", margin:0 }}>{TODAY}</p>
+          <p style={{ fontSize:"0.7rem", color:"rgba(197,197,216,0.4)", marginTop:8, margin:"8px 0 0" }}>Aperçu — contenu statique, personnalisation disponible prochainement.</p>
         </section>
 
         {/* Card 1 — Intention */}

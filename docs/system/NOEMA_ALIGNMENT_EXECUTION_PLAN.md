@@ -28,7 +28,7 @@ Ordre des blocs (réalisé → à faire) :
 3. figer le contrat `_ui` minimal reel ✅ Sprint 2
 4. enrichir la mémoire runtime et côté serveur ✅ Sprint 3 / 3.1 / 3.2
 5. introduire une session live minimale ✅ Sprint 4.1 (anticipé)
-6. realigner les surfaces UX sur l'etat reel ⏳ Sprint 4 (vrai Sprint 4 — à faire)
+6. realigner les surfaces UX sur l'etat reel ✅ Sprint 4
 7. seulement ensuite brancher `Journal` et `Today` ⏳ Sprint 5
 
 Logique de dependance:
@@ -524,7 +524,7 @@ introduire un `session_id` live minimal, cohérent et exploitable, sans casser N
 - `src/pages/AppShell.jsx`
 - `netlify/functions/claude.js`
 
-# 5. Sprint 4 — Réalignement UX réel ⏳ À FAIRE
+# 5. Sprint 4 — Réalignement UX réel ✅ EXÉCUTÉ (02/04/2026)
 
 ## Objectif
 corriger les promesses produit qui dépassent l'état réel du runtime — arrêter de présenter comme branchées des surfaces encore mockées ou partielles
@@ -532,36 +532,58 @@ corriger les promesses produit qui dépassent l'état réel du runtime — arrê
 ## Actions
 
 Ordre exact:
-1. modifier `src/pages/Success.jsx` pour relire `subscriptions` avant d'afficher une activation confirmee
-2. afficher un etat "activation en cours" si le webhook Stripe n'a pas encore synchronise la ligne
-3. corriger `src/pages/Landing.jsx`, `src/pages/Pricing.jsx` et `src/pages/Onboarding.jsx` pour ne plus presenter `Journal`, `Today` et la continuite quotidienne comme deja branches
-4. ajouter un marquage explicite dans `JournalPage.jsx` et `TodayPage.jsx` si ces surfaces restent mockees a ce stade
-5. mettre a jour `PROJECT.md` et `ROADMAP.md` pour que la promesse visible colle a l'etat reel post-Sprint 3
+1. `src/pages/Success.jsx` relit maintenant `subscriptions.status` avant d'afficher une activation confirmee
+2. `Success.jsx` affiche un etat "activation en cours" si le webhook Stripe n'a pas encore synchronise la ligne
+3. `src/App.jsx` passe bien `user` et `sb` a `Success`
+4. `src/pages/Landing.jsx` et `src/pages/Pricing.jsx` ne survendent plus `Journal` / `Today` comme des surfaces deja branchees
+5. `src/pages/TodayPage.jsx` assume explicitement un apercu statique
+6. `src/pages/JournalPage.jsx` assume explicitement un espace libre statique, sans sauvegarde branchee
+7. mettre a jour `PROJECT.md` et les docs systeme pour que la promesse visible colle a l'etat reel post-Sprint 4
 
 Fichiers impactes:
 - `src/pages/Success.jsx`
 - `src/pages/Landing.jsx`
 - `src/pages/Pricing.jsx`
-- `src/pages/Onboarding.jsx`
+- `src/App.jsx`
 - `src/pages/JournalPage.jsx`
 - `src/pages/TodayPage.jsx`
 - `PROJECT.md`
-- `ROADMAP.md`
+- `docs/system/NOEMA_RUNTIME_GAPS.md`
+- `docs/system/NOEMA_SYSTEM_MAP.md`
 
-Livrable de sprint:
-- aucune page ne pretend qu'un branchement existe si la donnee reelle n'est pas lue
+Livrable de sprint: ✅
+- aucune promesse produit critique ne depasse la realite backend visible
+- `Success` ne se contente plus d'un message statique: il relit la verite billing disponible
+- `Journal` et `Today` restent non branches aux donnees produit, mais l'UI l'assume explicitement
+- `Landing` et `Pricing` n'affichent plus `Journal` / `Today` comme des surfaces deja vivantes
 
 ### Tests
 
 Tests UX:
 - paiement termine mais webhook en retard -> `Success` affiche attente, pas activation garantie
-- user sans donnees `Journal` / `Today` -> UI assume clairement un mode en preparation ou prototype
+- user sans donnees `Journal` / `Today` -> UI assume clairement un mode statique / apercu
 - la navigation produit reste fluide et ne casse pas le funnel login -> pricing -> checkout -> success -> app
 
 ### Risques
 
 - baisse temporaire de promesse marketing
 - plus de friction visible en post-checkout si Stripe est lent
+
+## Ce qui est maintenant vrai
+
+- `Success.jsx` lit `subscriptions.status` et distingue un abonnement confirme d'une activation encore en cours
+- `App.jsx` fournit a `Success` les dependances necessaires (`user`, `sb`) pour cette verification
+- `Landing.jsx` et `Pricing.jsx` n'annoncent plus `Journal` / `Today` comme des briques deja branchees
+- `TodayPage.jsx` se presente comme un apercu statique
+- `JournalPage.jsx` se presente comme un espace libre statique, avec sauvegarde non implemente
+
+## Ce qui reste partiel apres Sprint 4
+
+- `Success` reste dependant de la synchronisation webhook et d'une simple lecture `subscriptions`, pas d'un pipeline de confirmation plus riche
+- `Journal` reste non persiste
+- `Today` reste alimente par `STATIC_DATA`
+- `next_action` n'est toujours pas consomme par `Journal` ou `Today`
+- Sprint 5 reste le premier sprint qui branche reellement la continuite quotidienne a des donnees produit
 
 # 6. Sprint 5 — Journal / Today réels ⏳ À FAIRE
 
@@ -629,12 +651,12 @@ Tests Today:
 | 5 | Continuité post-refresh | Sprint 3.1 | ✅ |
 | 6 | Réduction coûts tokens/Greffier | Sprint 3.2 | ✅ |
 | 7 | Session live minimale (anticipée) | Sprint 4.1 | ✅ |
-| 8 | Réalignement UX réel | Sprint 4 | ⏳ |
+| 8 | Réalignement UX réel | Sprint 4 | ✅ |
 | 9 | Journal / Today réels | Sprint 5 | ⏳ |
 
 Règle de merge (toujours valide) :
-- ne pas lancer Sprint 4 UX tant que Sprint 4.1 n'a pas stabilisé le runtime session
-- ne pas lancer Sprint 5 Journal/Today tant que Sprint 4 n'a pas retiré les promesses trompeuses
+- Sprint 4 UX a ete livre apres stabilisation de Sprint 4.1
+- Sprint 5 Journal/Today peut demarrer maintenant que Sprint 4 a retire les promesses trompeuses
 
 # 8. Checklist developpeur
 
