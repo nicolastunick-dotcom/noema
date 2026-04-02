@@ -30,16 +30,16 @@ La réalité du système data n'est pas "une base cohérente pilotée par une un
 - une table `subscriptions` qui porte la vérité payante réelle, mais seulement après webhook Stripe
 - des surfaces `Journal` et `Today` encore presque totalement hors base
 
-Ce que les données sont réellement aujourd'hui (post Sprint 1):
-- `réel`: `memory`, `sessions`, `rate_limits` (backend uniquement), `subscriptions`, `api_usage`, `profiles` pour l'admin, `invites` avec `user_id` persistant pour la beta, `access_codes` pour un ancien flux de code
-- `partiel`: `profiles` comme vrai profil utilisateur, `sessions` comme vraie session live, `api_usage` comme vision admin globale, linkage `invites.user_id` (dépend de la migration SQL en prod)
+Ce que les données sont réellement aujourd'hui (post Sprint 4):
+- `réel`: `memory`, `sessions` (session live avec `session_id` stable et upsert), `rate_limits` (backend uniquement), `subscriptions`, `api_usage` (avec `session_id` rempli), `profiles` pour l'admin, `invites` avec `user_id` persistant pour la beta, `access_codes` pour un ancien flux de code
+- `partiel`: `profiles` comme vrai profil utilisateur, `api_usage` comme vision admin globale
 - `mocké`: persistance `Journal`, persistance `Today`, état post-paiement dans `Success`
 - `legacy`: `semantic_memory`, `match_semantic_memory`, une partie de `access_codes`, les commentaires Greffier sur `user_insights` / `ikigai_state`
 
-Les désalignements structurants les plus importants sont (post Sprint 1):
+Les désalignements structurants les plus importants sont (post Sprint 4):
 - ~~l'accès à l'app est décidé côté frontend, mais `/.netlify/functions/claude` ne vérifie que le JWT, pas l'abonnement~~ **RÉSOLU Sprint 1**
 - ~~`invites` existe dans le runtime, mais pas dans `supabase-schema.sql`~~ **RÉSOLU Sprint 1**
-- `sessions` s'appelle session, mais stocke en pratique des snapshots répétés — **cible Sprint 3**
+- ~~`sessions` s'appelle session, mais stocke en pratique des snapshots répétés~~ **RÉSOLU Sprint 4** — upsert sur `session_id` stable, une ligne par session active
 - `memory` stocke plus de champs qu'elle n'en réinjecte réellement au prompt
 - l'admin panel annonce des "coûts API totaux" alors que `admin-tools.js` lit seulement l'usage du user courant
 
@@ -125,10 +125,10 @@ Références:
 - `claude.js` charge la mémoire depuis DB côté serveur via `buildServerMemoryContext()` — ne dépend plus du `memory_context` envoyé par le client
 - `AppShell.updateMemoryRef(ui)` enrichit `memoryRef.current` après chaque réponse `_ui`, sans attendre `saveSession()` — le contexte s'accumule mid-session
 
-`sessions`:
+`sessions` (post Sprint 4):
 - l'UI ne relit que `insights`, `ikigai`, `step` de la dernière ligne
-- `history` est stocké mais pas rechargé dans l'interface au bootstrap
-- `id` existe, mais n'est pas branché comme session live courante
+- `history` est stocké mais pas rechargé dans l'interface au bootstrap — limite volontaire (reprise cross-refresh hors périmètre)
+- `session_id` UUID généré au mount, propagé à chaque appel — upsert sur cet ID, une seule ligne par session active
 
 `rate_limits`:
 - la table ne sait compter que par jour
@@ -142,10 +142,8 @@ Références:
 - aucune écriture client directe
 - la ligne n'est créée ou mise à jour qu'après événements Stripe
 
-`api_usage`:
-- `session_id` existe au schéma
-- `claude.js` n'insère jamais `session_id`
-- `greffier.js` l'insère, mais le runtime actuel lui passe `null`
+`api_usage` (post Sprint 4):
+- `session_id` rempli par `claude.js` (Sonnet) et par `greffier.js` (Haiku) — les deux parlent du même identifiant
 
 `invites`:
 - la table est documentée dans `PROJECT.md`, pas dans `supabase-schema.sql`
@@ -263,8 +261,8 @@ Références:
 - lit `rate_limits`
 - puis `upsert` `count + 1`
 
-`AppShell.saveSession()`:
-1. `insert` une ligne `sessions`
+`AppShell.saveSession()` (post Sprint 4):
+1. `upsert` la ligne `sessions` sur `id = sessionIdRef.current` — une seule ligne par session active, mise à jour à chaque autosave
 2. relit `memory`
 3. fusionne forces/contradictions/blocages/ikigai/session_notes
 4. `upsert` `memory`
@@ -540,25 +538,25 @@ Références:
 
 ### 8.2 `sessions`
 
-Rôle réel:
-- snapshots de conversation et d'état visuel
+Rôle réel (post Sprint 4):
+- session live : une ligne par conversation active, mise à jour à chaque autosave via upsert sur `id`
 
-Pourquoi ce n'est pas une vraie session live:
-- aucun `sessionId` courant n'est maintenu dans `AppShell`
-- `saveSession()` fait un `insert`, jamais un `update`
-- autosave et `newSession()` produisent plusieurs lignes pour une même expérience humaine
-- seul le dernier snapshot est relu
+Ce qui est maintenant vrai (Sprint 4):
+- `sessionIdRef.current = crypto.randomUUID()` maintenu dans `AppShell` pendant toute la session active
+- `saveSession()` fait un `upsert` sur cet ID — autosave et `newSession()` mettent à jour la même ligne
+- `reset()` régénère le `session_id` — nouvelle session = nouvelle ligne
 
-Ce qui est visible ensuite:
-- `insights`, `ikigai`, `step` de la dernière ligne
+Ce qui est visible au bootstrap:
+- `insights`, `ikigai`, `step` de la dernière ligne (inchangé)
 
 Ce qui est stocké mais peu ou pas réutilisé:
-- `history`
+- `history` — stocké, non rechargé au bootstrap (reprise cross-refresh hors périmètre)
 - `session_note`
-- `id` comme identifiant courant
 
 Références:
-- `src/pages/AppShell.jsx:97-107`
+- `src/pages/AppShell.jsx:40` (sessionIdRef)
+- `src/pages/AppShell.jsx:165` (session_id dans callAPI)
+- `src/pages/AppShell.jsx:303-314` (upsert saveSession)
 - `src/pages/AppShell.jsx:131-146`
 - `src/pages/AppShell.jsx:272-305`
 - `netlify/functions/greffier.js:281-298`

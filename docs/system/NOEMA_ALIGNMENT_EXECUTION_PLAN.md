@@ -422,7 +422,71 @@ Deux sources de gaspillage identifiées par audit :
 
 ---
 
-# 4. Sprint 3 (renommé) — Stabilisation des sessions
+# 4. Sprint 4 — Session live ✅ EXÉCUTÉ (02/04/2026)
+
+## Objectif
+introduire un `session_id` live minimal, cohérent et exploitable, sans casser Noema
+
+## Audit pré-sprint (confirmé avant toute modification)
+
+1. **`saveSession()`** : faisait `INSERT` à chaque appel → plusieurs lignes `sessions` par session active (autosave 2min + beforeunload + newSession)
+2. **`history.current`** : `useRef` in-memory, volatile, non rechargé après refresh — limite architecturale connue, hors périmètre
+3. **`api_usage`** : `claude.js` écrivait sans `session_id`. `greffier.js` écrivait déjà avec `session_id` (colonne existait en schéma)
+4. **`greffier.js`** : recevait déjà `sessionId` dans sa signature. `claude.js` lisait déjà `body.session_id || null`. Il manquait que le frontend l'envoie
+5. **Table `sessions`** : `id uuid DEFAULT gen_random_uuid() PRIMARY KEY` — compatible upsert sur ID
+6. **`api_usage.session_id text`** : colonne existait déjà
+7. **Aucun blocage structurel** — 0 migration SQL nécessaire
+
+## Actions appliquées
+
+### 1. Génération du `session_id` frontend (`src/pages/AppShell.jsx`)
+- `sessionIdRef = useRef(crypto.randomUUID())` au mount — `useRef` (pas de state, pas de re-render)
+- Stable pendant toute la durée de la session active
+- Régénéré dans `reset()` : nouvelle session = nouvel identifiant
+
+### 2. Propagation à chaque appel Anthropic (`src/pages/AppShell.jsx`)
+- `session_id: sessionIdRef.current` ajouté dans le body de `callAPI()`
+- `claude.js` lit déjà `body.session_id || null` — aucune modification backend nécessaire
+
+### 3. `saveSession()` : INSERT → UPSERT (`src/pages/AppShell.jsx`)
+- `sessionData` reçoit `id: sessionIdRef.current`
+- `sb.from("sessions").insert(...)` → `sb.from("sessions").upsert({...}, { onConflict: "id" })`
+- Résultat : une seule ligne par session active, quel que soit le nombre d'autosaves
+
+### 4. `api_usage.session_id` côté Sonnet (`netlify/functions/claude.js`)
+- `session_id: sessionId` ajouté à l'écriture `api_usage` dans `claude.js`
+- Symétrique avec ce que `greffier.js` faisait déjà
+
+### 5. `greffier.js` — inchangé
+- Reçoit déjà `sessionId`, écrit déjà `api_usage.session_id`
+- Fait `sessions.update().eq('id', sessionId)` — si la ligne n'existe pas encore (avant le premier autosave), c'est un no-op silencieux, acceptable
+
+### 6. `supabase-schema.sql` — inchangé
+- `sessions.id` et `api_usage.session_id` existaient déjà
+
+## Ce qui est maintenant vrai
+
+- chaque conversation active a un `session_id` UUID stable
+- ce `session_id` est propagé du frontend → `claude.js` → `greffier.js`
+- `claude.js`, `greffier.js` et `api_usage` parlent du même identifiant
+- `sessions` n'insère plus plusieurs lignes incohérentes par session active — une seule ligne, mise à jour à chaque autosave
+- `api_usage` du modèle principal (Sonnet) est maintenant lié à une session, comme `api_usage` du Greffier l'était déjà
+
+## Ce qui reste une limite connue
+
+- **Reprise cross-refresh** : `history.current` reste volatile. Refresh = nouveau `session_id`, nouvelle ligne `sessions`. La continuité conversationnelle repose toujours sur le `serverMemoryContext` (Sprint 3), pas sur un replay d'historique
+- **Greffier avant premier autosave** : `sessions.update(sessionId)` dans le Greffier est un no-op si `saveSession()` n'a pas encore été appelé. En pratique, le Greffier tourne au message 3 et l'autosave toutes les 2min — les sessions courtes peuvent avoir 1-2 no-ops silencieux
+- **Quota toujours journalier** : `rate_limits` reste sur `(user_id, date)`. Le quota par session est hors périmètre
+- **Reprise cross-refresh volontairement hors périmètre** : recharger `history.current` nécessiterait de stocker et relire l'historique complet + gérer les conflits de session ouverte. Ce sera un sprint dédié si le besoin produit est validé
+
+## Fichiers modifiés
+
+- `src/pages/AppShell.jsx`
+- `netlify/functions/claude.js`
+
+---
+
+# 4b. Sprint 3 (renommé) — Stabilisation des sessions (plan initial, partiellement couvert par Sprint 4)
 
 ## Objectif
 creer une vraie logique de session
