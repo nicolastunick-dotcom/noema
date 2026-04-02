@@ -222,6 +222,38 @@ CREATE TABLE invites (
 
 ---
 
+## Sprint 7 — Surface continuity + product truth alignment ✅
+
+Objectif livre :
+- rendre visible la continuite deja existante dans le chat
+- realigner Landing / Pricing / Onboarding avec la verite produit
+- fiabiliser le post-paiement sans ajouter de backend lourd ni d'appel LLM
+
+Ce qui est maintenant vrai :
+- `ChatPage` affiche un bloc discret de reprise (`On reprend` / `On repart d'ici`) a partir de donnees deja presentes (`sessions.next_action`, `session_note`, `insights`)
+- le refresh ne relance plus un faux chat vide si une continuite existe deja ; la reprise est rendue visible avant toute nouvelle conversation
+- `Landing` ne vend plus de citation fake ni de video placeholder ; elle montre des surfaces reelles et un discours plus sobre
+- `Pricing` annonce explicitement le cadre reel : continuite visible, Journal / Aujourd'hui deja inclus, quota actuel = 25 messages par jour
+- `Onboarding` parle de continuite et de cadre clair, sans promesse de memoire illimitee
+- `Success` reverifie legerement `subscriptions.status`, propose `Verifier a nouveau`, et n'affiche le CTA app que si l'acces est actif
+- les boutons morts `settings` / `notifications` ont ete retires de `JournalPage` et `TodayPage`
+- les liens footer `href="#"` ont ete remplaces par de vraies navigations
+
+Fichiers touches :
+- `src/pages/AppShell.jsx`
+- `src/pages/ChatPage.jsx`
+- `src/pages/Landing.jsx`
+- `src/pages/Pricing.jsx`
+- `src/pages/Onboarding.jsx`
+- `src/pages/Success.jsx`
+- `src/pages/TodayPage.jsx`
+- `src/pages/JournalPage.jsx`
+- `src/pages/Login.jsx`
+- `docs/system/NOEMA_ALIGNMENT_EXECUTION_PLAN.md`
+- `PROJECT.md`
+
+---
+
 ## À ne jamais toucher sans validation explicite
 
 | Fichier | Raison |
@@ -295,6 +327,7 @@ CREATE TABLE invites (
 | 02/04/2026 | Codex | Sprint 6 — continuité utile & expérience vivante : `TodayPage` recentré sur `Intention du jour`, CTA principal dynamique (`Passer à l'action` vers le Journal ou `Définir mon intention` vers le Chat), repère `Jour X de ton parcours`, fallback honnête sans contenu inventé ; `JournalPage` structuré en 3 blocs (`Intention du jour`, `Réflexion libre`, `Ce que tu retiens`) avec feedback inline `Entrée enregistrée ✓`. 0 backend ajouté, 0 appel LLM supplémentaire, 0 surcoût API. | ✅ | — |
 | 02/04/2026 | Claude Code | Sprint 5.1 — micro-fix : `next_action` restauré après refresh — `AppShell` ajoute `next_action` à la query de restauration sessions au mount + `setNextAction(last.next_action)`. Today et Journal retrouvent l'intention du jour sans nouvelle session. | ✅ | — |
 | 02/04/2026 | Claude Code | Sprint 5 — Journal et Today réels : table `journal_entries` dans Supabase (upsert user_id+entry_date, RLS) ; `next_action` persisté dans `sessions` (colonne ajoutée au schéma) ; `JournalPage` lit/écrit Supabase, pré-rempli avec `next_action` de la session courante ; `TodayPage` consomme `nextAction` live depuis AppShell + relit dernière entrée journal ; fallback honnête si pas de données ; 0 appel LLM supplémentaire. | ✅ | Exécuter en prod : `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS next_action text DEFAULT '';` + coller la table `journal_entries` depuis `supabase-schema.sql` |
+| 02/04/2026 | Codex | Sprint 7 — surface continuity + product truth alignment : bloc de reprise visible dans `ChatPage`, etat guide apres `Nouvelle session`, quota clarifie, `Landing` / `Pricing` / `Onboarding` realignes, `Success` robuste avec polling leger + recheck manuel, suppression des elements morts et `href="#"`. | ✅ | Verifier visuellement la reprise chat et le parcours Stripe en preprod / prod |
 	
   Document ajouté : NOEMA_RUNTIME_GAPS.md
 	•	Motif :

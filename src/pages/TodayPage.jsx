@@ -131,16 +131,9 @@ export default function TodayPage({ user, sb, nextAction = "", onJournal, onChat
       {/* ── Header ── */}
       <header style={{ position:"sticky", top:0, zIndex:40, background:"rgba(17,19,24,0.95)", padding:"16px 24px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
         <span style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"1.5rem", color:C.primary, letterSpacing:"-0.02em" }}>Noema</span>
-        <div style={{ display:"flex", gap:16 }}>
-          {["settings","notifications"].map(icon => (
-            <button key={icon} style={{ background:"none", border:"none", cursor:"pointer", color:C.outlineVariant, padding:0, transition:"color 0.2s" }}
-              onMouseEnter={e => e.currentTarget.style.color = C.primary}
-              onMouseLeave={e => e.currentTarget.style.color = C.outlineVariant}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize:"1.25rem" }}>{icon}</span>
-            </button>
-          ))}
-        </div>
+        <span style={{ fontSize:"0.68rem", textTransform:"uppercase", letterSpacing:"0.18em", color:"rgba(197,197,216,0.7)" }}>
+          Rituel du jour
+        </span>
       </header>
 
       {/* ── Content ── */}

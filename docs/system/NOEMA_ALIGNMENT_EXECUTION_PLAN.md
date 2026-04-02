@@ -741,6 +741,81 @@ Tests non-regression :
 - coût API inchangé
 - chat et mapping non impactés
 
+## Sprint 7 — Surface continuity + product truth alignment ✅ EXÉCUTÉ (02/04/2026)
+
+## Objectif
+rendre visible la continuite deja existante, restaurer la confiance produit sur les surfaces marketing, et fiabiliser le post-paiement sans modifier le moteur
+
+## Actions appliquees
+
+### Chat
+- `AppShell` relit maintenant `session_note` en plus de `next_action` dans le dernier snapshot `sessions`
+- un etat de reprise UI est derive uniquement de donnees deja existantes :
+  - `next_action`
+  - `session_note`
+  - `insights`
+- `ChatPage` affiche un bloc discret :
+  - `On reprend` apres refresh / retour avec continuite
+  - `On repart d'ici` apres `Nouvelle session`
+- le quota actuel est rappele tres simplement dans la surface chat : `25 messages par jour`
+- aucun resume LLM supplementaire, aucune nouvelle table, aucun backend ajoute
+
+### Surfaces produit
+- `Landing` ne repose plus sur une citation fake ni sur un placeholder video
+- `Landing` montre des surfaces reelles / honnetes du produit :
+  - chat avec reprise visible
+  - Journal
+  - Mapping
+  - Aujourd'hui
+- `Pricing` est realigne :
+  - continuite visible au lieu de "memoire illimitee"
+  - `Journal` / `Aujourd'hui` annonces comme deja inclus
+  - quota reel assume : `25 messages par jour`
+- `Onboarding` supprime les promesses trop ambitieuses et parle d'un cadre clair, deja branche
+
+### Success
+- `Success` relit legerement `subscriptions.status`
+- polling court automatique :
+  - 5 verifications espacees de 8 secondes maximum
+  - soit 40 secondes de reverification automatique
+- ajout d'un bouton `Verifier a nouveau`
+- le CTA vers `/app/chat` n'apparait que si l'acces est reellement actif
+
+### Nettoyage
+- suppression des faux boutons `settings` / `notifications` dans `TodayPage` et `JournalPage`
+- remplacement des `href="#"` de `Pricing` et `Login` par de vraies navigations
+
+## Ce qui est maintenant vrai
+
+- la continuite memoire deja existante devient visible dans la surface chat sans toucher a la logique memoire
+- un refresh n'a plus l'effet "chat vide qui redemarre" quand un fil precedent existe deja
+- `Nouvelle session` n'ouvre plus sur un vide brut : un etat guide reste visible
+- les surfaces marketing ne survendent plus une memoire totale, des features fantomes ou des preuves fictives
+- le post-paiement n'envoie plus trop tot vers l'app tant que `subscriptions.status` n'est pas actif
+
+## Tests cibles
+
+Tests Chat :
+- retour apres refresh avec `sessions.next_action` -> bloc `On reprend` visible
+- clic `Nouvelle session` -> bloc `On repart d'ici` visible
+- chat toujours fonctionnel, envoi utilisateur inchangé
+
+Tests Surfaces :
+- `Landing` ne contient plus citation fake ni placeholder video
+- `Pricing` annonce `Journal` / `Aujourd'hui` comme disponibles et quota journalier
+- `Onboarding` ne promet plus de memoire illimitee
+
+Tests Success :
+- `subscriptions.status = active` -> CTA app visible
+- `subscriptions.status != active` -> pas de CTA app, bouton `Verifier a nouveau` visible
+- l'auto-polling s'arrete avant 60 secondes
+
+Tests non-regression :
+- aucune requete backend supplementaire cote chat
+- aucun appel LLM supplementaire
+- `Today` / `Journal` toujours accessibles
+- navigation footer toujours fonctionnelle
+
 # 7. Ordre réel d'exécution (état au 02/04/2026)
 
 | # | Chantier | Sprint | Statut |
@@ -755,6 +830,7 @@ Tests non-regression :
 | 8 | Réalignement UX réel | Sprint 4 | ✅ |
 | 9 | Journal / Today réels | Sprint 5 | ✅ |
 | 10 | Continuité utile & expérience vivante | Sprint 6 | ✅ |
+| 11 | Surface continuity + product truth alignment | Sprint 7 | ✅ |
 
 Règle de merge (toujours valide) :
 - Sprint 4 UX a ete livre apres stabilisation de Sprint 4.1

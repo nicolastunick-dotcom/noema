@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const COLORS = {
   background: "#0D0F14",
@@ -13,27 +13,70 @@ const COLORS = {
 
 export default function Success({ onNav, user, sb }) {
   const [subStatus, setSubStatus] = useState("loading"); // "loading" | "active" | "pending"
+  const [refreshing, setRefreshing] = useState(false);
+  const [remainingChecks, setRemainingChecks] = useState(5);
+  const pollTimeoutRef = useRef(null);
 
   useEffect(() => {
     document.body.style.overflow = "auto";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+      if (pollTimeoutRef.current) window.clearTimeout(pollTimeoutRef.current);
+    };
   }, []);
 
-  useEffect(() => {
-    if (!user || !sb) { setSubStatus("pending"); return; }
-    let cancelled = false;
-    sb.from("subscriptions")
+  const checkSubscription = useCallback(async ({ manual = false } = {}) => {
+    if (!user || !sb) {
+      setSubStatus("pending");
+      setRefreshing(false);
+      return false;
+    }
+
+    if (manual) setRefreshing(true);
+
+    const { data } = await sb.from("subscriptions")
       .select("status")
       .eq("user_id", user.id)
       .maybeSingle()
-      .then(({ data }) => {
-        if (cancelled) return;
-        const s = data?.status;
-        setSubStatus(s === "active" || s === "trialing" ? "active" : "pending");
-      })
-      .catch(() => { if (!cancelled) setSubStatus("pending"); });
-    return () => { cancelled = true; };
-  }, [user?.id]);
+      .catch(() => ({ data: null }));
+
+    const s = data?.status;
+    const isActive = s === "active" || s === "trialing";
+    setSubStatus(isActive ? "active" : "pending");
+    setRefreshing(false);
+    return isActive;
+  }, [sb, user]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function runChecks() {
+      if (pollTimeoutRef.current) window.clearTimeout(pollTimeoutRef.current);
+      setRemainingChecks(5);
+      const isActive = await checkSubscription();
+      if (cancelled || isActive) return;
+
+      let checks = 0;
+      const scheduleNext = () => {
+        if (cancelled || checks >= 5) return;
+        pollTimeoutRef.current = window.setTimeout(async () => {
+          checks += 1;
+          setRemainingChecks(Math.max(0, 5 - checks));
+          const nextActive = await checkSubscription();
+          if (!nextActive) scheduleNext();
+        }, 8000);
+      };
+
+      scheduleNext();
+    }
+
+    runChecks();
+
+    return () => {
+      cancelled = true;
+      if (pollTimeoutRef.current) window.clearTimeout(pollTimeoutRef.current);
+    };
+  }, [checkSubscription]);
 
   return (
     <div
@@ -128,41 +171,91 @@ export default function Success({ onNav, user, sb }) {
             fontSize: "1rem",
             color: COLORS.onSurfaceVariant,
             lineHeight: 1.7,
-            marginBottom: 48,
+            marginBottom: 20,
           }}
         >
           {subStatus === "loading"
             ? "Vérification de ton accès en cours…"
             : subStatus === "active"
-            ? "Ton abonnement est confirmé. Bienvenue dans Noema — un espace conçu pour te connaître vraiment."
-            : "Activation en cours — cela peut prendre quelques instants. Si tu viens de payer, ton accès sera actif dans un moment."}
+            ? "Ton abonnement est confirmé. L'accès a l'app est maintenant ouvert."
+            : remainingChecks > 0
+              ? "Activation en cours. Nous reverifions automatiquement ton acces pendant moins d'une minute."
+              : "Activation toujours en attente. Si tu viens de payer, un nouveau controle peut suffire."}
         </p>
 
-        <button
-          onClick={() => onNav?.("/app/chat")}
-          style={{
-            background: "linear-gradient(135deg, #bdc2ff 0%, #7886ff 100%)",
-            color: COLORS.onPrimaryContainer,
-            border: "none",
-            borderRadius: 9999,
-            padding: "16px 40px",
-            fontSize: "1rem",
-            fontWeight: 700,
-            fontFamily: "'Plus Jakarta Sans', sans-serif",
-            cursor: "pointer",
-            transition: "transform 0.2s, box-shadow 0.2s",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "translateY(-2px)";
-            e.currentTarget.style.boxShadow = "0 8px 24px rgba(120,134,255,0.35)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = "none";
-          }}
-        >
-          Accéder à Noema
-        </button>
+        {subStatus === "pending" && (
+          <p style={{ margin: "0 0 28px", fontSize: "0.82rem", color: "rgba(197,197,216,0.72)", lineHeight: 1.6 }}>
+            {remainingChecks > 0
+              ? `${remainingChecks} verification${remainingChecks > 1 ? "s" : ""} automatique${remainingChecks > 1 ? "s" : ""} restante${remainingChecks > 1 ? "s" : ""}.`
+              : "Tu peux lancer une verification manuelle ci-dessous."}
+          </p>
+        )}
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
+          {subStatus === "active" && (
+            <button
+              onClick={() => onNav?.("/app/chat")}
+              style={{
+                background: "linear-gradient(135deg, #bdc2ff 0%, #7886ff 100%)",
+                color: COLORS.onPrimaryContainer,
+                border: "none",
+                borderRadius: 9999,
+                padding: "16px 40px",
+                fontSize: "1rem",
+                fontWeight: 700,
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                cursor: "pointer",
+                transition: "transform 0.2s, box-shadow 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 8px 24px rgba(120,134,255,0.35)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
+            >
+              Acceder a Noema
+            </button>
+          )}
+
+          {subStatus !== "active" && (
+            <button
+              onClick={() => checkSubscription({ manual: true })}
+              disabled={refreshing}
+              style={{
+                background: "rgba(189,194,255,0.08)",
+                color: COLORS.primary,
+                border: "1px solid rgba(189,194,255,0.2)",
+                borderRadius: 9999,
+                padding: "14px 28px",
+                fontSize: "0.95rem",
+                fontWeight: 600,
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                cursor: refreshing ? "wait" : "pointer",
+                opacity: refreshing ? 0.7 : 1,
+              }}
+            >
+              {refreshing ? "Verification..." : "Verifier a nouveau"}
+            </button>
+          )}
+
+          <button
+            onClick={() => onNav?.(subStatus === "active" ? "/" : "/pricing")}
+            style={{
+              background: "none",
+              color: "rgba(226,226,233,0.72)",
+              border: "none",
+              padding: 0,
+              fontSize: "0.85rem",
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              cursor: "pointer",
+            }}
+          >
+            {subStatus === "active" ? "Retour a l'accueil" : "Revenir au pricing"}
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -48,14 +48,14 @@ export function buildMemoryContext(memory) {
     blocages.racine    ? `Blocage racine : ${blocages.racine}` : "",
     blocages.entretien ? `Ce qui l'entretient : ${blocages.entretien}` : "",
     blocages.visible   ? `Manifestation visible : ${blocages.visible}` : "",
-    ikigai.aime    ? `Ikigai — ce qu\'il aime : ${ikigai.aime}` : "",
+    ikigai.aime    ? `Ikigai — ce qu'il aime : ${ikigai.aime}` : "",
     ikigai.excelle ? `Ikigai — ce en quoi il excelle : ${ikigai.excelle}` : "",
     ikigai.monde   ? `Ikigai — besoin du monde : ${ikigai.monde}` : "",
     ikigai.paie    ? `Ikigai — ce pour quoi il peut être payé : ${ikigai.paie}` : "",
     ikigai.mission ? `Ikigai — mission : ${ikigai.mission}` : "",
     step !== null  ? `Progression actuelle : étape ${step}/10` : "",
     "---",
-    "Appuie-toi sur ces données pour assurer la continuité. Rappelle l\'évolution par rapport aux sessions précédentes quand c\'est pertinent.",
+    "Appuie-toi sur ces données pour assurer la continuité. Rappelle l'évolution par rapport aux sessions précédentes quand c'est pertinent.",
   ].filter(Boolean).join("\n");
 }
 

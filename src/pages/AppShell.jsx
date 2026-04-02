@@ -10,6 +10,67 @@ import JournalPage   from "./JournalPage";
 import TodayPage     from "./TodayPage";
 import AdminPanel    from "../components/AdminPanel";
 
+function shortenContinuityText(value, max = 110) {
+  const compact = String(value || "").replace(/\s+/g, " ").trim();
+  if (!compact) return "";
+  return compact.length > max ? `${compact.slice(0, max - 1).trimEnd()}…` : compact;
+}
+
+function extractLastWorkedPoint(session) {
+  if (!session) return "";
+
+  const sessionNote = shortenContinuityText(String(session.session_note || "").split("|")[0], 96);
+  if (sessionNote) return sessionNote;
+
+  const blocage = shortenContinuityText(session.insights?.blocages?.racine, 96);
+  if (blocage) return blocage;
+
+  const contradiction = shortenContinuityText(session.insights?.contradictions?.[0], 96);
+  if (contradiction) return contradiction;
+
+  const force = shortenContinuityText(session.insights?.forces?.[0], 96);
+  if (force) return force;
+
+  return "";
+}
+
+function buildContinuityState(kind, session = null) {
+  if (kind === "restart") {
+    return {
+      mode: "restart",
+      title: "On repart d'ici",
+      detail: "Un nouveau fil, sans perdre ce que Noema a deja compris.",
+      meta: "Tu peux ouvrir un sujet neuf ou reprendre ce qui insiste.",
+      prompt: "",
+    };
+  }
+
+  if (!session) {
+    return {
+      mode: "welcome",
+      title: "",
+      detail: "",
+      meta: "",
+      prompt: "",
+    };
+  }
+
+  const prompt = shortenContinuityText(session.next_action, 72);
+  const lastPoint = extractLastWorkedPoint(session);
+
+  return {
+    mode: "resume",
+    title: "On reprend",
+    detail: prompt
+      ? `Intention active : ${prompt}`
+      : lastPoint || "La continuite de ton parcours est deja la.",
+    meta: prompt && lastPoint
+      ? `Dernier point : ${lastPoint}`
+      : "Repars de ce qui est encore vivant aujourd'hui.",
+    prompt,
+  };
+}
+
 // ─────────────────────────────────────────────────────────────
 // APP SHELL — Composant principal : chat + panneaux latéraux
 // Sections :
@@ -35,6 +96,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   const [insights, setInsights] = useState({forces:[],blocages:{racine:"",entretien:"",visible:""},contradictions:[]});
   const [ikigai,      setIkigai]      = useState({aime:"",excelle:"",monde:"",paie:"",mission:""});
   const [nextAction,  setNextAction]  = useState("");
+  const [chatContinuity, setChatContinuity] = useState(() => buildContinuityState("welcome"));
 
   const history         = useRef([]);
   const sessionIdRef    = useRef(crypto.randomUUID()); // Sprint 4 : identifiant stable pour toute la session active
@@ -96,7 +158,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
       if (mem) memoryRef.current = mem;
 
       const { data: sessions, error: sessErr } = await sb.from("sessions")
-        .select("insights,ikigai,step,next_action")
+        .select("insights,ikigai,step,next_action,session_note")
         .eq("user_id", user.id)
         .order("ended_at", { ascending: false })
         .limit(1);
@@ -112,8 +174,11 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
         }
         // Sprint 5.1 : restaure next_action après refresh pour que Today/Journal retrouvent l'intention
         if (last.next_action) setNextAction(last.next_action);
+        setChatContinuity(buildContinuityState("resume", last));
+      } else {
+        setChatContinuity(buildContinuityState("welcome"));
       }
-      await openingMessage();
+      if (!last) await openingMessage();
     })();
   }, [user, accessState?.loading]);
 
@@ -348,6 +413,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
     setMsgs([]); setStep(0); setMstate("exploring"); setNextAction("");
     setInsights({forces:[], blocages:{racine:"",entretien:"",visible:""}, contradictions:[]});
     setIkigai({aime:"", excelle:"", monde:"", paie:"", mission:""});
+    setChatContinuity(buildContinuityState("restart"));
   }
 
   async function newSession() { await saveSession(insights, ikigai, step); reset(); }
@@ -428,6 +494,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
             user={user}
             sb={sb}
             taRef={taRef}
+            continuity={chatContinuity}
           />
         );
     }

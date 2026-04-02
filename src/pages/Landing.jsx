@@ -345,7 +345,7 @@ export default function Landing({ onNav }) {
             onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(226,226,233,0.7)")}
             onClick={() => onNav?.("login")}
           >
-            Login
+            Se connecter
           </button>
           <button
             style={styles.btnGetStarted}
@@ -353,7 +353,7 @@ export default function Landing({ onNav }) {
             onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
             onClick={() => onNav?.("login")}
           >
-            Get Started
+            Entrer dans Noema
           </button>
         </div>
       </nav>
@@ -377,19 +377,20 @@ export default function Landing({ onNav }) {
               style={styles.heroBadgeIcon}
               className="material-symbols-outlined"
             >
-              auto_awesome
+              timeline
             </span>
-            <span style={styles.heroBadgeText}>Le Confident Digital</span>
+            <span style={styles.heroBadgeText}>Conversation continue, cadre clair</span>
           </div>
 
           <h1 style={styles.heroH1}>
-            Tu n'as pas raté ta vie. Tu ne t'es juste{" "}
-            <span style={styles.heroH1Gradient}>jamais vraiment connu.</span>
+            Un espace pour penser plus clair,{" "}
+            <span style={styles.heroH1Gradient}>sans perdre le fil.</span>
           </h1>
 
           <p style={styles.heroSub}>
-            Noema est une intelligence introspective conçue pour cartographier les
-            profondeurs de votre psyché et transformer vos silences en clarté absolue.
+            Noema t'aide a reprendre une conversation, faire ressortir les points qui
+            comptent, et transformer une intention en action concrete. Pas de promesse
+            magique : un chat, un mapping, un journal et un rituel du jour deja relies.
           </p>
 
           <div style={styles.heroBtns}>
@@ -399,7 +400,7 @@ export default function Landing({ onNav }) {
               onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
               onClick={() => onNav?.("login")}
             >
-              Commencer l'exploration
+              Commencer
             </button>
             <button
               style={styles.btnSecondary}
@@ -485,7 +486,7 @@ export default function Landing({ onNav }) {
                     marginBottom: 16,
                   }}
                 >
-                  L'IA Introspective
+                  Le chat garde le fil
                 </h3>
                 <p
                   style={{
@@ -495,9 +496,9 @@ export default function Landing({ onNav }) {
                     fontSize: "1.125rem",
                   }}
                 >
-                  Un dialogue profond, sans jugement, où chaque réponse est un miroir de
-                  votre vérité intérieure. Ce n'est pas une IA qui répond, c'est votre
-                  subconscient qui s'exprime.
+                  Noema remet en surface l'intention active, le dernier point travaille
+                  et le contexte utile deja present. Quand tu reviens, la conversation ne
+                  fait plus semblant de repartir de zero.
                 </p>
               </div>
 
@@ -528,7 +529,7 @@ export default function Landing({ onNav }) {
                     color: COLORS.primary,
                   }}
                 >
-                  Pourquoi est-ce que je ressens ce vide malgré mes succès ?
+                  On reprend • Intention active : clarifier ce que tu evites depuis hier
                 </div>
                 <div
                   style={{
@@ -542,9 +543,8 @@ export default function Landing({ onNav }) {
                     color: COLORS.onSurface,
                   }}
                 >
-                  Ce vide n'est pas un manque de réussite, c'est une déconnexion entre
-                  vos actions et vos valeurs fondamentales. Explorons ce qui vous faisait
-                  vibrer enfant...
+                  Repars de ce qui est encore vivant aujourd'hui. Nous pouvons reprendre
+                  ce point ou ouvrir un angle plus net.
                 </div>
               </div>
             </div>
@@ -600,7 +600,7 @@ export default function Landing({ onNav }) {
                   marginBottom: 16,
                 }}
               >
-                Journal Guidé
+                Journal guide
               </h3>
               <p
                 style={{
@@ -609,7 +609,8 @@ export default function Landing({ onNav }) {
                   lineHeight: 1.7,
                 }}
               >
-                Transformez vos pensées brutes en structure. Un espace pour écrire, réfléchir, et garder une trace de votre chemin.
+                Un espace deja present dans l'app pour ecrire, garder une trace et
+                transformer l'intention du moment en un pas concret.
               </p>
             </div>
 
@@ -654,7 +655,7 @@ export default function Landing({ onNav }) {
                   marginBottom: 16,
                 }}
               >
-                Cartographie Psychique
+                Mapping vivant
               </h3>
               <p
                 style={{
@@ -664,8 +665,9 @@ export default function Landing({ onNav }) {
                   marginBottom: 32,
                 }}
               >
-                Visualisez l'évolution de votre paysage émotionnel. Identifiez les
-                patterns répétitifs et les zones d'ombre.
+                Les forces, contradictions et blocages visibles se mettent a jour au fil
+                des echanges. Le but n'est pas d'impressionner, mais de rendre la
+                continuite lisible.
               </p>
 
               {/* Bar chart */}
@@ -699,191 +701,146 @@ export default function Landing({ onNav }) {
               </div>
             </div>
 
-            {/* Mood image — col-span-8 */}
+            {/* Product surface — col-span-8 */}
             <div
               style={{
+                ...styles.glassCard,
                 gridColumn: "span 8",
                 borderRadius: 24,
-                overflow: "hidden",
-                position: "relative",
+                padding: 32,
+                display: "flex",
+                flexDirection: "column",
+                gap: 24,
               }}
             >
-              <img
-                alt="Dreamy abstract visual of a human silhouette dissolving into soft violet and deep indigo smoke with glowing particles and ethereal lighting"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDleopQb5gKjy4Q24K9KomcjQeKG3CZ7NX_yhL5Vd5MJpdNIkP3RBeU_JSRmQy0mbeC1EonZImUj-PAS3O01UQwx-YxAlLI5-ubaouBDcM636qFEnCtzTp4Cg_qV9H_Q-p70LJlWIw8SUNlProrKJ2KFyU8qQhfBpkfK_laBZVeKeuDpjoNGINvS1tz0HkNU5DFf7H3xK0GoPego7yFPyepRFBPQJU1R5FpJqWtKYpeEp0M3Ogb_PwY6-dn8JeJQYo7zOOArhO_R18"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  display: "block",
-                  transition: "transform 0.7s",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.1)")}
-                onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background: `linear-gradient(to top, ${COLORS.background} 0%, transparent 60%)`,
-                }}
-              />
-              <div style={{ position: "absolute", bottom: 32, left: 32 }}>
-                <span
-                  style={{
-                    fontFamily: "'Instrument Serif', serif",
-                    fontSize: "2.25rem",
-                    fontStyle: "italic",
-                    color: COLORS.onBackground,
-                    display: "block",
-                    marginBottom: 8,
-                  }}
-                >
-                  Voyagez à l'intérieur.
+              <div>
+                <span style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "6px 12px",
+                  borderRadius: 9999,
+                  background: "rgba(189,194,255,0.08)",
+                  border: "1px solid rgba(189,194,255,0.12)",
+                  color: COLORS.primary,
+                  fontSize: "0.72rem",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.14em",
+                  fontWeight: 700,
+                }}>
+                  Ce que tu verras vraiment
                 </span>
-                <p
-                  style={{
-                    color: COLORS.onSurfaceVariant,
-                    maxWidth: 384,
-                    fontSize: "1rem",
-                  }}
-                >
-                  La destination finale n'est pas un lieu, mais une nouvelle façon de voir.
+                <h3 style={{
+                  fontFamily: "'Instrument Serif', serif",
+                  fontSize: "2rem",
+                  fontStyle: "italic",
+                  color: COLORS.onBackground,
+                  margin: "18px 0 12px",
+                }}>
+                  Des surfaces deja actives, pas des promesses floues.
+                </h3>
+                <p style={{
+                  color: COLORS.onSurfaceVariant,
+                  fontSize: "1rem",
+                  lineHeight: 1.7,
+                  maxWidth: 560,
+                  margin: 0,
+                }}>
+                  Aujourd'hui, Journal et Mapping sont deja presents dans le produit. Le
+                  cadre reste simple : 25 messages par jour, une conversation continue,
+                  et des reperes visibles quand tu reviens.
                 </p>
+              </div>
+
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: 16,
+              }}>
+                {[
+                  { label: "Chat", value: "On reprend", body: "Intention active visible" },
+                  { label: "Aujourd'hui", value: "1 intention", body: "Un pas concret pour la journee" },
+                  { label: "Journal", value: "1 entree / jour", body: "Relire, ecrire, garder trace" },
+                ].map((card) => (
+                  <div
+                    key={card.label}
+                    style={{
+                      borderRadius: 18,
+                      padding: 20,
+                      background: "rgba(12,14,19,0.45)",
+                      border: "1px solid rgba(69,70,85,0.16)",
+                    }}
+                  >
+                    <p style={{ margin: 0, fontSize: "0.68rem", letterSpacing: "0.16em", textTransform: "uppercase", color: COLORS.outline }}>
+                      {card.label}
+                    </p>
+                    <p style={{ margin: "14px 0 8px", fontFamily: "'Instrument Serif', serif", fontStyle: "italic", fontSize: "1.45rem", color: COLORS.onBackground }}>
+                      {card.value}
+                    </p>
+                    <p style={{ margin: 0, fontSize: "0.82rem", color: COLORS.onSurfaceVariant, lineHeight: 1.6 }}>
+                      {card.body}
+                    </p>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </section>
 
-        {/* ── Quote Section ─────────────────────────────────────────────────────── */}
+        {/* ── Truth Section ─────────────────────────────────────────────────────── */}
         <section
           style={{
             padding: "128px 24px",
-            textAlign: "center",
-            maxWidth: 896,
-            margin: "0 auto",
-          }}
-        >
-          <span
-            className="material-symbols-outlined"
-            style={{
-              color: COLORS.primaryFixedDim,
-              fontSize: "3rem",
-              display: "block",
-              marginBottom: 32,
-              fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24",
-            }}
-          >
-            format_quote
-          </span>
-          <p
-            style={{
-              fontFamily: "'Instrument Serif', serif",
-              fontSize: "clamp(1.5rem, 4vw, 3rem)",
-              fontStyle: "italic",
-              color: COLORS.onBackground,
-              lineHeight: 1.3,
-            }}
-          >
-            "Ce n'est pas une application de méditation. C'est un interrogatoire sacré de
-            soi-même, assisté par la technologie la plus fine."
-          </p>
-          <div
-            style={{
-              marginTop: 32,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 16,
-            }}
-          >
-            <div
-              style={{
-                width: 48,
-                height: 1,
-                background: "rgba(69,70,85,0.3)",
-              }}
-            />
-            <span
-              style={{
-                fontFamily: "'Plus Jakarta Sans', sans-serif",
-                fontSize: "0.75rem",
-                textTransform: "uppercase",
-                letterSpacing: "0.3em",
-                color: COLORS.tertiary,
-              }}
-            >
-              Directeur de la Recherche, Noema Labs
-            </span>
-            <div
-              style={{
-                width: 48,
-                height: 1,
-                background: "rgba(69,70,85,0.3)",
-              }}
-            />
-          </div>
-        </section>
-
-        {/* ── Video Section ─────────────────────────────────────────────────────── */}
-        <section
-          style={{
             maxWidth: 1024,
             margin: "0 auto",
-            padding: "0 24px 96px",
           }}
         >
-          {/* TODO: remplacer ce placeholder par une vraie vidéo (<video> ou <iframe>) */}
-          <div
-            style={{
-              ...styles.glassCard,
-              borderRadius: 24,
-              overflow: "hidden",
-              position: "relative",
-              aspectRatio: "16 / 9",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 16,
-              border: "2px dashed rgba(69,70,85,0.4)",
-              cursor: "default",
-            }}
-          >
-            {/* Ambient glow */}
-            <div style={{
-              position: "absolute", inset: 0,
-              background: "radial-gradient(circle at 50% 50%, rgba(120,134,255,0.06) 0%, transparent 70%)",
-              pointerEvents: "none",
-            }} />
-
-            {/* Play icon */}
-            <div style={{
-              width: 72, height: 72, borderRadius: "50%",
-              background: "rgba(189,194,255,0.1)",
-              border: "1px solid rgba(189,194,255,0.2)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              position: "relative", zIndex: 1,
-            }}>
-              <span
-                className="material-symbols-outlined"
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            gap: 20,
+          }}>
+            {[
+              {
+                title: "Continuite visible",
+                body: "Quand tu reviens, Noema remet en surface l'intention active ou le dernier point travaille au lieu de faire semblant de redemarrer.",
+              },
+              {
+                title: "Quota explicite",
+                body: "Le cadre du produit est annonce simplement : 25 messages par jour, sans surprise cachee dans l'experience.",
+              },
+              {
+                title: "Promesse sobre",
+                body: "Landing, pricing et onboarding parlent de ce qui existe deja, pas d'une version futuriste encore non branchee.",
+              },
+            ].map((item) => (
+              <div
+                key={item.title}
                 style={{
-                  color: COLORS.primary, fontSize: "2rem",
-                  fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24",
+                  ...styles.glassCard,
+                  borderRadius: 20,
+                  padding: 24,
                 }}
-              >play_arrow</span>
-            </div>
-
-            <p style={{
-              fontFamily: "'Instrument Serif', serif",
-              fontStyle: "italic",
-              fontSize: "1.25rem",
-              color: "rgba(197,197,216,0.5)",
-              position: "relative", zIndex: 1,
-              margin: 0,
-            }}>
-              Votre vidéo ici
-            </p>
+              >
+                <h4 style={{
+                  margin: "0 0 12px",
+                  fontFamily: "'Instrument Serif', serif",
+                  fontStyle: "italic",
+                  fontSize: "1.45rem",
+                  color: COLORS.onBackground,
+                }}>
+                  {item.title}
+                </h4>
+                <p style={{
+                  margin: 0,
+                  fontSize: "0.92rem",
+                  lineHeight: 1.7,
+                  color: COLORS.onSurfaceVariant,
+                }}>
+                  {item.body}
+                </p>
+              </div>
+            ))}
           </div>
         </section>
       </main>
@@ -912,7 +869,7 @@ export default function Landing({ onNav }) {
               color: COLORS.outlineVariant,
             }}
           >
-            © 2024 Noema. The Digital Confidant.
+            © 2024 Noema. Conversation introspective continue.
           </p>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 32 }}>

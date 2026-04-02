@@ -64,7 +64,7 @@ function Slide1() {
           fontSize: "1.1rem", color: C.onSurfaceVariant,
           fontWeight: 300, letterSpacing: "0.02em", margin: 0, lineHeight: 1.6,
         }}>
-          Je ne suis pas un chatbot. Je suis ton guide.
+          Un espace sobre pour parler, retrouver le fil, et avancer pas a pas.
         </p>
       </div>
     </div>
@@ -85,7 +85,7 @@ function Slide2() {
           Comment on va travailler ensemble
         </h1>
         <p style={{ fontSize: "1rem", color: C.onSurfaceVariant, fontWeight: 300, maxWidth: 440, margin: "0 auto", lineHeight: 1.6 }}>
-          Une approche conçue pour la profondeur, pas seulement pour la réponse.
+          Ce qui est deja la dans le produit, sans promesse de trop.
         </p>
       </div>
 
@@ -111,10 +111,10 @@ function Slide2() {
           </div>
           <div>
             <h3 style={{ fontFamily: "'Instrument Serif', serif", fontStyle: "italic", fontSize: "1.2rem", color: C.primary, margin: "0 0 8px" }}>
-              Tu parles. Je t'écoute vraiment.
+              Tu poses les choses.
             </h3>
             <p style={{ fontSize: "0.8rem", color: C.onSurfaceVariant, lineHeight: 1.6, margin: 0 }}>
-              Dépose tes pensées sans filtre. Mon architecture saisit les nuances de ton ton, tes hésitations et le poids de tes mots.
+              Le chat sert a clarifier ce qui t'occupe, sans te noyer dans des effets de manche ni dans une interface confuse.
             </p>
           </div>
         </div>
@@ -147,10 +147,10 @@ function Slide2() {
           </div>
           <div>
             <h3 style={{ fontFamily: "'Instrument Serif', serif", fontStyle: "italic", fontSize: "1.2rem", color: C.primary, margin: "0 0 8px" }}>
-              Je détecte ce que tu ne vois pas encore.
+              Les points utiles remontent.
             </h3>
             <p style={{ fontSize: "0.8rem", color: C.onSurfaceVariant, lineHeight: 1.6, margin: 0 }}>
-              En croisant tes récits, j'identifie les schémas récurrents, les angles morts et les contradictions qui forment le socle de tes comportements.
+              L'intention active, certaines contradictions et les blocages deja nommes peuvent revenir en surface pour t'aider a reprendre plus vite.
             </p>
           </div>
         </div>
@@ -174,12 +174,12 @@ function Slide2() {
               <span className="material-symbols-outlined" style={{ color: C.tertiary, fontVariationSettings: "'FILL' 0, 'wght' 300" }}>map</span>
             </div>
             <div>
-              <h3 style={{ fontFamily: "'Instrument Serif', serif", fontStyle: "italic", fontSize: "1.2rem", color: C.tertiary, margin: "0 0 8px" }}>
-                Je construis ta carte psychologique session après session.
-              </h3>
-              <p style={{ fontSize: "0.8rem", color: C.onSurfaceVariant, lineHeight: 1.6, margin: 0 }}>
-                Chaque échange enrichit ton profil. Nous créons ensemble un atlas vivant de ton monde intérieur pour guider tes futures décisions.
-              </p>
+            <h3 style={{ fontFamily: "'Instrument Serif', serif", fontStyle: "italic", fontSize: "1.2rem", color: C.tertiary, margin: "0 0 8px" }}>
+              Mapping, Journal et Aujourd'hui sont deja relies.
+            </h3>
+            <p style={{ fontSize: "0.8rem", color: C.onSurfaceVariant, lineHeight: 1.6, margin: 0 }}>
+              Tu peux converser, retrouver ton intention du moment, puis la transformer en un pas concret dans le journal ou le rituel du jour.
+            </p>
             </div>
           </div>
           {/* Mini UI preview */}
@@ -192,7 +192,7 @@ function Slide2() {
             <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
               <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.tertiary, animation: "orbPulse 2s ease-in-out infinite" }} />
               <span style={{ fontSize: "0.55rem", color: C.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.15em" }}>
-                Cartographie en cours…
+                Surfaces deja actives
               </span>
             </div>
           </div>
@@ -239,10 +239,10 @@ function Slide3() {
           <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
             <span style={{ fontSize: "0.6rem", color: C.primary, textTransform: "uppercase", letterSpacing: "0.15em", fontWeight: 700 }}>Engagement</span>
             <h3 style={{ fontFamily: "'Instrument Serif', serif", fontStyle: "italic", fontSize: "1.15rem", color: C.onSurface, margin: 0 }}>
-              25 messages maximum
+              25 messages par jour
             </h3>
             <p style={{ fontSize: "0.78rem", color: C.onSurfaceVariant, lineHeight: 1.6, margin: 0 }}>
-              Chaque session est délimitée. Pas pour te limiter — pour te forcer à <span style={{ color: C.onSurface, fontWeight: 600 }}>réfléchir vraiment</span> avant d'écrire.
+              Le cadre est volontairement simple et annonce clairement. Pas de surprise : tu sais jusqu'ou va l'espace de conversation.
             </p>
           </div>
         </div>
@@ -265,10 +265,10 @@ function Slide3() {
           </div>
           <div>
             <h3 style={{ fontFamily: "'Instrument Serif', serif", fontStyle: "italic", fontSize: "1rem", color: C.onSurface, margin: "0 0 6px" }}>
-              Mémoire infinie
+              Continuite, pas memoire illimitee
             </h3>
             <p style={{ fontSize: "0.72rem", color: C.onSurfaceVariant, lineHeight: 1.6, margin: 0 }}>
-              Je me souviens de tout d'une session à l'autre. Le fil de ta pensée ne se rompt jamais.
+              Noema garde des reperes utiles d'une visite a l'autre, sans te promettre une memoire totale ou magique.
             </p>
           </div>
         </div>
@@ -291,10 +291,10 @@ function Slide3() {
             </span>
             <div>
               <h3 style={{ fontFamily: "'Instrument Serif', serif", fontStyle: "italic", fontSize: "1rem", color: C.onSurface, margin: "0 0 6px" }}>
-                L'honnêteté radicale
+                Une promesse sobre
               </h3>
               <p style={{ fontSize: "0.72rem", color: C.onSurfaceVariant, lineHeight: 1.6, margin: 0 }}>
-                Plus tu es honnête avec toi-même, plus je suis utile. Ici, il n'y a aucun jugement.
+                Le produit dit ce qu'il fait deja : clarifier, garder le fil, et t'aider a passer a l'action avec un cadre lisible.
               </p>
             </div>
           </div>
@@ -356,10 +356,10 @@ function Slide4({ onComplete, loading }) {
           fontSize: "clamp(2.5rem, 7vw, 4rem)", lineHeight: 1.1,
           color: C.onSurface, margin: 0, letterSpacing: "-0.02em",
         }}>
-          Ton exploration commence maintenant.
+          Ton espace est pret.
         </h1>
         <p style={{ fontSize: "1rem", color: C.onSurfaceVariant, fontWeight: 300, margin: 0, lineHeight: 1.65 }}>
-          Nous avons préparé un espace sécurisé pour tes pensées. Plonge dans ton paysage intérieur.
+          Entre dans Noema, reprends le fil si besoin, et commence par ce qui est le plus vivant aujourd'hui.
         </p>
       </div>
 

@@ -8,7 +8,7 @@ import reactRefresh from "eslint-plugin-react-refresh";
 
 export default [
   {
-    ignores: ["dist/**", "node_modules/**", "src/App.original.jsx"],
+    ignores: ["dist/**", "node_modules/**", ".claude/**", "src/App.original.jsx"],
   },
   js.configs.recommended,
   {

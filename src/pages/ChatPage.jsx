@@ -28,8 +28,24 @@ const C = {
 
 const TODAY = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
 
-export default function ChatPage({ msgs, typing, input, setInput, send, genIkigai, onNav, newSession, user, sb, taRef }) {
+const DEFAULT_PROMPTS = [
+  "Je me sens bloque sans savoir pourquoi",
+  "J'ai du mal a prendre une decision importante",
+  "Je veux mieux comprendre ce que je veux vraiment",
+];
+
+export default function ChatPage({ msgs, typing, input, setInput, send, genIkigai, onNav, newSession, user, sb, taRef, continuity }) {
   const msgsRef = useRef(null);
+  const continuityMode = continuity?.mode || "welcome";
+  const continuityPrompts = continuityMode === "resume" && continuity?.prompt
+    ? [`Reprenons: ${continuity.prompt}`, ...DEFAULT_PROMPTS.slice(1)]
+    : continuityMode === "restart"
+      ? [
+          "Je veux repartir sur ce qui compte aujourd'hui",
+          "J'ai besoin d'y voir plus clair sur une decision",
+          DEFAULT_PROMPTS[2],
+        ]
+      : DEFAULT_PROMPTS;
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -164,6 +180,55 @@ export default function ChatPage({ msgs, typing, input, setInput, send, genIkiga
           }}>{TODAY}</span>
         </div>
 
+        {continuityMode !== "welcome" && (
+          <div style={{
+            alignSelf: "stretch",
+            padding: "16px 18px",
+            borderRadius: 18,
+            background: "rgba(30,31,37,0.72)",
+            backdropFilter: "blur(18px)",
+            WebkitBackdropFilter: "blur(18px)",
+            border: "1px solid rgba(189,194,255,0.12)",
+            boxShadow: "0 16px 36px rgba(0,0,0,0.18)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+              <span style={{
+                fontSize: "0.6rem",
+                textTransform: "uppercase",
+                letterSpacing: "0.18em",
+                color: C.primary,
+                fontWeight: 700,
+              }}>
+                {continuity.title}
+              </span>
+              <span style={{ width: 4, height: 4, borderRadius: "50%", background: "rgba(189,194,255,0.45)" }} />
+              <span style={{ fontSize: "0.65rem", color: C.outline, letterSpacing: "0.05em" }}>
+                Continuite visible
+              </span>
+            </div>
+            {continuity.detail && (
+              <p style={{
+                margin: 0,
+                fontSize: "0.86rem",
+                lineHeight: 1.65,
+                color: C.onSurface,
+              }}>
+                {continuity.detail}
+              </p>
+            )}
+            {continuity.meta && (
+              <p style={{
+                margin: "8px 0 0",
+                fontSize: "0.74rem",
+                lineHeight: 1.6,
+                color: C.onSurfaceVariant,
+              }}>
+                {continuity.meta}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Welcome state */}
         {msgs.length === 0 && !typing && (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: 20, padding: "48px 0", textAlign: "center" }}>
@@ -176,15 +241,19 @@ export default function ChatPage({ msgs, typing, input, setInput, send, genIkiga
               fontFamily: "'Instrument Serif', serif", fontStyle: "italic",
             }}>N</div>
             <div>
-              <h2 style={{ fontFamily: "'Instrument Serif', serif", fontStyle: "italic", fontSize: "1.75rem", color: C.onSurface, marginBottom: 8 }}>Bonjour.</h2>
-              <p style={{ color: C.onSurfaceVariant, fontSize: "0.875rem" }}>Dis-moi ce qui t'occupe l'esprit.</p>
+              <h2 style={{ fontFamily: "'Instrument Serif', serif", fontStyle: "italic", fontSize: "1.75rem", color: C.onSurface, marginBottom: 8 }}>
+                {continuityMode === "resume" ? "On reprend." : continuityMode === "restart" ? "On repart." : "Bonjour."}
+              </h2>
+              <p style={{ color: C.onSurfaceVariant, fontSize: "0.875rem", maxWidth: 420 }}>
+                {continuityMode === "resume"
+                  ? "Le fil precedent reste visible. Repars d'ou tu t'etais arrete ou ouvre ce qui revient maintenant."
+                  : continuityMode === "restart"
+                    ? "Un nouveau fil commence ici. Garde seulement ce qui est vivant aujourd'hui."
+                    : "Dis-moi ce qui t'occupe l'esprit."}
+              </p>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 360 }}>
-              {[
-                "Je me sens bloqué sans savoir pourquoi",
-                "J'ai du mal à prendre une décision importante",
-                "Je veux mieux comprendre ce que je veux vraiment",
-              ].map(p => (
+              {continuityPrompts.map((p) => (
                 <button key={p} onClick={() => send(p)} style={{
                   padding: "12px 16px",
                   background: "rgba(30,31,37,0.6)",
@@ -356,6 +425,16 @@ export default function ChatPage({ msgs, typing, input, setInput, send, genIkiga
               </button>
             </div>
           </div>
+          <p style={{
+            margin: "10px 4px 0",
+            fontSize: "0.68rem",
+            lineHeight: 1.5,
+            color: C.outline,
+            textAlign: "center",
+            letterSpacing: "0.03em",
+          }}>
+            Cadre du moment: 25 messages par jour. La continuite reste visible d'une session a l'autre.
+          </p>
         </div>
       </div>
     </div>

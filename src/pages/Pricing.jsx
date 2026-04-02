@@ -21,20 +21,20 @@ const COLORS = {
 };
 
 const monthlyFeatures = [
-  "Acces complet",
-  "Memoire illimitee",
-  "Cartographie complete",
-  "Journal (bientot)",
-  "Rituel quotidien (bientot)",
-  "25 messages/session",
+  "Chat, Mapping, Journal et Aujourd'hui",
+  "Continuite visible d'une session a l'autre",
+  "Mapping mis a jour au fil des echanges",
+  "Journal guide deja inclus",
+  "Rituel du jour deja inclus",
+  "25 messages par jour",
 ];
 
 const proFeatures = [
-  "Tout l'acces mensuel",
-  "Sessions illimitees",
-  "Acces Phase 2",
-  "Suivi avance",
-  "Priorite features",
+  "Un abonnement actif est requis pour entrer dans l'app",
+  "Le quota actuel est simple et annonce clairement",
+  "Aucune promesse de memoire illimitee",
+  "Pas de date annoncee pour un plan superieur",
+  "Annulable a tout moment",
 ];
 
 const securityBadges = [
@@ -117,7 +117,7 @@ export default function Pricing({ onNav, user, accessState, notice = null }) {
     if (isCheckingAccess) return "Verification de votre acces en cours.";
     if (hasActiveSubscription) return "Votre abonnement est actif. Vous pouvez entrer dans Noema.";
     if (user) return "Votre acces a Noema necessite un abonnement actif.";
-    return "Connectez-vous d'abord pour associer votre abonnement a votre espace Noema.";
+    return "Connectez-vous pour associer l'abonnement a votre espace Noema et verifier votre acces.";
   }, [hasActiveSubscription, isCheckingAccess, notice, user]);
 
   const topAction = hasActiveSubscription
@@ -271,7 +271,7 @@ export default function Pricing({ onNav, user, accessState, notice = null }) {
                 letterSpacing: "0.02em",
               }}
             >
-              Annulable a tout moment. Aucun engagement.
+              Acces simple, cadre explicite, annulation a tout moment.
             </p>
             <p
               style={{
@@ -442,7 +442,7 @@ export default function Pricing({ onNav, user, accessState, notice = null }) {
                     letterSpacing: "0.08em",
                   }}
                 >
-                  Bientot disponible
+                    Lecture honnete
                 </div>
                 <h3
                   style={{
@@ -454,19 +454,19 @@ export default function Pricing({ onNav, user, accessState, notice = null }) {
                     letterSpacing: "0.18em",
                   }}
                 >
-                  Noema Pro
+                  Cadre actuel
                 </h3>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
                   <span
                     style={{
-                      fontSize: "3.25rem",
+                      fontSize: "1.6rem",
                       fontFamily: "'Instrument Serif', serif",
                       fontStyle: "italic",
                       color: COLORS.onSurfaceVariant,
                       lineHeight: 1,
                     }}
                   >
-                    ?
+                    Clair et stable
                   </span>
                 </div>
               </div>
@@ -507,9 +507,28 @@ export default function Pricing({ onNav, user, accessState, notice = null }) {
                   cursor: "not-allowed",
                 }}
               >
-                Bientot disponible
+                Rien de plus a debloquer pour l'instant
               </button>
             </article>
+          </section>
+
+          <section
+            style={{
+              marginTop: 40,
+              padding: 24,
+              borderRadius: 18,
+              background: "rgba(30, 31, 37, 0.4)",
+              border: `1px solid rgba(69, 70, 85, 0.15)`,
+            }}
+          >
+            <p style={{ margin: "0 0 8px", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.18em", color: COLORS.primary, fontWeight: 700 }}>
+              Ce qui est vrai aujourd'hui
+            </p>
+            <p style={{ margin: 0, fontSize: "0.95rem", lineHeight: 1.7, color: COLORS.onSurfaceVariant }}>
+              La continuite existe deja dans le produit, mais elle reste cadre par un quota simple.
+              Journal et Aujourd'hui sont deja disponibles dans l'application. Rien ici ne promet
+              une memoire illimitee ou des fonctions fantomes.
+            </p>
           </section>
 
           <section
@@ -581,18 +600,26 @@ export default function Pricing({ onNav, user, accessState, notice = null }) {
           </div>
 
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 24 }}>
-            {["Privacy Policy", "Terms of Service", "Security", "Contact Support"].map((label) => (
-              <a
+            {[
+              { label: "Privacy Policy", target: "privacy" },
+              { label: "Terms of Service", target: "terms" },
+              { label: "Ethical AI", target: "ethical-ai" },
+              { label: "Contact Support", target: "contact" },
+            ].map(({ label, target }) => (
+              <button
                 key={label}
-                href="#"
+                onClick={() => onNav?.(target)}
                 style={{
+                  background: "none",
+                  border: "none",
+                  padding: 0,
                   fontSize: "0.875rem",
                   color: "rgba(226, 226, 233, 0.5)",
-                  textDecoration: "none",
+                  cursor: "pointer",
                 }}
               >
                 {label}
-              </a>
+              </button>
             ))}
           </div>
         </div>

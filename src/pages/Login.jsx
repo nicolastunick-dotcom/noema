@@ -455,23 +455,31 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
           fontWeight: 700,
         }}>Noema</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 24 }}>
-          {["Privacy Policy", "Terms of Service", "Ethical AI", "Contact"].map(label => (
-            <a key={label} href="#" style={{
+          {[
+            { label: "Privacy Policy", target: "privacy" },
+            { label: "Terms of Service", target: "terms" },
+            { label: "Ethical AI", target: "ethical-ai" },
+            { label: "Contact", target: "contact" },
+          ].map(({ label, target }) => (
+            <button key={label} onClick={() => onNav?.(target)} style={{
+              background: "none",
+              border: "none",
+              padding: 0,
               fontFamily: "'Plus Jakarta Sans', sans-serif",
               fontSize: "0.75rem",
               textTransform: "uppercase",
               letterSpacing: "0.1em",
               color: "#454655",
-              textDecoration: "none",
+              cursor: "pointer",
               transition: "color 0.2s",
             }}
               onMouseEnter={e => e.currentTarget.style.color = C.primary}
               onMouseLeave={e => e.currentTarget.style.color = "#454655"}
-            >{label}</a>
+            >{label}</button>
           ))}
         </div>
         <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#454655" }}>
-          © 2024 Noema. The Digital Confidant.
+          © 2024 Noema. Conversation introspective continue.
         </div>
       </footer>
     </div>
