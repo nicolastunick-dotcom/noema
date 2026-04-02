@@ -28,7 +28,6 @@ const TODAY_ISO = new Date().toISOString().slice(0, 10);
 const FALLBACK_QUESTION = "Qu'est-ce que tu évites de regarder en face depuis quelques jours ?";
 
 export default function TodayPage({ user, sb, nextAction = "", onJournal, onChat }) {
-  const [defiDone, setDefiDone] = useState(false);
   const [lastJournalEntry, setLastJournalEntry] = useState(null); // { content, next_action, entry_date }
   const [loading, setLoading] = useState(true);
   const [journeyDay, setJourneyDay] = useState(null);
@@ -80,6 +79,37 @@ export default function TodayPage({ user, sb, nextAction = "", onJournal, onChat
     : FALLBACK_QUESTION;
 
   const hasData = Boolean(intentionSource);
+  const journeyDayValue = journeyDay != null
+    ? Math.max(1, journeyDay)
+    : (hasData || todayHasEntry ? 1 : null);
+  const primaryAction = hasData
+    ? {
+        label: "Passer à l'action",
+        helper: "Ouvre ton journal pour transformer cette intention en un pas concret aujourd'hui.",
+        onClick: () => onJournal && onJournal(),
+      }
+    : {
+        label: "Définir mon intention",
+        helper: "Commence une conversation avec Noema pour clarifier ce qui compte aujourd'hui.",
+        onClick: () => onChat && onChat(),
+      };
+  const reflectionAction = todayHasEntry
+    ? {
+        label: "Continuer dans le journal",
+        icon: "edit_note",
+        onClick: () => onJournal && onJournal(),
+      }
+    : hasData
+      ? {
+          label: "Écrire dans le journal",
+          icon: "edit_note",
+          onClick: () => onJournal && onJournal(),
+        }
+      : {
+          label: "Clarifier avec Noema",
+          icon: "chat",
+          onClick: () => onChat && onChat(),
+        };
 
   const glass = {
     position: "relative", overflow: "hidden", borderRadius: 24,
@@ -122,9 +152,9 @@ export default function TodayPage({ user, sb, nextAction = "", onJournal, onChat
             Bonjour {firstName}.<br />Voici ton espace du jour.
           </h2>
           <p style={{ fontSize:"0.625rem", letterSpacing:"0.2em", textTransform:"uppercase", color:"rgba(197,197,216,0.7)", margin:0 }}>{TODAY}</p>
-          {journeyDay != null && (
+          {journeyDayValue != null && (
             <p style={{ fontSize:"0.7rem", color:"rgba(189,194,255,0.45)", marginTop:10, margin:"10px 0 0", letterSpacing:"0.04em" }}>
-              Jour {journeyDay} de ton parcours
+              Jour {journeyDayValue} de ton parcours
             </p>
           )}
         </section>
@@ -143,11 +173,17 @@ export default function TodayPage({ user, sb, nextAction = "", onJournal, onChat
               </div>
               {hasData ? (
                 <>
-                  <p style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"1.15rem", color:C.onSurface, lineHeight:1.65, margin:"0 0 20px" }}>
-                    "{intentionSource}"
+                  <p style={{ fontSize:"0.82rem", color:C.onSurfaceVariant, lineHeight:1.7, margin:"0 0 14px" }}>
+                    Garde ce fil simple et concret pendant la journée.
+                  </p>
+                  <p style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"1.3rem", color:C.onSurface, lineHeight:1.55, margin:"0 0 12px" }}>
+                    {intentionSource}
+                  </p>
+                  <p style={{ fontSize:"0.8rem", color:"rgba(197,197,216,0.72)", lineHeight:1.65, margin:"0 0 22px" }}>
+                    {primaryAction.helper}
                   </p>
                   <button
-                    onClick={() => onJournal && onJournal()}
+                    onClick={primaryAction.onClick}
                     style={{
                       display:"inline-flex", alignItems:"center", gap:8,
                       padding:"12px 22px", borderRadius:9999,
@@ -160,14 +196,36 @@ export default function TodayPage({ user, sb, nextAction = "", onJournal, onChat
                     onMouseEnter={e => { e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow="0 6px 20px rgba(120,134,255,0.35)"; }}
                     onMouseLeave={e => { e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="none"; }}
                   >
-                    <span>Passer à l'action</span>
+                    <span>{primaryAction.label}</span>
                     <span className="material-symbols-outlined" style={{ fontSize:"1rem", fontVariationSettings:"'FILL' 0, 'wght' 400" }}>arrow_forward</span>
                   </button>
                 </>
               ) : (
-                <p style={{ fontSize:"0.875rem", color:C.onSurfaceVariant, lineHeight:1.65, margin:0 }}>
-                  Commence une conversation avec Noema pour que ton intention du jour apparaisse ici.
-                </p>
+                <>
+                  <p style={{ fontSize:"0.95rem", color:C.onSurfaceVariant, lineHeight:1.7, margin:"0 0 14px" }}>
+                    Commence une conversation pour définir ton intention du jour.
+                  </p>
+                  <p style={{ fontSize:"0.8rem", color:"rgba(197,197,216,0.72)", lineHeight:1.65, margin:"0 0 22px" }}>
+                    {primaryAction.helper}
+                  </p>
+                  <button
+                    onClick={primaryAction.onClick}
+                    style={{
+                      display:"inline-flex", alignItems:"center", gap:8,
+                      padding:"12px 22px", borderRadius:9999,
+                      background:"linear-gradient(135deg, #bdc2ff 0%, #7886ff 100%)",
+                      color:"#000965", fontWeight:700, fontSize:"0.875rem",
+                      border:"none", cursor:"pointer",
+                      fontFamily:"'Plus Jakarta Sans', sans-serif",
+                      transition:"transform 0.15s, box-shadow 0.15s",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow="0 6px 20px rgba(120,134,255,0.35)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="none"; }}
+                  >
+                    <span>{primaryAction.label}</span>
+                    <span className="material-symbols-outlined" style={{ fontSize:"1rem", fontVariationSettings:"'FILL' 0, 'wght' 400" }}>arrow_forward</span>
+                  </button>
+                </>
               )}
               <div style={{ position:"absolute", bottom:-32, right:-32, width:120, height:120, background:"rgba(189,194,255,0.05)", borderRadius:"50%", filter:"blur(30px)", pointerEvents:"none" }} />
             </div>
@@ -184,7 +242,7 @@ export default function TodayPage({ user, sb, nextAction = "", onJournal, onChat
                 </p>
               </div>
               <button
-                onClick={() => onJournal && onJournal()}
+                onClick={reflectionAction.onClick}
                 style={{
                   width:"100%", padding:"14px 20px", borderRadius:9999,
                   background:"linear-gradient(135deg, #5B6CFF, #7886ff)",
@@ -199,67 +257,29 @@ export default function TodayPage({ user, sb, nextAction = "", onJournal, onChat
                 onMouseDown={e => e.currentTarget.style.transform = "scale(0.97)"}
                 onMouseUp={e => e.currentTarget.style.transform = "scale(1)"}
               >
-                <span>{todayHasEntry ? "Continuer dans le journal" : "Répondre dans le journal"}</span>
-                <span className="material-symbols-outlined" style={{ fontSize:"1rem", fontVariationSettings:"'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>edit_note</span>
+                <span>{reflectionAction.label}</span>
+                <span className="material-symbols-outlined" style={{ fontSize:"1rem", fontVariationSettings:"'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>{reflectionAction.icon}</span>
               </button>
             </div>
 
-            {/* Card 3 — Défi (conditionnel : affiché seulement si on a une intention) */}
+            {/* Card 3 — Repère du jour */}
             {hasData && (
               <div style={{ borderRadius:24, background:C.surfaceContainerLow, border:"1px solid rgba(69,70,85,0.05)", padding:28 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20, gap:16 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:16, gap:16 }}>
                   <div>
-                    <h3 style={{ fontSize:"0.6rem", letterSpacing:"0.2em", textTransform:"uppercase", color:C.onSurfaceVariant, fontWeight:700, marginBottom:8 }}>Ton défi aujourd'hui</h3>
-                    <p style={{ fontSize:"1.05rem", color:C.onSurface, lineHeight:1.5, margin:0 }}>
-                      Avance d'un pas concret sur : {intentionSource}
+                    <h3 style={{ fontSize:"0.6rem", letterSpacing:"0.2em", textTransform:"uppercase", color:C.onSurfaceVariant, fontWeight:700, marginBottom:8 }}>Un pas concret</h3>
+                    <p style={{ fontSize:"1.05rem", color:C.onSurface, lineHeight:1.6, margin:"0 0 12px" }}>
+                      Choisis une action simple et faisable autour de cette intention.
+                    </p>
+                    <p style={{ fontSize:"0.9rem", color:C.onSurfaceVariant, lineHeight:1.7, margin:0 }}>
+                      Quand tu auras avancé, reviens dans le journal pour noter ce que tu as fait, ressenti ou compris.
                     </p>
                   </div>
-                  {/* Checkbox */}
-                  <button
-                    onClick={() => setDefiDone(d => !d)}
-                    style={{
-                      width:36, height:36, borderRadius:10, flexShrink:0,
-                      border:`2px solid ${defiDone ? C.primary : "rgba(69,70,85,0.35)"}`,
-                      background: defiDone ? C.primary : "transparent",
-                      cursor:"pointer",
-                      display:"flex", alignItems:"center", justifyContent:"center",
-                      transition:"all 0.2s",
-                    }}
-                  >
-                    {defiDone && (
-                      <span className="material-symbols-outlined" style={{ fontSize:"1.125rem", color:"#000965", fontVariationSettings:"'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>check</span>
-                    )}
-                  </button>
                 </div>
-                <div style={{ height:3, width:"100%", background:C.surfaceVariant, borderRadius:9999, overflow:"hidden" }}>
-                  <div style={{ height:"100%", width: defiDone ? "100%" : "0%", background:C.primary, borderRadius:9999, transition:"width 0.5s ease" }} />
-                </div>
-              </div>
-            )}
-
-            {/* Card — Invitation à converser (si pas de données) */}
-            {!hasData && (
-              <div style={{ borderRadius:24, background:C.surfaceContainerLow, border:"1px solid rgba(69,70,85,0.05)", padding:28, textAlign:"center", display:"flex", flexDirection:"column", alignItems:"center", gap:16 }}>
-                <span className="material-symbols-outlined" style={{ fontSize:"2rem", color:"rgba(120,134,255,0.4)", fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>forum</span>
-                <p style={{ fontSize:"0.9rem", color:C.onSurfaceVariant, lineHeight:1.65, margin:0 }}>
-                  Commence une conversation avec Noema.<br />Ton intention du jour apparaîtra ici.
+                <div style={{ height:1, width:"100%", background:"rgba(69,70,85,0.35)", margin:"4px 0 14px" }} />
+                <p style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"1.05rem", lineHeight:1.6, color:C.primary, margin:0 }}>
+                  {intentionSource}
                 </p>
-                <button
-                  onClick={() => onChat && onChat()}
-                  style={{
-                    display:"inline-flex", alignItems:"center", gap:8,
-                    padding:"11px 22px", borderRadius:9999,
-                    background:"rgba(189,194,255,0.1)", border:"1px solid rgba(189,194,255,0.2)",
-                    color:C.primary, fontWeight:600, fontSize:"0.8rem",
-                    cursor:"pointer", fontFamily:"'Plus Jakarta Sans', sans-serif",
-                    transition:"background 0.15s",
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background="rgba(189,194,255,0.18)"}
-                  onMouseLeave={e => e.currentTarget.style.background="rgba(189,194,255,0.1)"}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize:"0.9rem", fontVariationSettings:"'FILL' 0, 'wght' 400" }}>chat</span>
-                  <span>Commencer une conversation</span>
-                </button>
               </div>
             )}
           </>

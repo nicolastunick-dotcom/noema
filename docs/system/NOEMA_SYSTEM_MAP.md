@@ -150,20 +150,23 @@ Success:
 - relit `subscriptions.status`
 - affiche un état confirmé ou un état d'activation en cours
 
-Journal (post Sprint 5):
+Journal (post Sprint 6):
 - `FALLBACK_PROMPTS` utilisés si `nextAction` absent
 - `next_action` de la session courante affiché comme prompt principal si disponible
 - `handleSave()` écrit dans `journal_entries` via Supabase (upsert `user_id + entry_date`)
 - entrée du jour rechargée au mount depuis `journal_entries`
+- structure UX en 3 niveaux simples: `Intention du jour` -> `Réflexion libre` -> `Ce que tu retiens`
+- feedback de sauvegarde inline, discret, sans toast agressif
 - table `journal_entries` dans `supabase-schema.sql` avec RLS
 
-Today (post Sprint 5):
+Today (post Sprint 6):
 - `nextAction` prop depuis `AppShell` (session live) = intention du jour
 - fallback : `next_action` de la dernière entrée `journal_entries`
-- si aucune donnée : invitation à converser avec Noema
+- CTA principal visible : `Passer à l'action` vers le Journal si une intention existe
+- si aucune donnée : fallback honnête + CTA chat pour définir l'intention du jour
 - question du jour adaptée si entrée journal existe aujourd'hui
-- défi affiché seulement si une intention est disponible
-- checkbox défi toujours locale (pas de persistance défi)
+- indicateur discret `Jour X de ton parcours` dérivé du nombre d'entrées journal
+- repère du jour sobre, sans checkbox ni gamification artificielle
 
 ## 4. Flux complet du chat
 

@@ -411,16 +411,21 @@ Mapping:
 - lit bien des données runtime
 - mais ces données viennent du dernier flux chat, pas d'un moteur autonome ni d'une requête dédiée
 
-Journal (post Sprint 5):
+Journal (post Sprint 6):
 - prompt principal = `next_action` de la session courante si disponible, sinon `FALLBACK_PROMPTS` aléatoire
 - sauvegarde réelle dans `journal_entries` Supabase (upsert `user_id + entry_date`)
 - rechargement de l'entrée du jour au mount
+- structure UX en 3 blocs clairs: intention, écriture, retenue
+- feedback de sauvegarde inline `Entrée enregistrée ✓`, sans toast agressif
 - tags UI conservés mais pas encore persistés en base
 
-Today (post Sprint 5):
+Today (post Sprint 6):
 - intention du jour = `nextAction` prop live depuis `AppShell` (session en cours) ou `next_action` de la dernière entrée journal
+- intention rendue actionnable via un CTA principal vers le Journal
+- fallback honnête si aucune intention : CTA chat pour la définir
 - question du jour : adaptée si une entrée journal existe déjà aujourd'hui
-- défi affiché seulement si une intention existe — fallback honnête sinon
+- progression visible via `Jour X de ton parcours`, dérivée du nombre d'entrées journal
+- repère du jour sobre à la place d'un défi avec checkbox
 - plus de `STATIC_DATA` ni de contenu purement hardcodé
 
 Références:

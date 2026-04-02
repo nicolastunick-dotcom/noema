@@ -655,7 +655,6 @@ Tests Today:
 
 ## Ce qui reste partiel apres Sprint 5
 
-- le defi quotidien dans `TodayPage` reste derive du `next_action` — pas encore un programme de travail sur plusieurs jours
 - les tags `journal_entries` ne sont pas encore sauvegardés (la UI garde les tags visuels mais ils ne sont pas dans le schema)
 - la question du jour dans `TodayPage` reste statique (un seul fallback) hors cas "entree journal du jour"
 - `sessions.next_action` necessite une migration SQL manuelle en prod (`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS next_action text DEFAULT ''`)
@@ -676,6 +675,72 @@ Lacune identifiée lors de l'audit pré-Sprint 6 : `next_action` n'était pas re
 - Journal affiche le prompt issu de `next_action` dès l'ouverture de la page
 - Aucun nouvel appel LLM, aucune migration SQL requise
 
+## Sprint 6 — Continuité utile & expérience vivante ✅ EXÉCUTÉ (02/04/2026)
+
+## Objectif
+rendre `Today` et `Journal` plus habitables, plus guidants et plus actionnables, sans ajouter de backend, sans appel LLM supplémentaire et sans modifier le moteur
+
+## Actions appliquées
+
+### Today
+- `Intention du jour` devient le bloc central de la page
+- CTA principal visible :
+  - `Passer à l'action` → ouvre le Journal si une intention existe
+  - `Définir mon intention` → ouvre le Chat si aucune intention n'existe
+- fallback honnête si `next_action` absent, sans contenu inventé
+- ajout d'un marqueur discret `Jour X de ton parcours`, dérivé du nombre d'entrées `journal_entries`
+- remplacement du "défi" avec checkbox par un repère du jour sobre, non gamifié
+
+### Journal
+- structure visuelle explicite en 3 niveaux :
+  - `Intention du jour`
+  - `Réflexion libre`
+  - `Ce que tu retiens`
+- placeholder de la zone d'écriture clarifié pour guider sans alourdir
+- feedback de sauvegarde déplacé inline dans la surface d'écriture :
+  - `Prêt à enregistrer`
+  - `Enregistrement…`
+  - `Entrée enregistrée ✓`
+- suppression du toast flottant et du FAB au profit d'un contrôle plus calme et plus premium
+- reprise du marqueur `Jour X de ton parcours` dans la page Journal, basé sur la même source
+
+## Fichiers modifies
+
+- `src/pages/TodayPage.jsx`
+- `src/pages/JournalPage.jsx`
+- `PROJECT.md`
+- `docs/system/NOEMA_SYSTEM_MAP.md`
+- `docs/system/NOEMA_RUNTIME_GAPS.md`
+- `docs/system/NOEMA_ALIGNMENT_EXECUTION_PLAN.md`
+
+## Ce qui est maintenant vrai
+
+- `TodayPage` rend l'intention visible et immédiatement actionnable sans changer la vérité produit
+- l'absence de `next_action` est gérée par un fallback simple et honnête vers le Chat
+- `JournalPage` reste techniquement minimal, mais l'expérience est structurée et plus guidante
+- la sauvegarde journal reste inchangée côté données, mais son feedback est plus clair et moins agressif
+- aucun backend nouveau, aucune table nouvelle, aucun appel LLM supplémentaire, aucun surcoût API
+
+## Tests cibles
+
+Tests Today :
+- `next_action` visible clairement si disponible
+- fallback clair si `next_action` absent
+- CTA principal route vers Journal ou Chat selon le cas
+- indicateur `Jour X de ton parcours` cohérent avec `journal_entries`
+
+Tests Journal :
+- lecture/écriture `journal_entries` inchangées
+- feedback inline correct sur save
+- `next_action` bien visible en tête de page
+- aucune régression de persistance après refresh
+
+Tests non-regression :
+- aucun changement backend
+- aucun appel LLM ajouté
+- coût API inchangé
+- chat et mapping non impactés
+
 # 7. Ordre réel d'exécution (état au 02/04/2026)
 
 | # | Chantier | Sprint | Statut |
@@ -689,6 +754,7 @@ Lacune identifiée lors de l'audit pré-Sprint 6 : `next_action` n'était pas re
 | 7 | Session live minimale (anticipée) | Sprint 4.1 | ✅ |
 | 8 | Réalignement UX réel | Sprint 4 | ✅ |
 | 9 | Journal / Today réels | Sprint 5 | ✅ |
+| 10 | Continuité utile & expérience vivante | Sprint 6 | ✅ |
 
 Règle de merge (toujours valide) :
 - Sprint 4 UX a ete livre apres stabilisation de Sprint 4.1

@@ -33,13 +33,22 @@ const FALLBACK_PROMPTS = [
 export default function JournalPage({ user, sb, nextAction = "" }) {
   const [text, setText] = useState("");
   const [activePrompt, setActivePrompt] = useState("");
-  const [saved, setSaved] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [saveState, setSaveState] = useState("idle");
   const [loading, setLoading] = useState(true);
   const [journeyDay, setJourneyDay] = useState(null);
   const taRef = useRef(null);
 
   const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const hasReflection = text.trim().length > 0;
+  const journeyDayValue = journeyDay != null
+    ? Math.max(1, journeyDay)
+    : (nextAction || hasReflection ? 1 : null);
+  const saveFeedback = {
+    idle: "Prêt à enregistrer",
+    saving: "Enregistrement…",
+    saved: "Entrée enregistrée ✓",
+    error: "Impossible d'enregistrer pour l'instant",
+  };
 
   const altPrompts = nextAction ? FALLBACK_PROMPTS : FALLBACK_PROMPTS.slice(1);
 
@@ -84,12 +93,11 @@ export default function JournalPage({ user, sb, nextAction = "" }) {
   async function handleSave() {
     if (!sb || !user) {
       // Fallback visuel si pas de Supabase (DEV sans config)
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      setSaveState("saved");
       return;
     }
 
-    setSaving(true);
+    setSaveState("saving");
     // session_id omis volontairement : la ligne sessions n'existe pas encore en DB
     // tant que saveSession() n'a pas été déclenché (beforeunload / autosave 2min).
     // Envoyer un UUID non persisté déclencherait une erreur FK 23503.
@@ -107,14 +115,20 @@ export default function JournalPage({ user, sb, nextAction = "" }) {
 
     if (error) {
       console.error("[Journal] Erreur sauvegarde:", error);
+      setSaveState("error");
     } else {
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      setSaveState("saved");
     }
-    setSaving(false);
+  }
+
+  function markDirty() {
+    if (saveState === "saved" || saveState === "error") {
+      setSaveState("idle");
+    }
   }
 
   function selectPrompt(p) {
+    markDirty();
     setActivePrompt(p);
     taRef.current?.focus();
   }
@@ -160,9 +174,12 @@ export default function JournalPage({ user, sb, nextAction = "" }) {
         <div style={{ marginBottom:40 }}>
           <p style={{ fontSize:"0.625rem", fontWeight:600, letterSpacing:"0.2em", textTransform:"uppercase", color:C.outline, marginBottom:8 }}>{TODAY}</p>
           <h1 style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"clamp(2rem,7vw,3rem)", lineHeight:1.15, color:C.onSurface, margin:0 }}>L'espace de réflexion</h1>
-          {journeyDay != null && (
+          <p style={{ fontSize:"0.9rem", color:C.onSurfaceVariant, lineHeight:1.7, margin:"14px 0 0", maxWidth:460 }}>
+            Un espace simple pour poser ce que tu vis, ce que tu comprends et ce que tu veux garder.
+          </p>
+          {journeyDayValue != null && (
             <p style={{ fontSize:"0.7rem", color:"rgba(189,194,255,0.45)", marginTop:10, margin:"10px 0 0", letterSpacing:"0.04em" }}>
-              Jour {journeyDay} de ton parcours
+              Jour {journeyDayValue} de ton parcours
             </p>
           )}
         </div>
@@ -189,7 +206,7 @@ export default function JournalPage({ user, sb, nextAction = "" }) {
                   "{activePrompt}"
                 </blockquote>
                 <p style={{ fontSize:"0.8rem", color:C.onSurfaceVariant, lineHeight:1.65, margin:0, fontWeight:300 }}>
-                  Prends un moment pour respirer. Il n'y a pas de mauvaise réponse, seulement ton honnêteté.
+                  Prends un moment pour respirer. Commence simplement par ce qui est le plus vivant pour toi maintenant.
                 </p>
               </div>
             </div>
@@ -202,11 +219,17 @@ export default function JournalPage({ user, sb, nextAction = "" }) {
               </div>
               <div style={{ ...glass, padding:28, minHeight:360, position:"relative", overflow:"hidden" }}>
                 <div style={{ position:"absolute", top:0, right:0, width:120, height:120, background:"rgba(189,194,255,0.04)", filter:"blur(40px)", borderRadius:"50%", transform:"translate(30%, -30%)", pointerEvents:"none" }} />
+                <p style={{ fontSize:"0.82rem", color:C.onSurfaceVariant, lineHeight:1.65, margin:"0 0 18px" }}>
+                  Écris sans chercher la bonne formule. Décris ce que tu as fait, ce que tu as ressenti et ce que tu comprends mieux.
+                </p>
                 <textarea
                   ref={taRef}
                   value={text}
-                  onChange={e => setText(e.target.value)}
-                  placeholder={"Qu'as-tu fait aujourd'hui ?\nQu'as-tu ressenti ?\nQu'est-ce que tu comprends mieux ?"}
+                  onChange={e => {
+                    markDirty();
+                    setText(e.target.value);
+                  }}
+                  placeholder={"Qu'as-tu fait aujourd'hui ?\nQu'as-tu ressenti ?\nQu'est-ce que tu comprends mieux maintenant ?"}
                   style={{
                     width:"100%", minHeight:280,
                     background:"transparent", border:"none", outline:"none",
@@ -218,15 +241,50 @@ export default function JournalPage({ user, sb, nextAction = "" }) {
                   }}
                 />
                 <style>{`textarea::placeholder { color: rgba(69,70,85,0.5); white-space: pre-line; }`}</style>
-                {text.trim().length > 0 && (
-                  <div style={{ borderTop:"1px solid rgba(255,255,255,0.05)", marginTop:20, paddingTop:16 }}>
-                    <p style={{ fontSize:"0.6rem", letterSpacing:"0.15em", textTransform:"uppercase", color:C.outline, margin:"0 0 8px", fontWeight:600 }}>Ce que tu retiens</p>
-                    <p style={{ fontSize:"0.8rem", color:"rgba(197,197,216,0.35)", lineHeight:1.6, margin:0, fontStyle:"italic" }}>
-                      Écris en bas ce que tu veux garder de cette réflexion.
-                    </p>
-                  </div>
-                )}
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:16, borderTop:"1px solid rgba(255,255,255,0.05)", marginTop:20, paddingTop:16, flexWrap:"wrap" }}>
+                  <p style={{ fontSize:"0.78rem", color:saveState === "error" ? "#ffb4ab" : "rgba(197,197,216,0.72)", margin:0, lineHeight:1.5 }}>
+                    {saveFeedback[saveState]}
+                  </p>
+                  <button
+                    onClick={handleSave}
+                    disabled={saveState === "saving"}
+                    style={{
+                      display:"inline-flex", alignItems:"center", justifyContent:"center", gap:8,
+                      padding:"12px 20px", borderRadius:9999,
+                      background: saveState === "saved"
+                        ? "rgba(189,194,255,0.12)"
+                        : "linear-gradient(135deg, #bdc2ff, #7886ff)",
+                      color: saveState === "saved" ? C.primary : "#000965",
+                      border: saveState === "saved" ? "1px solid rgba(189,194,255,0.2)" : "none",
+                      cursor: saveState === "saving" ? "default" : "pointer",
+                      fontWeight:700, fontSize:"0.82rem",
+                      fontFamily:"'Plus Jakarta Sans', sans-serif",
+                      opacity: saveState === "saving" ? 0.7 : 1,
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize:"1rem", fontVariationSettings:"'FILL' 1, 'wght' 400" }}>
+                      {saveState === "saved" ? "check" : "save"}
+                    </span>
+                    <span>{saveState === "saving" ? "Enregistrement…" : saveState === "saved" ? "Enregistrée" : "Enregistrer"}</span>
+                  </button>
+                </div>
               </div>
+            </div>
+
+            {/* ── Retention Cue ── */}
+            <div style={{ ...glass, padding:24, display:"flex", flexDirection:"column", gap:10 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <span className="material-symbols-outlined" style={{ fontSize:"0.875rem", color:C.tertiary, fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>bookmark</span>
+                <span style={{ fontSize:"0.6rem", letterSpacing:"0.2em", textTransform:"uppercase", color:C.onSurfaceVariant, fontWeight:600 }}>
+                  Ce que tu retiens
+                </span>
+              </div>
+              <p style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"1.05rem", lineHeight:1.55, color:C.onSurface, margin:0 }}>
+                Termine par une phrase simple: ce que tu veux garder de cette journée, ou ce que tu comprends mieux maintenant.
+              </p>
+              <p style={{ fontSize:"0.8rem", color:C.onSurfaceVariant, lineHeight:1.65, margin:0 }}>
+                Tu peux l'écrire à la fin de ta note. Pas besoin d'un format spécial, juste une vérité claire.
+              </p>
             </div>
 
             {/* ── Alternative Prompts horizontal scroll ── */}
@@ -260,48 +318,6 @@ export default function JournalPage({ user, sb, nextAction = "" }) {
           </div>
         )}
       </main>
-
-      {/* ── Inline save feedback ── */}
-      {saved && (
-        <div style={{
-          position:"fixed", bottom:164, right:24, zIndex:40,
-          background:"rgba(30,31,37,0.9)", backdropFilter:"blur(8px)",
-          border:"1px solid rgba(76,175,80,0.3)", borderRadius:10,
-          padding:"8px 14px", fontSize:"0.75rem", color:"#81c784",
-          display:"flex", alignItems:"center", gap:6,
-          animation:"fadeIn 0.15s ease",
-        }}>
-          <span className="material-symbols-outlined" style={{ fontSize:"0.9rem", fontVariationSettings:"'FILL' 1, 'wght' 400" }}>check_circle</span>
-          Entrée enregistrée
-        </div>
-      )}
-
-      {/* ── FAB Save ── */}
-      <div style={{ position:"fixed", bottom:96, right:24, zIndex:40 }}>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          style={{
-            width:56, height:56, borderRadius:"50%",
-            background: saved
-              ? "linear-gradient(135deg, #4caf50, #2e7d32)"
-              : "linear-gradient(135deg, #bdc2ff, #7886ff)",
-            border:"none", cursor: saving ? "default" : "pointer",
-            display:"flex", alignItems:"center", justifyContent:"center",
-            boxShadow:"0 8px 24px rgba(120,134,255,0.3)",
-            transition:"transform 0.15s, background 0.3s",
-            opacity: saving ? 0.7 : 1,
-          }}
-          onMouseEnter={e => { if (!saving) e.currentTarget.style.transform = "scale(1.05)"; }}
-          onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
-          onMouseDown={e => { if (!saving) e.currentTarget.style.transform = "scale(0.95)"; }}
-          onMouseUp={e => { if (!saving) e.currentTarget.style.transform = "scale(1.05)"; }}
-        >
-          <span className="material-symbols-outlined" style={{ fontSize:"1.375rem", color:"#000965", fontVariationSettings:"'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>
-            {saved ? "check" : "edit_note"}
-          </span>
-        </button>
-      </div>
 
     </div>
   );
