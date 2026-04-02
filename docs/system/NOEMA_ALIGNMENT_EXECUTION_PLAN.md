@@ -585,7 +585,7 @@ Tests UX:
 - `next_action` n'est toujours pas consomme par `Journal` ou `Today`
 - Sprint 5 reste le premier sprint qui branche reellement la continuite quotidienne a des donnees produit
 
-# 6. Sprint 5 — Journal / Today réels ⏳ À FAIRE
+# 6. Sprint 5 — Journal / Today réels ✅ LIVRÉ
 
 ## Objectif
 brancher réellement les surfaces Journal et Today sur des données persistantes — cesser les contenus statiques
@@ -640,6 +640,26 @@ Tests Today:
 - surconstruire le modele avant de voir l'usage reel
 - produire un `Today` artificiel si le journal reste peu alimente
 
+## Ce qui est maintenant vrai
+
+- `journal_entries` existe dans `supabase-schema.sql` avec RLS `FOR ALL USING (auth.uid() = user_id)`
+- `sessions` a une colonne `next_action` (migration commentee dans le schema pour les bases existantes)
+- `JournalPage` lit l'entree du jour au mount et la reecrit (upsert sur `user_id + entry_date`) a chaque save
+- `JournalPage` affiche le `next_action` de la session courante comme prompt principal si disponible, sinon fallback parmi `FALLBACK_PROMPTS`
+- `TodayPage` consomme `nextAction` en prop live depuis `AppShell` (sans appel LLM supplementaire)
+- `TodayPage` charge la derniere entree journal au mount (Supabase direct) pour afficher `next_action` persiste si la session est terminee
+- `TodayPage` n'affiche plus `STATIC_DATA` — fallback honnete "Commence une conversation avec Noema" si aucune donnee
+- `AppShell.saveSession()` inclut `next_action` dans l'upsert `sessions`
+- `nextActionRef` assure que la valeur correcte est persistee meme lors des appels depuis closures async (beforeunload, setInterval)
+- 0 appel LLM supplementaire pour ces deux surfaces
+
+## Ce qui reste partiel apres Sprint 5
+
+- le defi quotidien dans `TodayPage` reste derive du `next_action` — pas encore un programme de travail sur plusieurs jours
+- les tags `journal_entries` ne sont pas encore sauvegardés (la UI garde les tags visuels mais ils ne sont pas dans le schema)
+- la question du jour dans `TodayPage` reste statique (un seul fallback) hors cas "entree journal du jour"
+- `sessions.next_action` necessite une migration SQL manuelle en prod (`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS next_action text DEFAULT ''`)
+
 # 7. Ordre réel d'exécution (état au 02/04/2026)
 
 | # | Chantier | Sprint | Statut |
@@ -652,7 +672,7 @@ Tests Today:
 | 6 | Réduction coûts tokens/Greffier | Sprint 3.2 | ✅ |
 | 7 | Session live minimale (anticipée) | Sprint 4.1 | ✅ |
 | 8 | Réalignement UX réel | Sprint 4 | ✅ |
-| 9 | Journal / Today réels | Sprint 5 | ⏳ |
+| 9 | Journal / Today réels | Sprint 5 | ✅ |
 
 Règle de merge (toujours valide) :
 - Sprint 4 UX a ete livre apres stabilisation de Sprint 4.1

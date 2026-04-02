@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   insights    jsonb DEFAULT '{}',
   ikigai      jsonb DEFAULT '{}',
   step        integer DEFAULT 0,
-  session_note text DEFAULT ''
+  session_note text DEFAULT '',
+  next_action  text DEFAULT ''  -- Sprint 5 : action concrète de fin de session
 );
 
 -- Mémoire cumulée inter-sessions (une ligne par utilisateur)
@@ -202,6 +203,39 @@ CREATE POLICY "invites: user read own" ON invites
 -- ALTER TABLE invites ADD COLUMN IF NOT EXISTS user_id uuid REFERENCES auth.users(id);
 -- DROP POLICY IF EXISTS "invites: user read own" ON invites;
 -- CREATE POLICY "invites: user read own" ON invites FOR SELECT USING (auth.uid() = user_id);
+
+-- ─────────────────────────────────────────────────────────────
+-- DASHBOARD ADMIN: SUIVI CONSOMMATION TOKEN (API USAGE)
+-- ─────────────────────────────────────────────────────────────
+
+-- ─────────────────────────────────────────────────────────────
+-- JOURNAL — Entrées quotidiennes (Sprint 5)
+-- Une entrée par utilisateur par jour (upsert sur user_id + entry_date)
+-- next_action : dernière action concrète donnée par Noema en fin de session
+-- ─────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS journal_entries (
+  id           uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id      uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  session_id   text,                          -- UUID de la session chat liée (nullable)
+  entry_date   date NOT NULL DEFAULT current_date,
+  content      text NOT NULL DEFAULT '',
+  next_action  text DEFAULT '',               -- copie du next_action de la session
+  created_at   timestamptz DEFAULT now(),
+  updated_at   timestamptz DEFAULT now(),
+  UNIQUE(user_id, entry_date)
+);
+
+ALTER TABLE journal_entries ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "journal_entries: user access" ON journal_entries
+  FOR ALL USING (auth.uid() = user_id);
+
+-- ─────────────────────────────────────────────────────────────
+-- MIGRATION Sprint 5 — ajouter next_action dans sessions
+-- À exécuter si la table sessions existe déjà en prod
+-- ─────────────────────────────────────────────────────────────
+-- ALTER TABLE sessions ADD COLUMN IF NOT EXISTS next_action text DEFAULT '';
 
 -- ─────────────────────────────────────────────────────────────
 -- DASHBOARD ADMIN: SUIVI CONSOMMATION TOKEN (API USAGE)

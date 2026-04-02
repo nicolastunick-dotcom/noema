@@ -48,9 +48,10 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   const [greffierLogTick, setGreffierLogTick] = useState(0); // force re-render quand log maj
 
   // Refs miroirs pour les valeurs d'état — toujours à jour dans les closures async/événements
-  const insightsRef = useRef(insights);
-  const ikigaiRef   = useRef(ikigai);
-  const stepRef     = useRef(step);
+  const insightsRef    = useRef(insights);
+  const ikigaiRef      = useRef(ikigai);
+  const stepRef        = useRef(step);
+  const nextActionRef  = useRef(nextAction);
 
   useEffect(() => {
     setNavTab(initialTab || "chat");
@@ -120,9 +121,10 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   }, []);
 
   // Sync des refs miroirs à chaque changement d'état
-  useEffect(() => { insightsRef.current = insights; }, [insights]);
-  useEffect(() => { ikigaiRef.current   = ikigai;   }, [ikigai]);
-  useEffect(() => { stepRef.current     = step;     }, [step]);
+  useEffect(() => { insightsRef.current   = insights;    }, [insights]);
+  useEffect(() => { ikigaiRef.current     = ikigai;      }, [ikigai]);
+  useEffect(() => { stepRef.current       = step;        }, [step]);
+  useEffect(() => { nextActionRef.current = nextAction;  }, [nextAction]);
 
   useEffect(() => { applyTheme(mstate); }, [mstate]);
 
@@ -311,6 +313,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
       ikigai:       currentIkigai,
       step:         currentStep,
       session_note: lastSessionNote.current,
+      next_action:  nextActionRef.current, // Sprint 5 : persist pour que Today puisse le relire
     };
     // Sprint 4 : upsert sur id — tous les autosaves mettent à jour la même ligne session active.
     // Avant : insert → plusieurs lignes incohérentes par session. Après : une seule ligne par session.
@@ -391,11 +394,20 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
           />
         );
       case "journal":
-        return <JournalPage />;
+        return (
+          <JournalPage
+            user={user}
+            sb={sb}
+            nextAction={nextAction}
+            sessionId={sessionIdRef.current}
+          />
+        );
       case "today":
         return (
           <TodayPage
             user={user}
+            sb={sb}
+            nextAction={nextAction}
             onJournal={() => changeTab("journal")}
           />
         );

@@ -28,7 +28,7 @@ Les écarts structurants les plus importants sont aujourd'hui:
 - ~~l'accès produit est décidé côté frontend, alors que `/.netlify/functions/claude` ne vérifie pas l'abonnement, seulement le JWT~~ **RÉSOLU Sprint 1** : `claude.js` vérifie maintenant l'entitlement (admin / subscription / invite) et retourne 403 si absent
 - ~~le quota s'écrit en double, client ET serveur~~ **RÉSOLU Sprint 1** : le frontend ne lit/écrit plus `rate_limits`, seul `claude.js` est autorité quota
 - ~~le contrat `_ui` du prompt principal ne correspond pas au contrat réellement consommé par `applyUI()`~~ **RÉSOLU Sprint 2**
-- `Journal` et `Today` sont présentés dans la roadmap, le landing, l'onboarding et le pricing comme surfaces utiles de continuité, alors qu'ils restent presque entièrement statiques — **cible Sprint 5**
+- ~~`Journal` et `Today` sont présentés dans la roadmap, le landing, l'onboarding et le pricing comme surfaces utiles de continuité, alors qu'ils restent presque entièrement statiques~~ **RÉSOLU Sprint 5** : `journal_entries` en base, écriture/lecture Supabase directe dans `JournalPage`, `TodayPage` consomme `next_action` live et persiste en `sessions`
 - ~~`sessions` donne l'impression d'une session métier stable, mais le runtime l'utilise comme système de snapshots répétés~~ **RÉSOLU Sprint 4.1 (anticipé)** : upsert sur `session_id`, une seule ligne par session active
 - le repo contient encore des reliquats V1/V2 (`App.original.jsx`, `prompt-greffier.js`, alias legacy, imports orphelins) capables de tromper une IA qui ne lirait pas les bons points de vérité
 - plusieurs documents historiques (`ROADMAP.md`, `DEBATE.md`, parties de `PROJECT.md`, parties de `codex.md`) décrivent un Noema plus cohérent, plus branché ou plus ancien que le runtime actuel
@@ -36,7 +36,7 @@ Les écarts structurants les plus importants sont aujourd'hui:
 Ce que Noema est réellement aujourd'hui (post Sprint 4) :
 - `réel`: auth, accès backend verrouillé (entitlement admin/sub/invite), quota backend unique, chat, mémoire inter-sessions, snapshots, Mapping, onboarding, admin panel partiel
 - `partiel`: Greffier comme moteur secondaire de persistance, billing post-checkout (Success plus fiable mais toujours dépendant du webhook), `invites.user_id` linkage (migration à exécuter en prod), documentation globale du projet
-- `mocké`: `Journal`, `Today`, partie du discours "rituel quotidien" et "journal guidé par Noema"
+- `mocké`: partie du discours "rituel quotidien" et "journal guidé par Noema" (le journal guidé est maintenant réel, mais le rituel reste partiel)
 - `legacy`: `App.original.jsx`, `prompt-greffier.js`, une partie de `access_codes`, les commentaires Greffier sur `user_insights` / `ikigai_state`
 
 Écart résiduel Sprint 1 :
@@ -118,9 +118,9 @@ Clôture de session:
 - mais `next_action` n'est ni affiché dans `JournalPage` ni dans `TodayPage`
 - la limitation réelle n'est pas une simple règle "25 messages maximum"
 
-Continuité quotidienne:
-- `JournalPage` ne lit ni `next_action`, ni `memory`, ni `sessions`, ni une table `journal`
-- `TodayPage` n'appelle aucune API Noema et n'utilise qu'un prénom dérivé de `user`
+Continuité quotidienne (post Sprint 5):
+- `JournalPage` lit l'entrée du jour depuis `journal_entries` au mount, affiche `next_action` comme prompt principal si disponible depuis la session courante, et écrit dans Supabase à chaque save (upsert sur `user_id + entry_date`)
+- `TodayPage` consomme `nextAction` en prop live depuis `AppShell` et charge la dernière entrée journal au mount — plus de `STATIC_DATA`
 
 Mapping:
 - c'est la surface la plus proche de la promesse
@@ -136,7 +136,7 @@ Billing:
 | Domaine | Vision / promesse | Runtime réel | Etat |
 |---|---|---|---|
 | Mémoire | continuité totale | `forces`, `blocages`, `contradictions`, `ikigai`, `step` injectés — mid-session live via `updateMemoryRef` | réel (Sprint 3) |
-| Guide quotidien | journal guidé + rituel du jour | deux pages statiques assumées comme aperçus / espaces libres | mocké |
+| Guide quotidien | journal guidé + rituel du jour | `JournalPage` lit/écrit `journal_entries` Supabase, pré-rempli avec `next_action` ; `TodayPage` consomme `next_action` live + charge dernière entrée journal | réel (Sprint 5) |
 | Cartographie | miroir vivant de progression | Mapping branché au `_ui` | réel mais partiel |
 | Paiement -> accès | activation claire après paiement | vérité dans `subscriptions`, relue par `Success`, avec état d'attente si webhook non synchronisé | partiel |
 | Session | 25 messages / session | 25/jour serveur, 100/jour client + 30/min local | contradictoire |
@@ -411,15 +411,17 @@ Mapping:
 - lit bien des données runtime
 - mais ces données viennent du dernier flux chat, pas d'un moteur autonome ni d'une requête dédiée
 
-Journal:
-- suggestion de Noema statique assumée comme telle
-- tags statiques
-- bouton save purement visuel
+Journal (post Sprint 5):
+- prompt principal = `next_action` de la session courante si disponible, sinon `FALLBACK_PROMPTS` aléatoire
+- sauvegarde réelle dans `journal_entries` Supabase (upsert `user_id + entry_date`)
+- rechargement de l'entrée du jour au mount
+- tags UI conservés mais pas encore persistés en base
 
-Today:
-- intention, question, défi, citation statiques
-- mention explicite d'aperçu / personnalisation à venir
-- bouton vers Journal sans préremplissage
+Today (post Sprint 5):
+- intention du jour = `nextAction` prop live depuis `AppShell` (session en cours) ou `next_action` de la dernière entrée journal
+- question du jour : adaptée si une entrée journal existe déjà aujourd'hui
+- défi affiché seulement si une intention existe — fallback honnête sinon
+- plus de `STATIC_DATA` ni de contenu purement hardcodé
 
 Références:
 - `src/pages/Landing.jsx:603-614`, `src/pages/Landing.jsx:658-669`

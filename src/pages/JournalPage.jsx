@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 
 // ─────────────────────────────────────────────────────────────
 // JOURNAL PAGE — Espace de réflexion guidé par Noema
-// Données statiques pour l'instant
+// Sprint 5 : écriture et lecture réelles via Supabase
+// Props : user, sb, nextAction (depuis la session courante), sessionId
 // ─────────────────────────────────────────────────────────────
 
 const C = {
@@ -19,38 +20,97 @@ const C = {
 };
 
 const TODAY = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+const TODAY_ISO = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
-// Prompt statique — pas encore généré depuis les conversations
-const STATIC_PROMPT = "En quoi cette situation rejoint ce qu'on a découvert sur toi lors de notre dernière séance ?";
-
-const ALTERNATIVE_PROMPTS = [
+const FALLBACK_PROMPTS = [
   "Qu'est-ce que tu as fait aujourd'hui qui t'a rendu fier ?",
   "Quelle émotion a été la plus difficile à nommer ce matin ?",
   "Si tu devais résumer ton état d'esprit en une seule métaphore…",
   "Qu'est-ce qui te retient encore de franchir ce pas ?",
+  "En quoi cette situation rejoint ce qu'on a découvert sur toi récemment ?",
 ];
 
-const STATIC_TAGS = ["#carrière", "#introspection"];
-
-export default function JournalPage() {
+export default function JournalPage({ user, sb, nextAction = "", sessionId = null }) {
   const [text, setText] = useState("");
-  const [tags, setTags] = useState(STATIC_TAGS);
-  const [activePrompt, setActivePrompt] = useState(STATIC_PROMPT);
+  const [activePrompt, setActivePrompt] = useState("");
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const taRef = useRef(null);
 
   const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
 
+  // Prompt principal : next_action si dispo, sinon fallback aléatoire
+  const mainPrompt = nextAction || FALLBACK_PROMPTS[0];
+  const altPrompts = nextAction
+    ? FALLBACK_PROMPTS
+    : FALLBACK_PROMPTS.slice(1);
+
+  // ── Chargement de l'entrée du jour au mount ──────────────────
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "auto";
+
+    // Définit le prompt actif (next_action ou fallback)
+    setActivePrompt(nextAction || FALLBACK_PROMPTS[0]);
+
+    if (!sb || !user) {
+      setLoading(false);
+      return;
+    }
+
+    (async () => {
+      const { data, error } = await sb
+        .from("journal_entries")
+        .select("content, next_action")
+        .eq("user_id", user.id)
+        .eq("entry_date", TODAY_ISO)
+        .maybeSingle();
+
+      if (error) console.error("[Journal] Erreur chargement entrée:", error);
+
+      if (data) {
+        if (data.content) setText(data.content);
+        // Si une next_action était enregistrée et qu'on n'en a pas de plus récente
+        if (!nextAction && data.next_action) setActivePrompt(data.next_action);
+      }
+      setLoading(false);
+    })();
+
     return () => { document.body.style.overflow = prev; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sauvegarde non implémentée — aperçu statique
-  function handleSave() {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  // ── Sauvegarde réelle dans Supabase ──────────────────────────
+  async function handleSave() {
+    if (!sb || !user) {
+      // Fallback visuel si pas de Supabase (DEV sans config)
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+      return;
+    }
+
+    setSaving(true);
+    const entry = {
+      user_id:    user.id,
+      session_id: sessionId,
+      entry_date: TODAY_ISO,
+      content:    text,
+      next_action: nextAction || activePrompt,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await sb
+      .from("journal_entries")
+      .upsert(entry, { onConflict: "user_id,entry_date" });
+
+    if (error) {
+      console.error("[Journal] Erreur sauvegarde:", error);
+    } else {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    }
+    setSaving(false);
   }
 
   function selectPrompt(p) {
@@ -101,114 +161,112 @@ export default function JournalPage() {
           <h1 style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"clamp(2rem,7vw,3rem)", lineHeight:1.15, color:C.onSurface, margin:0 }}>L'espace de réflexion</h1>
         </div>
 
-        <div style={{ display:"flex", flexDirection:"column", gap:32 }}>
-
-          {/* ── Active Prompt Card ── */}
-          <div style={{ position:"relative" }}>
-            {/* Glow */}
-            <div style={{ position:"absolute", inset:-4, background:"linear-gradient(135deg, rgba(189,194,255,0.08), transparent)", filter:"blur(20px)", opacity:0.6, borderRadius:20, pointerEvents:"none" }} />
-            <div style={{ ...glass, padding:28, position:"relative" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20 }}>
-                <span className="material-symbols-outlined" style={{ fontSize:"0.875rem", color:C.primary, fontVariationSettings:"'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>psychology</span>
-                <span style={{ fontSize:"0.6rem", letterSpacing:"0.2em", textTransform:"uppercase", color:"rgba(189,194,255,0.8)", fontWeight:600 }}>Suggestion de Noema</span>
-                <span style={{ fontSize:"0.55rem", letterSpacing:"0.1em", textTransform:"uppercase", color:"rgba(197,197,216,0.35)", marginLeft:"auto" }}>statique</span>
-              </div>
-              <blockquote style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"1.3rem", color:"#dfe0ff", lineHeight:1.5, margin:"0 0 16px" }}>
-                "{activePrompt}"
-              </blockquote>
-              <p style={{ fontSize:"0.8rem", color:C.onSurfaceVariant, lineHeight:1.65, margin:0, fontWeight:300 }}>
-                Prends un moment pour respirer. Il n'y a pas de mauvaise réponse, seulement ton honnêteté.
-              </p>
-            </div>
+        {loading ? (
+          <div style={{ display:"flex", justifyContent:"center", padding:"40px 0", color:C.outline, fontSize:"0.8rem" }}>
+            Chargement…
           </div>
+        ) : (
+          <div style={{ display:"flex", flexDirection:"column", gap:32 }}>
 
-          {/* ── Editor Surface ── */}
-          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"0 4px" }}>
-              <span style={{ fontSize:"0.6rem", letterSpacing:"0.2em", textTransform:"uppercase", color:C.outline, fontWeight:600 }}>Réflexion libre</span>
-              <span style={{ fontSize:"0.6rem", letterSpacing:"0.2em", textTransform:"uppercase", color:C.outline }}>{wordCount} mot{wordCount !== 1 ? "s" : ""}</span>
-            </div>
-            <div style={{ ...glass, padding:28, minHeight:360, position:"relative", overflow:"hidden" }}>
-              <div style={{ position:"absolute", top:0, right:0, width:120, height:120, background:"rgba(189,194,255,0.04)", filter:"blur(40px)", borderRadius:"50%", transform:"translate(30%, -30%)", pointerEvents:"none" }} />
-              <textarea
-                ref={taRef}
-                value={text}
-                onChange={e => setText(e.target.value)}
-                placeholder="Écris librement ici…"
-                style={{
-                  width:"100%", minHeight:280,
-                  background:"transparent", border:"none", outline:"none",
-                  resize:"none",
-                  fontSize:"1.05rem", lineHeight:1.7,
-                  color:C.onSurface,
-                  fontFamily:"'Plus Jakarta Sans', sans-serif",
-                  caretColor:C.primary,
-                }}
-              />
-              <style>{`textarea::placeholder { color: rgba(69,70,85,0.5); }`}</style>
-
-              {/* Tags */}
-              <div style={{ marginTop:24, paddingTop:20, borderTop:"1px solid rgba(255,255,255,0.05)", display:"flex", flexWrap:"wrap", gap:8 }}>
-                {tags.map(tag => (
-                  <button key={tag} style={{ padding:"6px 14px", borderRadius:9999, background:"rgba(40,42,47,0.5)", fontSize:"0.7rem", color:C.onSurfaceVariant, border:"none", cursor:"pointer", fontFamily:"'Plus Jakarta Sans', sans-serif", transition:"color 0.2s" }}
-                    onMouseEnter={e => e.currentTarget.style.color = C.primary}
-                    onMouseLeave={e => e.currentTarget.style.color = C.onSurfaceVariant}
-                  >{tag}</button>
-                ))}
-                <button style={{ padding:"6px 14px", borderRadius:9999, background:"rgba(189,194,255,0.08)", fontSize:"0.7rem", color:C.primary, border:`1px solid rgba(189,194,255,0.2)`, cursor:"pointer", fontFamily:"'Plus Jakarta Sans', sans-serif" }}>
-                  + Ajouter tag
-                </button>
+            {/* ── Active Prompt Card ── */}
+            <div style={{ position:"relative" }}>
+              {/* Glow */}
+              <div style={{ position:"absolute", inset:-4, background:"linear-gradient(135deg, rgba(189,194,255,0.08), transparent)", filter:"blur(20px)", opacity:0.6, borderRadius:20, pointerEvents:"none" }} />
+              <div style={{ ...glass, padding:28, position:"relative" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize:"0.875rem", color:C.primary, fontVariationSettings:"'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>psychology</span>
+                  <span style={{ fontSize:"0.6rem", letterSpacing:"0.2em", textTransform:"uppercase", color:"rgba(189,194,255,0.8)", fontWeight:600 }}>
+                    {nextAction ? "Action de ta session" : "Suggestion de Noema"}
+                  </span>
+                </div>
+                <blockquote style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"1.3rem", color:"#dfe0ff", lineHeight:1.5, margin:"0 0 16px" }}>
+                  "{activePrompt}"
+                </blockquote>
+                <p style={{ fontSize:"0.8rem", color:C.onSurfaceVariant, lineHeight:1.65, margin:0, fontWeight:300 }}>
+                  Prends un moment pour respirer. Il n'y a pas de mauvaise réponse, seulement ton honnêteté.
+                </p>
               </div>
             </div>
-          </div>
 
-          {/* ── Alternative Prompts horizontal scroll ── */}
-          <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-            <h3 style={{ fontSize:"0.6rem", letterSpacing:"0.2em", textTransform:"uppercase", color:C.outline, fontWeight:600, padding:"0 4px", margin:0 }}>D'autres pistes à explorer</h3>
-            <div style={{ display:"flex", gap:16, overflowX:"auto", paddingBottom:8, margin:"0 -24px", padding:"0 24px 8px", scrollbarWidth:"none", msOverflowStyle:"none" }}>
-              <style>{`.alt-prompt-scroll::-webkit-scrollbar{display:none}`}</style>
-              {ALTERNATIVE_PROMPTS.map((p) => (
-                <button
-                  key={p}
-                  onClick={() => selectPrompt(p)}
+            {/* ── Editor Surface ── */}
+            <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"0 4px" }}>
+                <span style={{ fontSize:"0.6rem", letterSpacing:"0.2em", textTransform:"uppercase", color:C.outline, fontWeight:600 }}>Réflexion libre</span>
+                <span style={{ fontSize:"0.6rem", letterSpacing:"0.2em", textTransform:"uppercase", color:C.outline }}>{wordCount} mot{wordCount !== 1 ? "s" : ""}</span>
+              </div>
+              <div style={{ ...glass, padding:28, minHeight:360, position:"relative", overflow:"hidden" }}>
+                <div style={{ position:"absolute", top:0, right:0, width:120, height:120, background:"rgba(189,194,255,0.04)", filter:"blur(40px)", borderRadius:"50%", transform:"translate(30%, -30%)", pointerEvents:"none" }} />
+                <textarea
+                  ref={taRef}
+                  value={text}
+                  onChange={e => setText(e.target.value)}
+                  placeholder="Écris librement ici…"
                   style={{
-                    flexShrink:0, width:240,
-                    ...glass,
-                    padding:"20px 20px 16px",
-                    cursor:"pointer",
-                    textAlign:"left",
-                    display:"flex", flexDirection:"column", justifyContent:"space-between", gap:12,
-                    transition:"border-color 0.2s",
+                    width:"100%", minHeight:280,
+                    background:"transparent", border:"none", outline:"none",
+                    resize:"none",
+                    fontSize:"1.05rem", lineHeight:1.7,
+                    color:C.onSurface,
+                    fontFamily:"'Plus Jakarta Sans', sans-serif",
+                    caretColor:C.primary,
                   }}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(189,194,255,0.3)"}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"}
-                >
-                  <p style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"0.875rem", color:C.onSurface, lineHeight:1.5, margin:0 }}>"{p}"</p>
-                  <span className="material-symbols-outlined" style={{ fontSize:"1.125rem", color:C.outline, fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>arrow_forward</span>
-                </button>
-              ))}
+                />
+                <style>{`textarea::placeholder { color: rgba(69,70,85,0.5); }`}</style>
+              </div>
             </div>
-          </div>
 
-        </div>
+            {/* ── Alternative Prompts horizontal scroll ── */}
+            <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+              <h3 style={{ fontSize:"0.6rem", letterSpacing:"0.2em", textTransform:"uppercase", color:C.outline, fontWeight:600, padding:"0 4px", margin:0 }}>D'autres pistes à explorer</h3>
+              <div style={{ display:"flex", gap:16, overflowX:"auto", paddingBottom:8, margin:"0 -24px", padding:"0 24px 8px", scrollbarWidth:"none", msOverflowStyle:"none" }}>
+                <style>{`.alt-prompt-scroll::-webkit-scrollbar{display:none}`}</style>
+                {altPrompts.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => selectPrompt(p)}
+                    style={{
+                      flexShrink:0, width:240,
+                      ...glass,
+                      padding:"20px 20px 16px",
+                      cursor:"pointer",
+                      textAlign:"left",
+                      display:"flex", flexDirection:"column", justifyContent:"space-between", gap:12,
+                      transition:"border-color 0.2s",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(189,194,255,0.3)"}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"}
+                  >
+                    <p style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"0.875rem", color:C.onSurface, lineHeight:1.5, margin:0 }}>"{p}"</p>
+                    <span className="material-symbols-outlined" style={{ fontSize:"1.125rem", color:C.outline, fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>arrow_forward</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        )}
       </main>
 
       {/* ── FAB Save ── */}
       <div style={{ position:"fixed", bottom:96, right:24, zIndex:40 }}>
         <button
           onClick={handleSave}
+          disabled={saving}
           style={{
             width:56, height:56, borderRadius:"50%",
-            background: saved ? "linear-gradient(135deg, #4caf50, #2e7d32)" : "linear-gradient(135deg, #bdc2ff, #7886ff)",
-            border:"none", cursor:"pointer",
+            background: saved
+              ? "linear-gradient(135deg, #4caf50, #2e7d32)"
+              : "linear-gradient(135deg, #bdc2ff, #7886ff)",
+            border:"none", cursor: saving ? "default" : "pointer",
             display:"flex", alignItems:"center", justifyContent:"center",
             boxShadow:"0 8px 24px rgba(120,134,255,0.3)",
             transition:"transform 0.15s, background 0.3s",
+            opacity: saving ? 0.7 : 1,
           }}
-          onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
+          onMouseEnter={e => { if (!saving) e.currentTarget.style.transform = "scale(1.05)"; }}
           onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
-          onMouseDown={e => e.currentTarget.style.transform = "scale(0.95)"}
-          onMouseUp={e => e.currentTarget.style.transform = "scale(1.05)"}
+          onMouseDown={e => { if (!saving) e.currentTarget.style.transform = "scale(0.95)"; }}
+          onMouseUp={e => { if (!saving) e.currentTarget.style.transform = "scale(1.05)"; }}
         >
           <span className="material-symbols-outlined" style={{ fontSize:"1.375rem", color:"#000965", fontVariationSettings:"'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>
             {saved ? "check" : "edit_note"}

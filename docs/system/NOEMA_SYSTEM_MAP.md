@@ -29,7 +29,8 @@ Noema n'est pas, dans le code actuel, un "système produit complet d'accompagnem
 Etat réel du produit aujourd'hui:
 - `réel`: auth, signup, reset password, invite beta, paywall, checkout initiation, webhook Stripe, chat, mémoire, mapping, onboarding, admin panel partiel
 - `partiel`: Greffier, billing global, logique de quotas, accès admin, accès invitation, cohérence prompt/UI, cohérence docs/code
-- `mocké`: Journal, Today, offre Pro
+- `mocké`: offre Pro
+- `réel partiel`: Journal (persistance réelle, prompt guidé par `next_action`), Today (consomme `next_action` live, charge dernière entrée journal, fallback honnête)
 - `mort / legacy`: `src/App.original.jsx`, plusieurs composants de panneaux latéraux, `src/constants/prompt-greffier.js`, une partie de la logique `access_codes`
 
 Point de vérité produit:
@@ -54,8 +55,8 @@ Limites structurantes:
 | App privée | `src/pages/AppShell.jsx` | Orchestration chat, mémoire, quotas, save session, tabs | réel |
 | UI chat | `src/pages/ChatPage.jsx` | Affichage messages + saisie + logout | réel |
 | Mapping | `src/pages/MappingPage.jsx` | Lecture visuelle de `insights`, `ikigai`, `step` | réel |
-| Journal | `src/pages/JournalPage.jsx` | UI de journal local | mocké |
-| Today | `src/pages/TodayPage.jsx` | UI de rituel quotidien local | mocké |
+| Journal | `src/pages/JournalPage.jsx` | Lecture/écriture `journal_entries` Supabase, pré-rempli avec `next_action` session | réel (Sprint 5) |
+| Today | `src/pages/TodayPage.jsx` | Consomme `next_action` live depuis AppShell + charge dernière entrée journal | réel partiel (Sprint 5) |
 | Supabase client | `src/lib/supabase.js` | Client Supabase + construction de contexte mémoire | réel |
 | IA principale | `netlify/functions/claude.js` | Vérif JWT, quota serveur, appel Anthropic, lancement Greffier | réel |
 | Greffier | `netlify/functions/greffier.js` | Extraction secondaire Haiku + écritures DB partielles | partiel |
@@ -123,8 +124,8 @@ Transitions inachevées:
 |---|---|---|---|---|---|
 | `/app/chat` | `src/pages/ChatPage.jsx` via `AppShell.jsx` | coeur métier | `msgs`, `history`, `memory`, `sessions`, `rate_limits` | `/.netlify/functions/claude`, Supabase | réel |
 | `/app/mapping` | `src/pages/MappingPage.jsx` via `AppShell.jsx` | lecture visuelle du mapping | props issues de `AppShell` | aucune directe | réel mais dépendant du chat |
-| `/app/journal` | `src/pages/JournalPage.jsx` via `AppShell.jsx` | espace de réflexion libre affiché | state local uniquement | aucune | mocké mais assumé |
-| `/app/today` | `src/pages/TodayPage.jsx` via `AppShell.jsx` | aperçu du rituel du jour | state local + prénom user | aucune | mocké mais assumé |
+| `/app/journal` | `src/pages/JournalPage.jsx` via `AppShell.jsx` | journal guidé : lecture/écriture `journal_entries`, prompt `next_action` | `journal_entries`, `next_action` prop, `sessionId` | Supabase direct client | réel (Sprint 5) |
+| `/app/today` | `src/pages/TodayPage.jsx` via `AppShell.jsx` | rituel du jour : `next_action` live + dernière entrée journal | `next_action` prop, `journal_entries` | Supabase direct client | réel partiel (Sprint 5) |
 
 ### 3.3 Détails utiles par page
 
@@ -149,17 +150,20 @@ Success:
 - relit `subscriptions.status`
 - affiche un état confirmé ou un état d'activation en cours
 
-Journal:
-- `STATIC_PROMPT`, `ALTERNATIVE_PROMPTS`, `STATIC_TAGS`
-- le caractère statique est explicitement assumé dans l'UI
-- `handleSave()` ne persiste rien
-- aucune table `journal` dans `supabase-schema.sql`
+Journal (post Sprint 5):
+- `FALLBACK_PROMPTS` utilisés si `nextAction` absent
+- `next_action` de la session courante affiché comme prompt principal si disponible
+- `handleSave()` écrit dans `journal_entries` via Supabase (upsert `user_id + entry_date`)
+- entrée du jour rechargée au mount depuis `journal_entries`
+- table `journal_entries` dans `supabase-schema.sql` avec RLS
 
-Today:
-- `STATIC_DATA`
-- seule donnée réellement dynamique: `firstName`
-- le caractère d'aperçu statique est explicitement assumé dans l'UI
-- checkbox défi purement locale
+Today (post Sprint 5):
+- `nextAction` prop depuis `AppShell` (session live) = intention du jour
+- fallback : `next_action` de la dernière entrée `journal_entries`
+- si aucune donnée : invitation à converser avec Noema
+- question du jour adaptée si entrée journal existe aujourd'hui
+- défi affiché seulement si une intention est disponible
+- checkbox défi toujours locale (pas de persistance défi)
 
 ## 4. Flux complet du chat
 
@@ -388,10 +392,11 @@ Limitations:
 - absente de `supabase-schema.sql`
 - documentée manuellement dans `PROJECT.md`
 
-`journal`:
-- mentionnée dans `ROADMAP.md`
-- aucune table dans `supabase-schema.sql`
-- aucune requête runtime
+`journal_entries` (Sprint 5):
+- table ajoutée dans `supabase-schema.sql`
+- lue et écrite par `JournalPage` directement via le client Supabase
+- RLS : `FOR ALL USING (auth.uid() = user_id)`
+- upsert sur contrainte `user_id + entry_date`
 
 ### 6.3 Auth / sessions / mémoire
 
