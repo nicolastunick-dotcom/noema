@@ -30,7 +30,7 @@ const FALLBACK_PROMPTS = [
   "En quoi cette situation rejoint ce qu'on a découvert sur toi récemment ?",
 ];
 
-export default function JournalPage({ user, sb, nextAction = "" }) {
+export default function JournalPage({ user, sb, nextAction = "", proofState = null }) {
   const [text, setText] = useState("");
   const [activePrompt, setActivePrompt] = useState("");
   const [saveState, setSaveState] = useState("idle");
@@ -51,6 +51,13 @@ export default function JournalPage({ user, sb, nextAction = "" }) {
   };
 
   const altPrompts = nextAction ? FALLBACK_PROMPTS : FALLBACK_PROMPTS.slice(1);
+  const supportingProof = proofState?.items?.find((item) => item.label !== "Fil actif") || null;
+  const journalReason = supportingProof
+    ? `${supportingProof.tag} — ${supportingProof.value}`
+    : nextAction
+      ? "Elle prolonge l'intention que tu avais laissee ouverte."
+      : "";
+  const nourishText = nextAction || supportingProof?.value || "";
 
   // ── Chargement de l'entrée du jour au mount ──────────────────
   useEffect(() => {
@@ -201,6 +208,22 @@ export default function JournalPage({ user, sb, nextAction = "" }) {
                 <p style={{ fontSize:"0.8rem", color:C.onSurfaceVariant, lineHeight:1.65, margin:0, fontWeight:300 }}>
                   Prends un moment pour respirer. Commence simplement par ce qui est le plus vivant pour toi maintenant.
                 </p>
+                {journalReason && (
+                  <div style={{
+                    marginTop: 18,
+                    padding: "14px 16px",
+                    borderRadius: 14,
+                    background: "rgba(17,19,24,0.4)",
+                    border: "1px solid rgba(255,255,255,0.05)",
+                  }}>
+                    <p style={{ margin: 0, fontSize: "0.6rem", letterSpacing: "0.18em", textTransform: "uppercase", color: C.primary, fontWeight: 700 }}>
+                      Pourquoi cette question revient
+                    </p>
+                    <p style={{ margin: "8px 0 0", fontSize: "0.8rem", lineHeight: 1.65, color: C.onSurface }}>
+                      {journalReason}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -278,6 +301,20 @@ export default function JournalPage({ user, sb, nextAction = "" }) {
               <p style={{ fontSize:"0.8rem", color:C.onSurfaceVariant, lineHeight:1.65, margin:0 }}>
                 Tu peux l'écrire à la fin de ta note. Pas besoin d'un format spécial, juste une vérité claire.
               </p>
+              {nourishText && (
+                <div style={{
+                  marginTop: 4,
+                  paddingTop: 14,
+                  borderTop: "1px solid rgba(255,255,255,0.05)",
+                }}>
+                  <p style={{ margin: 0, fontSize: "0.6rem", letterSpacing: "0.18em", textTransform: "uppercase", color: C.primary, fontWeight: 700 }}>
+                    Ce que cette ecriture nourrit
+                  </p>
+                  <p style={{ margin: "8px 0 0", fontSize: "0.8rem", lineHeight: 1.65, color: C.onSurface }}>
+                    {nourishText}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* ── Alternative Prompts horizontal scroll ── */}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { buildImpactStats } from "../lib/productProof";
+import { buildImpactStats, buildReturnVisitState } from "../lib/productProof";
 
 // ─────────────────────────────────────────────────────────────
 // TODAY PAGE — Rituel quotidien
@@ -28,8 +28,9 @@ const TODAY_ISO = new Date().toISOString().slice(0, 10);
 
 const FALLBACK_QUESTION = "Qu'est-ce que tu évites de regarder en face depuis quelques jours ?";
 
-export default function TodayPage({ user, sb, nextAction = "", onJournal, onChat, proofState, quota }) {
+export default function TodayPage({ user, sb, nextAction = "", sessionNote = "", onJournal, onChat, proofState, quota }) {
   const [lastJournalEntry, setLastJournalEntry] = useState(null); // { content, next_action, entry_date }
+  const [latestSession, setLatestSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [journeyDay, setJourneyDay] = useState(null);
   const [sessionCount, setSessionCount] = useState(0);
@@ -45,7 +46,7 @@ export default function TodayPage({ user, sb, nextAction = "", onJournal, onChat
     }
 
     (async () => {
-      const [entryResult, countResult, sessionCountResult, intentionCountResult] = await Promise.all([
+      const [entryResult, countResult, sessionCountResult, intentionCountResult, latestSessionResult] = await Promise.all([
         sb.from("journal_entries")
           .select("content, next_action, entry_date")
           .eq("user_id", user.id)
@@ -63,10 +64,18 @@ export default function TodayPage({ user, sb, nextAction = "", onJournal, onChat
           .eq("user_id", user.id)
           .not("next_action", "is", null)
           .neq("next_action", ""),
+        sb.from("sessions")
+          .select("next_action, session_note, insights, step")
+          .eq("user_id", user.id)
+          .order("ended_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
       ]);
 
       if (entryResult.error) console.error("[Today] Erreur chargement journal:", entryResult.error);
+      if (latestSessionResult.error) console.error("[Today] Erreur chargement session:", latestSessionResult.error);
       if (entryResult.data) setLastJournalEntry(entryResult.data);
+      if (latestSessionResult.data) setLatestSession(latestSessionResult.data);
       if (countResult.count != null && countResult.count > 0) setJourneyDay(countResult.count);
       if (sessionCountResult.count != null) setSessionCount(sessionCountResult.count);
       if (intentionCountResult.count != null) setClarifiedIntentions(intentionCountResult.count);
@@ -134,6 +143,15 @@ export default function TodayPage({ user, sb, nextAction = "", onJournal, onChat
     [clarifiedIntentions, intentionSource, journeyDay, sessionCount]
   );
 
+  const returnVisitState = useMemo(
+    () => buildReturnVisitState({
+      previousSession: latestSession,
+      currentNextAction: intentionSource,
+      currentSessionNote: sessionNote,
+    }),
+    [intentionSource, latestSession, sessionNote]
+  );
+
   const glass = {
     position: "relative", overflow: "hidden", borderRadius: 24,
     background: "rgba(30,31,37,0.4)", backdropFilter: "blur(20px)",
@@ -197,6 +215,34 @@ export default function TodayPage({ user, sb, nextAction = "", onJournal, onChat
               </div>
             )}
 
+            {returnVisitState?.hasData && (
+              <div style={{ ...glass, padding: 24 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize:"0.875rem", color:C.primary, fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>history</span>
+                  <h3 style={{ fontSize:"0.6rem", letterSpacing:"0.2em", textTransform:"uppercase", color:C.onSurfaceVariant, fontWeight:700, margin:0 }}>
+                    {returnVisitState.title}
+                  </h3>
+                </div>
+                <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                  {returnVisitState.items.map((item) => (
+                    <div key={`${item.label}-${item.value}`} style={{
+                      borderRadius: 14,
+                      padding: "14px 16px",
+                      background: "rgba(17,19,24,0.45)",
+                      border: "1px solid rgba(255,255,255,0.05)",
+                    }}>
+                      <p style={{ margin: 0, fontSize: "0.62rem", letterSpacing: "0.18em", textTransform: "uppercase", color: C.outline, fontWeight: 700 }}>
+                        {item.label}
+                      </p>
+                      <p style={{ margin: "8px 0 0", fontSize: "0.88rem", lineHeight: 1.65, color: C.onSurface }}>
+                        {item.value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {impactStats.length > 0 && (
               <div style={{ ...glass, padding: 24 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
@@ -241,12 +287,21 @@ export default function TodayPage({ user, sb, nextAction = "", onJournal, onChat
                       background: "rgba(17,19,24,0.45)",
                       border: "1px solid rgba(255,255,255,0.05)",
                     }}>
-                      <p style={{ margin: 0, fontSize: "0.62rem", letterSpacing: "0.18em", textTransform: "uppercase", color: C.outline, fontWeight: 700 }}>
-                        {item.label}
-                      </p>
-                      <p style={{ margin: "8px 0 0", fontSize: "0.88rem", lineHeight: 1.65, color: C.onSurface }}>
-                        {item.value}
-                      </p>
+                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
+                        <p style={{ margin: 0, fontSize: "0.62rem", letterSpacing: "0.18em", textTransform: "uppercase", color: C.outline, fontWeight: 700 }}>
+                          {item.label}
+                        </p>
+                        <span style={{
+                          fontSize:"0.58rem",
+                          letterSpacing:"0.14em",
+                          textTransform:"uppercase",
+                          color:C.primary,
+                          fontWeight:700,
+                        }}>
+                          {item.tag}
+                        </span>
+                      </div>
+                      <p style={{ margin: "8px 0 0", fontSize: "0.88rem", lineHeight: 1.65, color: C.onSurface }}>{item.value}</p>
                     </div>
                   ))}
                 </div>

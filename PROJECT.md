@@ -24,7 +24,7 @@ src/pages/
   Landing.jsx          — Page d'accueil publique
   Login.jsx            — Connexion / inscription / code d'accès
   Onboarding.jsx       — 4 slides première utilisation (onboarding_done Supabase)
-  Pricing.jsx          — Plans mensuel / Pro (Stripe à brancher)
+  Pricing.jsx          — Paywall mensuel Stripe + preuve contextuelle avant conversion
   PrivacyPolicy.jsx    — Politique de confidentialité (/privacy)
   TermsOfService.jsx   — Conditions d'utilisation (/terms)
   EthicalAI.jsx        — Principes IA éthique (/ethical-ai)
@@ -107,12 +107,36 @@ Permettre a un utilisateur de vivre la valeur de Noema avant de payer, ressentir
 
 ### Logique de preuve produit
 
-- bloc `Ce que Noema comprend de toi` visible dans le chat et dans `Today`
+- bloc de preuve visible dans le chat et dans `Today`
 - assemble uniquement des donnees deja existantes :
   - `insights`
   - `next_action`
   - `step`
-- aucun appel LLM supplementaire, aucun resume complexe
+- aucune generation LLM supplementaire, aucun resume complexe
+
+### Mini-sprint continuite visible
+
+- bloc `Depuis ta derniere visite` dans `Chat` :
+  - intention en cours
+  - dernier point clarifie
+  - ce qu'on poursuit
+- bloc equivalent dans `Today`, a partir de la derniere `session` + du `next_action` live
+- preuve produit rendue differentielle :
+  - `Nouveau`
+  - `Confirme`
+  - `Revient`
+  - `A poursuivre`
+- `Pricing` personnalise pour les utilisateurs deja engages :
+  - preuve de ce qui a deja ete construit
+  - CTA plus juste (`Garder ce fil vivant` / `Continuer apres l'essai`)
+- `Journal` relie plus clairement au fil actif et au point que l'ecriture nourrit
+- aucun backend lourd, aucune table nouvelle, aucun appel LLM supplementaire
+
+### Comptage de progression
+
+- `memory.session_count` ne monte plus a chaque autosave
+- le compteur augmente une seule fois par session live sauvegardee
+- les marqueurs de progression visibles ne racontent plus une histoire artificiellement gonflee
 
 ### Indicateurs d'impact
 
@@ -374,6 +398,7 @@ Fichiers touches :
 | 02/04/2026 | Claude Code | Sprint 5.1 — micro-fix : `next_action` restauré après refresh — `AppShell` ajoute `next_action` à la query de restauration sessions au mount + `setNextAction(last.next_action)`. Today et Journal retrouvent l'intention du jour sans nouvelle session. | ✅ | — |
 | 02/04/2026 | Claude Code | Sprint 5 — Journal et Today réels : table `journal_entries` dans Supabase (upsert user_id+entry_date, RLS) ; `next_action` persisté dans `sessions` (colonne ajoutée au schéma) ; `JournalPage` lit/écrit Supabase, pré-rempli avec `next_action` de la session courante ; `TodayPage` consomme `nextAction` live depuis AppShell + relit dernière entrée journal ; fallback honnête si pas de données ; 0 appel LLM supplémentaire. | ✅ | Exécuter en prod : `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS next_action text DEFAULT '';` + coller la table `journal_entries` depuis `supabase-schema.sql` |
 | 02/04/2026 | Codex | Sprint 7 — surface continuity + product truth alignment : bloc de reprise visible dans `ChatPage`, etat guide apres `Nouvelle session`, quota clarifie, `Landing` / `Pricing` / `Onboarding` realignes, `Success` robuste avec polling leger + recheck manuel, suppression des elements morts et `href="#"`. | ✅ | Verifier visuellement la reprise chat et le parcours Stripe en preprod / prod |
+| 02/04/2026 | Codex | Mini-sprint continuity proof — bloc `Depuis ta derniere visite` dans `Chat` et `Today`, preuve produit differencielle (`Nouveau` / `Confirme` / `Revient` / `A poursuivre`), `Pricing` personnalise pour utilisateurs engages, `Journal` relie au fil actif, correction `memory.session_count` (1 increment par session live, plus par autosave). | ✅ | Verifier visuellement la reprise, la fin d'essai et le pricing contextualise sur un compte trial avec donnees reelles |
 	
   Document ajouté : NOEMA_RUNTIME_GAPS.md
 	•	Motif :

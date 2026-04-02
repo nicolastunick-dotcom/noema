@@ -430,7 +430,7 @@ Références:
 - `session_count`
 
 Point important:
-- `buildMemoryContext()` ne réinjecte pas `contradictions` ni `blocages` dans le prompt principal
+- `buildMemoryContext()` réinjecte désormais `contradictions` et `blocages` dans le prompt principal
 
 Références:
 - `src/pages/AppShell.jsx:276-300`
@@ -459,17 +459,19 @@ Références:
 `ChatPage`:
 - affiche `msgs`
 - indique `typing`
-- montre "✦ Mapping mis à jour" selon un heuristique local
+- affiche un bloc `Depuis ta derniere visite` quand une dernière `session` existe
+- montre une micro-preuve lisible (`Intention clarifiee`, `Blocage precise`, `Force confirmee`, etc.) au lieu du badge vague `✦ Mapping mis à jour`
 
 `MappingPage`:
 - lit uniquement `insights`, `ikigai`, `step`
 
 `JournalPage`:
-- `mocké`
-- prompt, tags, sauvegarde locale uniquement
+- lit / ecrit `journal_entries`
+- relie maintenant l'ecriture au fil actif via `Pourquoi cette question revient` et `Ce que cette ecriture nourrit`
 
 `TodayPage`:
-- `mocké`
+- lit la derniere `session` et la derniere entree `journal_entries`
+- affiche impact, preuve differentielle et reprise `Depuis ta derniere visite`
 - `STATIC_DATA`, prénom utilisateur et navigation vers Journal
 
 Références:

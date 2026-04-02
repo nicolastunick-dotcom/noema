@@ -224,25 +224,50 @@ export default function ChatPage({
                 Continuite visible
               </span>
             </div>
-            {continuity.detail && (
-              <p style={{
-                margin: 0,
-                fontSize: "0.86rem",
-                lineHeight: 1.65,
-                color: C.onSurface,
-              }}>
-                {continuity.detail}
-              </p>
-            )}
-            {continuity.meta && (
-              <p style={{
-                margin: "8px 0 0",
-                fontSize: "0.74rem",
-                lineHeight: 1.6,
-                color: C.onSurfaceVariant,
-              }}>
-                {continuity.meta}
-              </p>
+            {continuity.items?.length ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {continuity.items.map((item) => (
+                  <div
+                    key={`${item.label}-${item.value}`}
+                    style={{
+                      padding: "12px 14px",
+                      borderRadius: 14,
+                      background: "rgba(17,19,24,0.48)",
+                      border: "1px solid rgba(255,255,255,0.05)",
+                    }}
+                  >
+                    <p style={{ margin: 0, fontSize: "0.62rem", letterSpacing: "0.16em", textTransform: "uppercase", color: C.outline, fontWeight: 700 }}>
+                      {item.label}
+                    </p>
+                    <p style={{ margin: "8px 0 0", fontSize: "0.86rem", lineHeight: 1.6, color: C.onSurface }}>
+                      {item.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <>
+                {continuity.detail && (
+                  <p style={{
+                    margin: 0,
+                    fontSize: "0.86rem",
+                    lineHeight: 1.65,
+                    color: C.onSurface,
+                  }}>
+                    {continuity.detail}
+                  </p>
+                )}
+                {continuity.meta && (
+                  <p style={{
+                    margin: "8px 0 0",
+                    fontSize: "0.74rem",
+                    lineHeight: 1.6,
+                    color: C.onSurfaceVariant,
+                  }}>
+                    {continuity.meta}
+                  </p>
+                )}
+              </>
             )}
           </div>
         )}
@@ -307,9 +332,20 @@ export default function ChatPage({
                   background: "rgba(17,19,24,0.55)",
                   border: "1px solid rgba(255,255,255,0.05)",
                 }}>
-                  <p style={{ margin: 0, fontSize: "0.62rem", letterSpacing: "0.16em", textTransform: "uppercase", color: C.outline, fontWeight: 700 }}>
-                    {item.label}
-                  </p>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                    <p style={{ margin: 0, fontSize: "0.62rem", letterSpacing: "0.16em", textTransform: "uppercase", color: C.outline, fontWeight: 700 }}>
+                      {item.label}
+                    </p>
+                    <span style={{
+                      fontSize: "0.58rem",
+                      letterSpacing: "0.14em",
+                      textTransform: "uppercase",
+                      color: C.primary,
+                      fontWeight: 700,
+                    }}>
+                      {item.tag}
+                    </span>
+                  </div>
                   <p style={{ margin: "8px 0 0", fontSize: "0.88rem", lineHeight: 1.65, color: C.onSurface }}>
                     {item.value}
                   </p>
@@ -400,7 +436,7 @@ export default function ChatPage({
                     borderRadius: 10,
                     fontSize: "0.75rem",
                     color: C.primary,
-                  }}>✦ Mapping mis à jour</div>
+                  }}>{m.updateLabel || "Ce qui s'est precise"}</div>
                 )}
               </div>
             ) : (
@@ -456,6 +492,32 @@ export default function ChatPage({
                 Tu peux continuer avec Noema si tu veux garder ce fil vivant. Rien n'est perdu dans ce qui s'est deja clarifie.
               </p>
             </div>
+            {continuity?.items?.length > 0 && (
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: 10,
+              }}>
+                {continuity.items.slice(0, 3).map((item) => (
+                  <div
+                    key={`trial-${item.label}-${item.value}`}
+                    style={{
+                      padding: "12px 14px",
+                      borderRadius: 14,
+                      background: "rgba(17,19,24,0.35)",
+                      border: "1px solid rgba(255,255,255,0.05)",
+                    }}
+                  >
+                    <p style={{ margin: 0, fontSize: "0.58rem", letterSpacing: "0.16em", textTransform: "uppercase", color: "#ffddb7", fontWeight: 700 }}>
+                      {item.label}
+                    </p>
+                    <p style={{ margin: "8px 0 0", fontSize: "0.8rem", lineHeight: 1.55, color: C.onSurface }}>
+                      {item.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button
                 onClick={() => onPricing?.()}
@@ -471,7 +533,7 @@ export default function ChatPage({
                   fontFamily: "'Plus Jakarta Sans', sans-serif",
                 }}
               >
-                Voir l'abonnement
+                Garder ce fil vivant
               </button>
               <button
                 onClick={() => onNav?.("today")}

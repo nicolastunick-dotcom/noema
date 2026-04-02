@@ -121,6 +121,10 @@ Clôture de session:
 Continuité quotidienne (post Sprint 5):
 - `JournalPage` lit l'entrée du jour depuis `journal_entries` au mount, affiche `next_action` comme prompt principal si disponible depuis la session courante, et écrit dans Supabase à chaque save (upsert sur `user_id + entry_date`)
 - `TodayPage` consomme `nextAction` en prop live depuis `AppShell` et charge la dernière entrée journal au mount — plus de `STATIC_DATA`
+- mini-sprint continuité visible :
+  - `ChatPage` affiche `Depuis ta derniere visite` à partir de la dernière `session`
+  - `TodayPage` affiche le même type de reprise en densifiant l'intention, le point clarifié et ce qui reste ouvert
+  - aucune génération LLM supplémentaire, seulement de l'assemblage local
 
 Mapping:
 - c'est la surface la plus proche de la promesse
@@ -137,9 +141,9 @@ Billing:
 |---|---|---|---|
 | Mémoire | continuité totale | `forces`, `blocages`, `contradictions`, `ikigai`, `step` injectés — mid-session live via `updateMemoryRef` | réel (Sprint 3) |
 | Guide quotidien | journal guidé + rituel du jour | `JournalPage` lit/écrit `journal_entries` Supabase, pré-rempli avec `next_action` ; `TodayPage` consomme `next_action` live + charge dernière entrée journal | réel (Sprint 5) |
-| Cartographie | miroir vivant de progression | Mapping branché au `_ui` | réel mais partiel |
+| Cartographie | miroir vivant de progression | Mapping branché au `_ui`, preuve produit maintenant différentielle (`Nouveau` / `Confirme` / `Revient` / `A poursuivre`) | réel mais partiel |
 | Paiement -> accès | activation claire après paiement | vérité dans `subscriptions`, relue par `Success`, avec état d'attente si webhook non synchronisé | partiel |
-| Session | 25 messages / session | 25/jour serveur, 100/jour client + 30/min local | contradictoire |
+| Session | 25 messages / session | 25/jour serveur + garde-fou local 30/min, `session_count` désormais incrémenté une seule fois par session live | partiel |
 | Phase 2 | bascule guide -> stratège | prompt la décrit, UI ne l'incarne presque pas | partiel |
 
 Références:
@@ -384,12 +388,12 @@ Références:
 | Surface | Ce qu'elle laisse croire | Ce qu'elle fait réellement | Niveau de branchement |
 |---|---|---|---|
 | Landing | produit complet de continuité introspective | marketing réaligné, sans présenter `Journal` / `Today` comme déjà branchés | partiel |
-| Pricing | accès mensuel + surfaces complètes | checkout mensuel réel, `Journal` / `Today` marqués comme à venir, plan Pro visuel seulement | partiel |
+| Pricing | simple grille tarifaire | checkout mensuel réel + preuve contextuelle pour utilisateur engagé + CTA adapté au contexte, plan Pro visuel seulement | réel partiel |
 | Success | abonnement activé et prêt | relit `subscriptions.status`, distingue confirmé vs activation en cours | partiel |
-| Chat | coeur produit vivant | surface la plus réellement branchée | réel |
+| Chat | coeur produit vivant | surface la plus réellement branchée, avec reprise `Depuis ta derniere visite` et micro-preuves lisibles | réel |
 | Mapping | miroir analytique de progression | consomme l'état React alimenté par `<_ui>` | réel mais dépendant du chat |
-| Journal | journal guidé par Noema | espace libre statique assumé, prompts statiques, save local visuel | mocké |
-| Today | rituel personnalisé du jour | aperçu statique assumé, `STATIC_DATA` + prénom user | mocké |
+| Journal | journal guidé par Noema | lecture/écriture Supabase réelles + lien explicite au fil actif | réel |
+| Today | rituel personnalisé du jour | lecture réelle `journal_entries` + dernière `session`, impact et reprise visibles | réel |
 | AdminPanel | pilotage admin global | simulations locales + quelques appels admin réels, coûts non globaux | partiel |
 
 ### 7.1 Surface par surface
@@ -399,8 +403,8 @@ Landing:
 - ne présente plus `Journal` / `Today` comme des surfaces déjà branchées
 
 Pricing:
-- liste `Journal` et `Rituel quotidien` comme éléments à venir
-- ne laisse plus entendre qu'ils sont déjà branchés aux données produit
+- affiche maintenant, pour un compte connecté déjà engagé, ce qui a déjà été construit dans le trial
+- CTA principal aligné sur le contexte réel (`Garder ce fil vivant` / `Continuer apres l'essai`)
 
 Success:
 - relit `subscriptions.status`
@@ -417,6 +421,9 @@ Journal (post Sprint 6):
 - rechargement de l'entrée du jour au mount
 - structure UX en 3 blocs clairs: intention, écriture, retenue
 - feedback de sauvegarde inline `Entrée enregistrée ✓`, sans toast agressif
+- mini-sprint continuité visible :
+  - `Pourquoi cette question revient`
+  - `Ce que cette ecriture nourrit`
 - tags UI conservés mais pas encore persistés en base
 
 Today (post Sprint 6):

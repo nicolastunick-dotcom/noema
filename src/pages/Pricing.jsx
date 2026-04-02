@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { sb } from "../lib/supabase";
+import { buildValueSnapshot } from "../lib/productProof";
 
 const COLORS = {
   surfaceTint: "#bdc2ff",
@@ -22,8 +24,8 @@ const COLORS = {
 
 const monthlyFeatures = [
   "Chat, Mapping, Journal et Aujourd'hui",
-  "Continuite visible d'une session a l'autre",
-  "Mapping mis a jour au fil des echanges",
+  "Reprise visible de ce qui etait deja en cours",
+  "Blocages, forces et tensions rendus lisibles",
   "Journal guide deja inclus",
   "Rituel du jour deja inclus",
   "Essai gratuit disponible avant paiement",
@@ -62,6 +64,7 @@ function SymbolIcon({ children, fill = false, style }) {
 export default function Pricing({ onNav, user, accessState, notice = null }) {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState(null);
+  const [pricingValue, setPricingValue] = useState(() => buildValueSnapshot());
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -84,6 +87,52 @@ export default function Pricing({ onNav, user, accessState, notice = null }) {
     });
   }, []);
 
+  useEffect(() => {
+    if (!sb || !user?.id) {
+      setPricingValue(buildValueSnapshot());
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      const [latestSessionResult, journalDaysResult, sessionCountResult, intentionCountResult] = await Promise.all([
+        sb.from("sessions")
+          .select("next_action, session_note, insights, step")
+          .eq("user_id", user.id)
+          .order("ended_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        sb.from("journal_entries")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id),
+        sb.from("sessions")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id),
+        sb.from("sessions")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .not("next_action", "is", null)
+          .neq("next_action", ""),
+      ]);
+
+      if (cancelled) return;
+
+      if (latestSessionResult.error) console.error("[Pricing] Erreur chargement session:", latestSessionResult.error);
+
+      setPricingValue(buildValueSnapshot({
+        latestSession: latestSessionResult.data || null,
+        journalDays: journalDaysResult.count || 0,
+        clarifiedIntentions: intentionCountResult.count || 0,
+        sessionCount: sessionCountResult.count || 0,
+      }));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
   const isCheckingAccess = Boolean(user && accessState?.loading);
   const hasActiveSubscription = Boolean(accessState?.hasActiveSubscription);
   const hasProductAccess = Boolean(accessState?.hasProductAccess);
@@ -93,7 +142,6 @@ export default function Pricing({ onNav, user, accessState, notice = null }) {
     setCheckoutLoading(true);
     setCheckoutError(null);
     try {
-      const { sb } = await import("../lib/supabase");
       const { data: { session } } = await sb.auth.getSession();
       const token = session?.access_token;
 
@@ -119,23 +167,30 @@ export default function Pricing({ onNav, user, accessState, notice = null }) {
     if (notice) return notice;
     if (isCheckingAccess) return "Verification de votre acces en cours.";
     if (hasActiveSubscription) return "Votre abonnement est actif. Vous pouvez entrer dans Noema.";
+    if (accessTier === "trial" && user && pricingValue.hasData) {
+      return "Tu as deja commence ici. L'abonnement sert a garder ce fil visible et a reprendre sans repartir de zero.";
+    }
     if (accessTier === "trial" && user) return "Votre essai gratuit est deja actif. L'abonnement sert a continuer quand vous etes pret.";
     if (hasProductAccess) return "Votre acces a Noema est deja ouvert.";
     if (user) return "Votre essai gratuit est disponible maintenant. L'abonnement sert a continuer ensuite.";
     return "Connectez-vous pour associer l'abonnement a votre espace Noema et verifier votre acces.";
-  }, [accessTier, hasActiveSubscription, hasProductAccess, isCheckingAccess, notice, user]);
+  }, [accessTier, hasActiveSubscription, hasProductAccess, isCheckingAccess, notice, pricingValue.hasData, user]);
 
   const topAction = hasProductAccess
     ? { label: "Acceder a Noema", onClick: () => onNav?.("/app/chat") }
     : { label: "Accueil", onClick: () => onNav?.("/") };
 
   const primaryAction = hasActiveSubscription
-    ? { label: "Commencer votre introspection", onClick: () => onNav?.("/app/chat"), disabled: false }
+    ? { label: "Acceder a Noema", onClick: () => onNav?.("/app/chat"), disabled: false }
     : !user
       ? { label: "Se connecter pour continuer", onClick: () => onNav?.("/login"), disabled: false }
       : checkoutLoading
         ? { label: "Redirection...", onClick: undefined, disabled: true }
-        : { label: "Commencer maintenant", onClick: handleCheckoutClick, disabled: false };
+        : {
+            label: pricingValue.hasData ? "Garder ce fil vivant" : "Continuer apres l'essai",
+            onClick: handleCheckoutClick,
+            disabled: false,
+          };
 
   return (
     <div
@@ -290,6 +345,71 @@ export default function Pricing({ onNav, user, accessState, notice = null }) {
               {helperText}
             </p>
           </div>
+
+          {user && pricingValue.hasData && (
+            <section
+              style={{
+                marginBottom: 40,
+                padding: 24,
+                borderRadius: 18,
+                background: "rgba(30, 31, 37, 0.4)",
+                border: "1px solid rgba(189, 194, 255, 0.16)",
+                boxShadow: "inset 0 0 0 1px rgba(189, 194, 255, 0.08)",
+              }}
+            >
+              <p style={{ margin: "0 0 8px", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.18em", color: COLORS.primary, fontWeight: 700 }}>
+                {pricingValue.title}
+              </p>
+              <p style={{ margin: 0, fontSize: "0.95rem", lineHeight: 1.7, color: COLORS.onSurfaceVariant }}>
+                {pricingValue.continuation}
+              </p>
+              {pricingValue.stats.length > 0 && (
+                <div style={{
+                  marginTop: 20,
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                  gap: 12,
+                }}>
+                  {pricingValue.stats.map((stat) => (
+                    <div
+                      key={stat.label}
+                      style={{
+                        borderRadius: 16,
+                        padding: "16px 14px",
+                        background: "rgba(17, 19, 24, 0.42)",
+                        border: "1px solid rgba(255,255,255,0.05)",
+                      }}
+                    >
+                      <p style={{ margin: 0, fontSize: "1.35rem", color: COLORS.primary, fontFamily: "'Instrument Serif', serif", fontStyle: "italic" }}>
+                        {stat.value}
+                      </p>
+                      <p style={{ margin: "8px 0 0", fontSize: "0.82rem", lineHeight: 1.55, color: COLORS.onSurface }}>
+                        {stat.label}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {pricingValue.highlight && (
+                <div
+                  style={{
+                    marginTop: 16,
+                    borderRadius: 16,
+                    padding: "16px 18px",
+                    background: "rgba(17, 19, 24, 0.42)",
+                    border: "1px solid rgba(255,255,255,0.05)",
+                  }}
+                >
+                  <p style={{ margin: 0, fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.16em", color: COLORS.onSurfaceVariant, fontWeight: 700 }}>
+                    {pricingValue.highlightLabel}
+                  </p>
+                  <p style={{ margin: "8px 0 0", fontSize: "0.9rem", lineHeight: 1.65, color: COLORS.onSurface }}>
+                    {pricingValue.highlight}
+                  </p>
+                </div>
+              )}
+            </section>
+          )}
 
           <section
             style={{

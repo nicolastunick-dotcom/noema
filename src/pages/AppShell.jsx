@@ -4,71 +4,32 @@ import { ANTHROPIC_PROXY } from "../constants/config";
 import { QUOTES } from "../constants/prompt";
 import { applyTheme, mapEtat } from "../constants/themes";
 import { getTime, parseUI, stripUI, trimHistory } from "../utils/helpers";
-import { buildProofState } from "../lib/productProof";
+import { buildProofState, buildProofUpdateLabel, buildReturnVisitState } from "../lib/productProof";
 import ChatPage      from "./ChatPage";
 import MappingPage   from "./MappingPage";
 import JournalPage   from "./JournalPage";
 import TodayPage     from "./TodayPage";
 import AdminPanel    from "../components/AdminPanel";
 
-function shortenContinuityText(value, max = 110) {
-  const compact = String(value || "").replace(/\s+/g, " ").trim();
-  if (!compact) return "";
-  return compact.length > max ? `${compact.slice(0, max - 1).trimEnd()}…` : compact;
-}
-
-function extractLastWorkedPoint(session) {
-  if (!session) return "";
-
-  const sessionNote = shortenContinuityText(String(session.session_note || "").split("|")[0], 96);
-  if (sessionNote) return sessionNote;
-
-  const blocage = shortenContinuityText(session.insights?.blocages?.racine, 96);
-  if (blocage) return blocage;
-
-  const contradiction = shortenContinuityText(session.insights?.contradictions?.[0], 96);
-  if (contradiction) return contradiction;
-
-  const force = shortenContinuityText(session.insights?.forces?.[0], 96);
-  if (force) return force;
-
-  return "";
-}
-
-function buildContinuityState(kind, session = null) {
-  if (kind === "restart") {
-    return {
-      mode: "restart",
-      title: "On repart d'ici",
-      detail: "Un nouveau fil, sans perdre ce que Noema a deja compris.",
-      meta: "Tu peux ouvrir un sujet neuf ou reprendre ce qui insiste.",
-      prompt: "",
-    };
-  }
-
-  if (!session) {
-    return {
-      mode: "welcome",
-      title: "",
-      detail: "",
-      meta: "",
-      prompt: "",
-    };
-  }
-
-  const prompt = shortenContinuityText(session.next_action, 72);
-  const lastPoint = extractLastWorkedPoint(session);
-
+function buildWelcomeContinuity() {
   return {
-    mode: "resume",
-    title: "On reprend",
-    detail: prompt
-      ? `Intention active : ${prompt}`
-      : lastPoint || "La continuite de ton parcours est deja la.",
-    meta: prompt && lastPoint
-      ? `Dernier point : ${lastPoint}`
-      : "Repars de ce qui est encore vivant aujourd'hui.",
-    prompt,
+    mode: "welcome",
+    title: "",
+    items: [],
+    detail: "",
+    meta: "",
+    prompt: "",
+  };
+}
+
+function buildRestartContinuity() {
+  return {
+    mode: "restart",
+    title: "On repart d'ici",
+    items: [],
+    detail: "Un nouveau fil, sans perdre ce que Noema a deja compris.",
+    meta: "Tu peux ouvrir un sujet neuf ou reprendre ce qui insiste.",
+    prompt: "",
   };
 }
 
@@ -97,12 +58,15 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   const [insights, setInsights] = useState({forces:[],blocages:{racine:"",entretien:"",visible:""},contradictions:[]});
   const [ikigai,      setIkigai]      = useState({aime:"",excelle:"",monde:"",paie:"",mission:""});
   const [nextAction,  setNextAction]  = useState("");
-  const [chatContinuity, setChatContinuity] = useState(() => buildContinuityState("welcome"));
+  const [sessionNote, setSessionNote] = useState("");
+  const [continuityMode, setContinuityMode] = useState("welcome");
+  const [lastSessionSnapshot, setLastSessionSnapshot] = useState(null);
   const [quotaState, setQuotaState] = useState(() => accessState?.quota || null);
 
   const history         = useRef([]);
   const sessionIdRef    = useRef(crypto.randomUUID()); // Sprint 4 : identifiant stable pour toute la session active
   const lastSessionNote = useRef("");
+  const hasCountedSessionSaveRef = useRef(false);
   const memoryRef       = useRef(null); // toujours à jour même dans les closures async
   const msgsRef         = useRef(null);
   const taRef           = useRef(null);
@@ -128,9 +92,26 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   }, [accessState?.quota]);
 
   const proofState = useMemo(
-    () => buildProofState({ insights, nextAction, step }),
-    [insights, nextAction, step]
+    () => buildProofState({ insights, nextAction, step, previous: lastSessionSnapshot }),
+    [insights, lastSessionSnapshot, nextAction, step]
   );
+
+  const chatContinuity = useMemo(() => {
+    if (continuityMode === "restart") return buildRestartContinuity();
+    if (continuityMode !== "resume") return buildWelcomeContinuity();
+
+    const continuity = buildReturnVisitState({
+      previousSession: lastSessionSnapshot,
+      currentNextAction: nextAction,
+      currentSessionNote: sessionNote,
+      currentInsights: insights,
+      currentStep: step,
+    });
+
+    return continuity.hasData
+      ? { mode: "resume", detail: "", meta: "", ...continuity }
+      : buildWelcomeContinuity();
+  }, [continuityMode, insights, lastSessionSnapshot, nextAction, sessionNote, step]);
 
   // ── 2. OPENING MESSAGE ───────────────────────────────────────
   async function openingMessage() {
@@ -187,9 +168,11 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
         }
         // Sprint 5.1 : restaure next_action après refresh pour que Today/Journal retrouvent l'intention
         if (last.next_action) setNextAction(last.next_action);
-        setChatContinuity(buildContinuityState("resume", last));
+        setLastSessionSnapshot(last);
+        setContinuityMode("resume");
       } else {
-        setChatContinuity(buildContinuityState("welcome"));
+        setLastSessionSnapshot(null);
+        setContinuityMode("welcome");
       }
       if (!last && !accessState?.quota?.exhausted) await openingMessage();
     })();
@@ -309,7 +292,10 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
 
   function applyUI(ui) {
     if (!ui) return;
-    if (ui.session_note) lastSessionNote.current = ui.session_note;
+    if (ui.session_note) {
+      lastSessionNote.current = ui.session_note;
+      setSessionNote(ui.session_note);
+    }
     if (ui.etat) setMstate(mapEtat(ui.etat));
     if (typeof ui.step === "number") setStep(s => Math.max(s, ui.step));
     if (ui.next_action) setNextAction(ui.next_action);
@@ -380,16 +366,22 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
     const streamTime = getTime();
 
     try {
+      const previousState = {
+        insights: insightsRef.current,
+        nextAction: nextActionRef.current,
+        step: stepRef.current,
+      };
       const { content: raw } = await callAPI();
       const ui    = parseUI(raw);
       const clean = stripUI(raw);
+      const updateLabel = buildProofUpdateLabel({ ui, previous: previousState });
       applyUI(ui);
       updateMemoryRef(ui);
       const hasUpdate = ui && (
         (ui.forces?.length > 0) || (ui.ikigai && Object.values(ui.ikigai).some(v => v)) ||
         (ui.contradictions?.length > 0) || (ui.blocages?.racine)
       );
-      setMsgs(m => [...m, {role:"noema", text:clean, time:streamTime, hasUpdate}]);
+      setMsgs(m => [...m, {role:"noema", text:clean, time:streamTime, hasUpdate, updateLabel}]);
       history.current.push({role:"assistant", content:raw});
     } catch(e) {
       setMsgs(m => [...m, {role:"noema", text:"Une erreur est survenue. Réessaie dans un instant.", time:streamTime, isErr:true}]);
@@ -422,6 +414,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
     const { data: mem, error: memErr } = await sb.from("memory").select("*").eq("user_id", user.id).maybeSingle();
     if (memErr) console.error("[Noema] Erreur lecture memory:", memErr);
     const notes = [...(mem?.session_notes || []), lastSessionNote.current].filter(Boolean).slice(-10);
+    const previousSessionCount = mem?.session_count || 0;
     const newMemory = {
       user_id:        user.id,
       updated_at:     new Date().toISOString(),
@@ -430,11 +423,15 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
       blocages:       { ...(mem?.blocages || {}), ...currentInsights.blocages },
       ikigai:         { ...(mem?.ikigai || {}), ...currentIkigai },
       session_notes:  notes,
-      session_count:  (mem?.session_count || 0) + 1,
+      // Ne compter qu'une fois par session live, pas à chaque autosave.
+      session_count:  hasCountedSessionSaveRef.current ? previousSessionCount : previousSessionCount + 1,
     };
     const { error: upsErr } = await sb.from("memory").upsert(newMemory, { onConflict: "user_id" });
     if (upsErr) console.error("[Noema] Erreur upsert memory:", upsErr);
-    else memoryRef.current = newMemory;
+    else {
+      memoryRef.current = newMemory;
+      hasCountedSessionSaveRef.current = true;
+    }
     lastSessionNote.current = "";
   }
 
@@ -442,10 +439,12 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   function reset() {
     history.current = [];
     sessionIdRef.current = crypto.randomUUID(); // Sprint 4 : nouvelle session = nouvel identifiant
-    setMsgs([]); setStep(0); setMstate("exploring"); setNextAction("");
+    hasCountedSessionSaveRef.current = false;
+    lastSessionNote.current = "";
+    setMsgs([]); setStep(0); setMstate("exploring"); setNextAction(""); setSessionNote("");
     setInsights({forces:[], blocages:{racine:"",entretien:"",visible:""}, contradictions:[]});
     setIkigai({aime:"", excelle:"", monde:"", paie:"", mission:""});
-    setChatContinuity(buildContinuityState("restart"));
+    setContinuityMode("restart");
   }
 
   async function newSession() { await saveSession(insights, ikigai, step); reset(); }
@@ -499,6 +498,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
             user={user}
             sb={sb}
             nextAction={nextAction}
+            proofState={proofState}
             sessionId={sessionIdRef.current}
           />
         );
@@ -508,6 +508,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
             user={user}
             sb={sb}
             nextAction={nextAction}
+            sessionNote={sessionNote}
             proofState={proofState}
             quota={quotaState}
             onJournal={() => changeTab("journal")}

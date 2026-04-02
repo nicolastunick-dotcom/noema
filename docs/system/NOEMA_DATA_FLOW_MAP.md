@@ -104,7 +104,7 @@ Références:
 |---|---|---|---|---|---|
 | `profiles` | lookup du statut admin, pas vrai profil produit | `id`, `is_admin`, `created_at` | `useSubscriptionAccess`, `create-invite`, `admin-tools` | personne dans le runtime lu ici | réel mais partiel |
 | `memory` | mémoire inter-sessions + `onboarding_done` | `user_id`, `forces`, `contradictions`, `blocages`, `ikigai`, `session_notes`, `session_count`, `onboarding_done`, `updated_at` | `App.jsx`, `AppShell`, `buildMemoryContext` indirectement | `Onboarding`, `AppShell`, `greffier`, `admin-tools` delete | réel |
-| `sessions` | snapshots d'historique et d'état UI | `id`, `user_id`, `ended_at`, `history`, `insights`, `ikigai`, `step`, `session_note` | `AppShell` | `AppShell`, `greffier` si `sessionId` | réel mais mal nommé |
+| `sessions` | snapshots d'historique et d'état UI | `id`, `user_id`, `ended_at`, `history`, `insights`, `ikigai`, `step`, `session_note`, `next_action` | `AppShell` | `AppShell`, `greffier` si `sessionId` | réel mais mal nommé |
 | `rate_limits` | compteur journalier DB pour quotas | `user_id`, `date`, `count` | `AppShell`, `claude.js` | `AppShell`, `claude.js` | réel mais incohérent |
 | `access_codes` | ancien système de codes à usage borné | `code`, `expires_at`, `used_by`, `max_uses`, `use_count` | `Login.doCode()` | `Login.doCode()`, `verify-code.js` | partiel / legacy |
 | `subscriptions` | vérité de l'accès payant | `user_id`, `stripe_customer_id`, `stripe_subscription_id`, `plan`, `status`, `current_period_end`, `cancel_at_period_end` | `useSubscriptionAccess` | `stripe-webhook.js` | réel |
@@ -124,6 +124,7 @@ Références:
 - `buildMemoryContext()` réinjecte désormais : `session_count`, `session_notes`, `forces`, `contradictions`, `blocages` (3 niveaux), `ikigai` (5 champs), `step` — Sprint 3
 - `claude.js` charge la mémoire depuis DB côté serveur via `buildServerMemoryContext()` — ne dépend plus du `memory_context` envoyé par le client
 - `AppShell.updateMemoryRef(ui)` enrichit `memoryRef.current` après chaque réponse `_ui`, sans attendre `saveSession()` — le contexte s'accumule mid-session
+- `session_count` est désormais incrémenté une seule fois par session live sauvegardée
 
 `sessions` (post Sprint 4.1):
 - l'UI ne relit que `insights`, `ikigai`, `step` de la dernière ligne
@@ -265,7 +266,8 @@ Références:
 1. `upsert` la ligne `sessions` sur `id = sessionIdRef.current` — une seule ligne par session active, mise à jour à chaque autosave
 2. relit `memory`
 3. fusionne forces/contradictions/blocages/ikigai/session_notes
-4. `upsert` `memory`
+4. incrémente `session_count` une seule fois pour cette session live
+5. `upsert` `memory`
 
 `Login.doCode()`:
 1. lit `access_codes`
@@ -293,12 +295,13 @@ Références:
 - `forces` et `contradictions` sont dédupliquées par `Set`
 - `blocages` et `ikigai` sont fusionnés par overwrite superficiel
 - `session_notes` est tronqué aux 10 dernières entrées
-- `session_count` est incrémenté à chaque sauvegarde
+- `session_count` est incrémenté une seule fois par session live
 
 `sessions` depuis `saveSession()`:
 - reçoit l'historique brut `history.current`
 - reçoit `insights`, `ikigai`, `step` issus de l'état React courant
 - reçoit `session_note` venant de `lastSessionNote.current`
+- reçoit `next_action` venant de `nextActionRef.current`
 
 `rate_limits` côté client:
 - compteur DB incrémenté avant l'appel backend
@@ -311,8 +314,8 @@ Références:
 ### 5.3 Fragilités réelles des écritures frontend
 
 `réel`:
-- autosave `beforeunload` + timer 5 minutes + `newSession()` peuvent produire plusieurs lignes `sessions` pour une même session logique
-- `session_count` peut compter des autosaves et non des sessions humaines distinctes
+- autosave `beforeunload` + timer 2 minutes + `newSession()` mettent à jour la même ligne `sessions` d'une session live
+- `session_count` ne compte plus les autosaves comme des sessions humaines distinctes
 - le merge mémoire côté client peut écraser ou doubler des évolutions écrites en parallèle par le Greffier
 
 `partiel`:

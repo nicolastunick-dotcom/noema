@@ -909,6 +909,92 @@ Tests impact :
 - `Today` affiche des indicateurs cohérents avec `journal_entries`, `sessions`, `next_action`
 - aucun score artificiel
 
+## Sprint 8.1 — Continuity Proof Mini-sprint ✅ EXÉCUTÉ (02/04/2026)
+
+## Pourquoi ce mini-sprint etait necessaire
+
+Le Sprint 8 avait rendu la preuve visible, mais pas encore assez vecue.
+Le manque n'etait plus l'infrastructure :
+- `next_action` existait deja
+- `session_note` existait deja
+- la derniere `session` et les entrees `journal_entries` existaient deja
+
+Le manque etait la mise en scene produit de ce que Noema savait deja et de ce qui etait deja construit.
+
+## Objectif
+
+Rendre visible, sans backend lourd ni appel LLM supplementaire :
+- ou l'utilisateur en etait
+- ce qui s'est precise
+- ce qui revient
+- ce qui merite d'etre repris
+- ce qui est deja assez reel pour justifier de continuer apres l'essai
+
+## Actions appliquees
+
+### Reprise visible
+- `AppShell` hydrate maintenant un vrai snapshot de derniere visite depuis `sessions`
+- `ChatPage` affiche un bloc `Depuis ta derniere visite`
+- `TodayPage` affiche un bloc equivalent a partir de la derniere `session` + du `next_action` live / journal
+- structure sobre :
+  - intention en cours
+  - ce qui s'est precise
+  - ce qu'on poursuit
+
+### Preuve differentielle
+- `src/lib/productProof.js` ne renvoie plus seulement une photo statique
+- les preuves sont maintenant taguees :
+  - `Nouveau`
+  - `Confirme`
+  - `Revient`
+  - `A poursuivre`
+- le badge vague `Mapping mis a jour` devient une micro-preuve lisible (`Blocage precise`, `Intention clarifiee`, etc.)
+
+### Conversion contextualisee
+- `Pricing` charge un snapshot de valeur reelle pour les utilisateurs connectes :
+  - jours de suivi
+  - fil en cours
+  - blocage / force / tension deja visible
+  - dernier point travaille
+- le CTA principal s'adapte :
+  - `Acceder a Noema`
+  - `Garder ce fil vivant`
+  - `Continuer apres l'essai`
+
+### Journal relie au fil actif
+- `JournalPage` affiche :
+  - `Pourquoi cette question revient`
+  - `Ce que cette ecriture nourrit`
+- aucune logique nouvelle cote backend
+
+### Progression non gonflee artificiellement
+- `memory.session_count` n'augmente plus a chaque autosave
+- le compteur augmente une seule fois par session live sauvegardee
+
+## Ce qui est maintenant vrai
+
+- le retour dans le chat ou dans `Today` montre immediatement des elements reels de continuite
+- la preuve produit ne depend toujours pas d'un nouvel appel modele
+- le pricing peut montrer ce qui a deja ete construit avant de demander de payer
+- les compteurs de progression visibles ne sont plus artificiellement gonfles par l'autosave
+
+## Tests cibles
+
+Tests chat :
+- bloc `Depuis ta derniere visite` visible seulement quand des donnees reelles existent
+- micro-preuve lisible sur les reponses qui font avancer quelque chose
+
+Tests today :
+- bloc de reprise visible
+- articulation lisible entre derniere session, intention active et journal
+
+Tests pricing :
+- utilisateur engage -> preuve contextuelle visible
+- CTA adapte au contexte reel
+
+Tests progression :
+- plusieurs autosaves sur une meme session live -> `memory.session_count` incremente une seule fois
+
 Tests conversion :
 - quota gratuit epuise -> CTA pricing visible
 - navigation vers `Pricing` fluide

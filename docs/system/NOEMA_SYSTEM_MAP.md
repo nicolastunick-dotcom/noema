@@ -77,9 +77,15 @@ Le trial layer est maintenant réel et minimal :
 ### 2.3 Proof layer
 
 Le proof layer est maintenant réel et non génératif :
-- `ChatPage` et `TodayPage` affichent `Ce que Noema comprend de toi`
-- l'assemblage vient uniquement de `insights`, `next_action`, `step`
+- `ChatPage` et `TodayPage` affichent maintenant une preuve différentielle
+- catégories visibles :
+  - `Nouveau`
+  - `Confirme`
+  - `Revient`
+  - `A poursuivre`
+- l'assemblage vient uniquement de `insights`, `next_action`, `step` et de la dernière `session` déjà persistée
 - `TodayPage` ajoute des indicateurs d'impact depuis `journal_entries` et `sessions`
+- `ChatPage` et `TodayPage` affichent aussi un bloc `Depuis ta derniere visite` sans appel LLM
 - aucun appel LLM supplémentaire
 
 ### 2.4 Frontend / backend / data
@@ -163,6 +169,11 @@ Pricing:
 - offre Pro présentée mais non branchée
 - essai gratuit mentionné explicitement avant paiement
 - l'abonnement est présenté comme suite de l'expérience, pas comme prérequis d'entrée
+- pour un utilisateur déjà engagé, la page affiche une preuve réelle de valeur construite :
+  - jours de suivi
+  - fil en cours
+  - dernier point travaillé
+- le CTA principal n'est plus le même selon le contexte (`Acceder a Noema`, `Garder ce fil vivant`, `Continuer apres l'essai`)
 - dépend du webhook pour rendre l'accès réellement actif
 
 Success:
@@ -176,18 +187,26 @@ Journal (post Sprint 6):
 - `handleSave()` écrit dans `journal_entries` via Supabase (upsert `user_id + entry_date`)
 - entrée du jour rechargée au mount depuis `journal_entries`
 - structure UX en 3 niveaux simples: `Intention du jour` -> `Réflexion libre` -> `Ce que tu retiens`
+- un lien explicite avec le fil actif est rendu :
+  - `Pourquoi cette question revient`
+  - `Ce que cette ecriture nourrit`
 - feedback de sauvegarde inline, discret, sans toast agressif
 - table `journal_entries` dans `supabase-schema.sql` avec RLS
 
 Today (post Sprint 6):
 - `nextAction` prop depuis `AppShell` (session live) = intention du jour
 - fallback : `next_action` de la dernière entrée `journal_entries`
+- charge aussi la dernière `session` persistée pour densifier la reprise
 - CTA principal visible : `Passer à l'action` vers le Journal si une intention existe
 - si aucune donnée : fallback honnête + CTA chat pour définir l'intention du jour
 - question du jour adaptée si entrée journal existe aujourd'hui
 - indicateur discret `Jour X de ton parcours` dérivé du nombre d'entrées journal
 - repère du jour sobre, sans checkbox ni gamification artificielle
 - bloc de preuve visible à partir de `insights`, `next_action`, `step`
+- bloc `Depuis ta derniere visite` visible :
+  - intention en cours
+  - dernier point clarifié
+  - ce qu'il reste à reprendre
 - indicateurs d'impact sobres :
   - jours de suivi
   - intentions clarifiées
@@ -287,18 +306,18 @@ Conséquences:
 #### C. La persistance est par snapshot, pas par session vivante
 
 `saveSession()`:
-- insère une nouvelle ligne dans `sessions`
+- upsert la même ligne `sessions` pour toute la session live
 - upsert `memory`
 
 Il est appelé par:
 - `beforeunload`
-- `setInterval` toutes les 5 minutes
+- `setInterval` toutes les 2 minutes
 - `newSession()`
 
 Conséquences:
-- une même session logique peut produire plusieurs lignes `sessions`
-- `session_count` est incrémenté à chaque save, donc peut compter des autosaves plutôt que des vraies sessions
-- l'objet `sessions` est un snapshot de transcript, pas une session live suivie par identifiant
+- une session logique garde le même `session_id` pendant toute sa durée
+- `session_count` est incrémenté une seule fois par session live sauvegardée
+- l'objet `sessions` reste un snapshot de transcript, mais il est maintenant stabilisé par identifiant
 
 #### D. Les quotas sont doublement incrémentés
 
