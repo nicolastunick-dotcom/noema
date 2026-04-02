@@ -660,6 +660,22 @@ Tests Today:
 - la question du jour dans `TodayPage` reste statique (un seul fallback) hors cas "entree journal du jour"
 - `sessions.next_action` necessite une migration SQL manuelle en prod (`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS next_action text DEFAULT ''`)
 
+## Sprint 5.1 — micro-fix post-audit ✅ EXÉCUTÉ (02/04/2026)
+
+Lacune identifiée lors de l'audit pré-Sprint 6 : `next_action` n'était pas restauré après refresh.
+
+**Fichier modifié :** `src/pages/AppShell.jsx`
+
+**Changements (2 lignes) :**
+- `.select("insights,ikigai,step")` → `.select("insights,ikigai,step,next_action")`
+- Ajout : `if (last.next_action) setNextAction(last.next_action);` après restauration du step
+
+**Ce qui est maintenant vrai :**
+- Après un refresh, `nextAction` est restauré depuis la dernière session sauvegardée
+- Today affiche l'intention du jour sans attendre une nouvelle session
+- Journal affiche le prompt issu de `next_action` dès l'ouverture de la page
+- Aucun nouvel appel LLM, aucune migration SQL requise
+
 # 7. Ordre réel d'exécution (état au 02/04/2026)
 
 | # | Chantier | Sprint | Statut |

@@ -96,7 +96,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
       if (mem) memoryRef.current = mem;
 
       const { data: sessions, error: sessErr } = await sb.from("sessions")
-        .select("insights,ikigai,step")
+        .select("insights,ikigai,step,next_action")
         .eq("user_id", user.id)
         .order("ended_at", { ascending: false })
         .limit(1);
@@ -110,6 +110,8 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
           // Sprint 3 : injecter le step dans memoryRef pour qu'il soit inclus dans buildMemoryContext()
           if (memoryRef.current) memoryRef.current = { ...memoryRef.current, step: last.step };
         }
+        // Sprint 5.1 : restaure next_action après refresh pour que Today/Journal retrouvent l'intention
+        if (last.next_action) setNextAction(last.next_action);
       }
       await openingMessage();
     })();
