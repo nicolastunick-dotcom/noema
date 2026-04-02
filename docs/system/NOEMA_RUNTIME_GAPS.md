@@ -27,13 +27,13 @@ Noema ne souffre pas seulement d'un "écart entre ambition et exécution". Il so
 Les écarts structurants les plus importants sont aujourd'hui:
 - ~~l'accès produit est décidé côté frontend, alors que `/.netlify/functions/claude` ne vérifie pas l'abonnement, seulement le JWT~~ **RÉSOLU Sprint 1** : `claude.js` vérifie maintenant l'entitlement (admin / subscription / invite) et retourne 403 si absent
 - ~~le quota s'écrit en double, client ET serveur~~ **RÉSOLU Sprint 1** : le frontend ne lit/écrit plus `rate_limits`, seul `claude.js` est autorité quota
-- le contrat `_ui` du prompt principal ne correspond pas au contrat réellement consommé par `applyUI()` — **cible Sprint 2**
+- ~~le contrat `_ui` du prompt principal ne correspond pas au contrat réellement consommé par `applyUI()`~~ **RÉSOLU Sprint 2**
 - `Journal` et `Today` sont présentés dans la roadmap, le landing, l'onboarding et le pricing comme surfaces utiles de continuité, alors qu'ils restent presque entièrement statiques — **cible Sprint 5**
-- `sessions` donne l'impression d'une session métier stable, mais le runtime l'utilise comme système de snapshots répétés — **cible Sprint 3**
+- ~~`sessions` donne l'impression d'une session métier stable, mais le runtime l'utilise comme système de snapshots répétés~~ **RÉSOLU Sprint 4.1 (anticipé)** : upsert sur `session_id`, une seule ligne par session active
 - le repo contient encore des reliquats V1/V2 (`App.original.jsx`, `prompt-greffier.js`, alias legacy, imports orphelins) capables de tromper une IA qui ne lirait pas les bons points de vérité
 - plusieurs documents historiques (`ROADMAP.md`, `DEBATE.md`, parties de `PROJECT.md`, parties de `codex.md`) décrivent un Noema plus cohérent, plus branché ou plus ancien que le runtime actuel
 
-Ce que Noema est réellement aujourd'hui (post Sprint 1):
+Ce que Noema est réellement aujourd'hui (post Sprint 4.1) :
 - `réel`: auth, accès backend verrouillé (entitlement admin/sub/invite), quota backend unique, chat, mémoire inter-sessions, snapshots, Mapping, onboarding, admin panel partiel
 - `partiel`: Greffier comme moteur secondaire de persistance, billing post-checkout (Success mocké), `invites.user_id` linkage (migration à exécuter en prod), documentation globale du projet
 - `mocké`: `Journal`, `Today`, état confirmé de `Success`, partie du discours "rituel quotidien" et "journal guidé par Noema"

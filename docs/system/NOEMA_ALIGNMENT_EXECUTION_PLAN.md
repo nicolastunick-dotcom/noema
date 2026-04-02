@@ -22,14 +22,14 @@ Convention:
 
 # 1. Strategie d'execution globale
 
-Ordre des blocs:
-1. verrouiller les decisions critiques cote backend
-2. supprimer les doubles verites de quota
-3. figer le contrat `_ui` minimal reel
-4. nettoyer le legacy qui trompe le runtime et les futures IA
-5. introduire une vraie session live
-6. realigner les surfaces UX sur l'etat reel
-7. seulement ensuite brancher `Journal` et `Today`
+Ordre des blocs (réalisé → à faire) :
+1. verrouiller les decisions critiques cote backend ✅ Sprint 1
+2. supprimer les doubles verites de quota ✅ Sprint 1
+3. figer le contrat `_ui` minimal reel ✅ Sprint 2
+4. enrichir la mémoire runtime et côté serveur ✅ Sprint 3 / 3.1 / 3.2
+5. introduire une session live minimale ✅ Sprint 4.1 (anticipé)
+6. realigner les surfaces UX sur l'etat reel ⏳ Sprint 4 (vrai Sprint 4 — à faire)
+7. seulement ensuite brancher `Journal` et `Today` ⏳ Sprint 5
 
 Logique de dependance:
 - l'acces backend passe avant tout, parce que `App.jsx` et `useSubscriptionAccess()` filtrent l'UX mais `netlify/functions/claude.js` reste contournable tant qu'il ne verifie pas l'entitlement
@@ -231,10 +231,10 @@ Tous les livrables Sprint 1 sont en production et nettoyés :
 
 **Sprint 2 peut démarrer.**
 
-# 3. Sprint 2 — Unification du systeme
+# 3. Sprint 2 — Unification du contrat `_ui` ✅ EXÉCUTÉ (02/04/2026)
 
 ## Objectif
-aligner toutes les couches
+unifier le contrat `_ui` entre prompt, parser, AppShell et Greffier
 
 ## Actions
 
@@ -324,10 +324,46 @@ Tests de contrat:
 - divergence silencieuse si le Greffier continue d'ecrire un schema plus riche dans `memory` ou `sessions`
 - faux sentiment d'alignement si `next_action` est stocke sans etre encore branche visuellement
 
+# 3.0 Sprint 3 — Mémoire runtime enrichie ✅ EXÉCUTÉ (02/04/2026)
+
+## Objectif
+enrichir la mémoire inter-sessions et la rendre disponible côté serveur dès le premier message de chaque session
+
+## Actions appliquées
+
+### 1. `buildMemoryContext()` enrichi (`src/lib/supabase.js`)
+- `blocages`, `contradictions`, `step` ajoutés au contexte mémoire client-side
+
+### 2. `updateMemoryRef(ui)` dans AppShell
+- merge live `_ui` → `memoryRef.current` après chaque réponse, sans attendre `saveSession()`
+- le contexte s'accumule mid-session : le message suivant bénéficie des insights du message précédent
+
+### 3. Chargement mémoire côté serveur dans `claude.js`
+- `buildServerMemoryContext(memRow, lastStep)` construit le contexte mémoire directement en backend
+- `claude.js` ne dépend plus du `memory_context` envoyé par le client
+- `memory` et `sessions.step` chargés en parallèle (`Promise.all`) — coût latence nul
+
+## Ce qui est maintenant vrai
+
+- la mémoire inter-sessions est chargée côté serveur — le client ne peut plus l'omettre ou la falsifier
+- `updateMemoryRef(ui)` garantit que le contexte s'enrichit à chaque message sans attendre l'autosave
+
+## Ce qui reste une limite connue
+
+- `step` n'est pas une colonne de `memory` — il est lu depuis `sessions.step` via une requête séparée
+
+## Fichiers modifiés
+
+- `netlify/functions/claude.js`
+- `src/pages/AppShell.jsx`
+- `src/lib/supabase.js`
+
+---
+
 # 3.1 Sprint 3.1 — Continuité post-refresh ✅ EXÉCUTÉ (02/04/2026)
 
 ## Objectif
-améliorer la continuité conversationnelle après refresh sans lancer la session live (Sprint 4)
+améliorer la continuité conversationnelle après refresh sans lancer la session live (Sprint 4.1)
 
 ## Cause du bug identifiée
 
@@ -369,7 +405,7 @@ Après refresh :
 
 ## Ce qui reste une limite connue
 
-- `history.current` n'est jamais rechargé → pas de replay de conversation cross-session (adressé au Sprint 4 session live)
+- `history.current` n'est jamais rechargé → pas de replay de conversation cross-session (adressé si besoin en sprint dédié ultérieur)
 - `beforeunload` reste non fiable sur mobile pour async — atténué mais non éliminé par l'autosave 2min
 - `memory.step` n'est pas une colonne DB — `step` vient toujours de `sessions.step` au runtime
 
@@ -422,7 +458,11 @@ Deux sources de gaspillage identifiées par audit :
 
 ---
 
-# 4. Sprint 4 — Session live ✅ EXÉCUTÉ (02/04/2026)
+# 4.1. Sprint 4.1 — Session live minimale (anticipée) ✅ EXÉCUTÉ (02/04/2026)
+
+> **Note de reclassification** : ce chantier a été exécuté en avance par rapport au plan produit initial.
+> Il stabilise le runtime (`session_id`, upsert `sessions`, `api_usage`) sans toucher aux surfaces produit.
+> Il est reclassé en **Sprint 4.1** afin de préserver la cohérence du plan : **Sprint 4** reste le réalignement UX réel (ci-dessous).
 
 ## Objectif
 introduire un `session_id` live minimal, cohérent et exploitable, sans casser Noema
@@ -484,77 +524,10 @@ introduire un `session_id` live minimal, cohérent et exploitable, sans casser N
 - `src/pages/AppShell.jsx`
 - `netlify/functions/claude.js`
 
----
-
-# 4b. Sprint 3 (renommé) — Stabilisation des sessions (plan initial, partiellement couvert par Sprint 4)
+# 5. Sprint 4 — Réalignement UX réel ⏳ À FAIRE
 
 ## Objectif
-creer une vraie logique de session
-
-## Actions
-
-Ordre exact:
-1. etendre `supabase-schema.sql` avec une vraie notion de session live:
-   - soit nouvelle table `active_sessions`
-   - soit extension de `sessions` avec `started_at`, `status`, `message_count`
-2. choisir une cle runtime unique `session_id` creee a l'ouverture de `AppShell`
-3. faire envoyer `session_id` depuis `src/pages/AppShell.jsx` a `netlify/functions/claude.js`
-4. faire transiter `session_id` vers `netlify/functions/greffier.js`
-5. faire ecrire `api_usage.session_id`
-6. faire porter le compteur quota metier par cette session live au lieu du couple `(user_id, date)`
-7. transformer `saveSession()`:
-   - ne plus inserer une nouvelle ligne a chaque autosave
-   - mettre a jour la session live courante
-   - ne creer un snapshot final qu'a la cloture
-8. renommer dans la doc la table ou le concept historique en "session snapshot" tant qu'un renommage technique n'est pas livre
-
-Fichiers impactes:
-- `supabase-schema.sql`
-- `src/pages/AppShell.jsx`
-- `netlify/functions/claude.js`
-- `netlify/functions/greffier.js`
-- `PROJECT.md`
-- `NOEMA_SYSTEM_MAP.md`
-- `NOEMA_CHAT_ORCHESTRATION_MAP.md`
-- `NOEMA_DATA_FLOW_MAP.md`
-- `NOEMA_RUNTIME_GAPS.md`
-
-Livrable de sprint:
-- un `session_id` actif existe des l'ouverture du chat
-- Greffier, quota, `api_usage` et persistance parlent du meme identifiant
-- `sessions` ne sert plus de faux substitut de session live
-
-Rollback:
-- garder la structure snapshot actuelle en lecture seule pendant la migration, mais interdire les nouvelles insertions multiples des que la session live est active
-
-### Tests
-
-Tests session:
-- ouverture du chat -> creation d'un `session_id`
-- 3 messages dans la meme session -> un seul enregistrement live, pas 3 snapshots finaux
-- `newSession()` cloture la session courante et en ouvre une nouvelle
-- refresh navigateur -> reprise sur la meme session si la strategie choisie le permet, sinon cloture propre et recreation explicite
-
-Tests quota:
-- le compteur de session suit `session_id`
-- le 26e message utilisateur dans la meme session est bloque
-- une nouvelle session repart a zero
-
-Tests persistance:
-- `api_usage.session_id` non vide
-- Greffier met bien a jour la session courante
-- `memory` garde le role de synthese inter-sessions et non de session live
-
-### Risques
-
-- migration delicate entre snapshots existants et sessions live
-- conflits entre autosave, fermeture d'onglet et cloture manuelle
-- dette de doc si le concept change sans renommage visible dans `PROJECT.md`
-
-# 5. Sprint 4 — Realignement UX reel
-
-## Objectif
-corriger les mensonges produit
+corriger les promesses produit qui dépassent l'état réel du runtime — arrêter de présenter comme branchées des surfaces encore mockées ou partielles
 
 ## Actions
 
@@ -590,10 +563,10 @@ Tests UX:
 - baisse temporaire de promesse marketing
 - plus de friction visible en post-checkout si Stripe est lent
 
-# 6. Sprint 5 — Extension controlee
+# 6. Sprint 5 — Journal / Today réels ⏳ À FAIRE
 
 ## Objectif
-ajouter des features propres
+brancher réellement les surfaces Journal et Today sur des données persistantes — cesser les contenus statiques
 
 ## Actions
 
@@ -645,20 +618,23 @@ Tests Today:
 - surconstruire le modele avant de voir l'usage reel
 - produire un `Today` artificiel si le journal reste peu alimente
 
-# 7. Ordre exact d'implementation
+# 7. Ordre réel d'exécution (état au 02/04/2026)
 
-1. backend access
-2. backend quota
-3. `_ui` contract
-4. cleanup legacy
-5. session system
-6. UX fixes
-7. feature extension
+| # | Chantier | Sprint | Statut |
+|---|---|---|---|
+| 1 | Entitlement backend + quota unifié | Sprint 1 | ✅ |
+| 2 | Race condition bootstrap | Sprint 1.1 | ✅ |
+| 3 | Contrat `_ui` unifié | Sprint 2 | ✅ |
+| 4 | Mémoire runtime enrichie + server-side | Sprint 3 | ✅ |
+| 5 | Continuité post-refresh | Sprint 3.1 | ✅ |
+| 6 | Réduction coûts tokens/Greffier | Sprint 3.2 | ✅ |
+| 7 | Session live minimale (anticipée) | Sprint 4.1 | ✅ |
+| 8 | Réalignement UX réel | Sprint 4 | ⏳ |
+| 9 | Journal / Today réels | Sprint 5 | ⏳ |
 
-Regle de merge:
-- ne pas lancer 3. `_ui` contract` tant que 1. et 2. ne sont pas verifies en preprod
-- ne pas lancer 5. `session system` tant que 3. et 4. n'ont pas stabilise le contrat runtime
-- ne pas lancer 7. `feature extension` tant que 6. n'a pas retire les promesses trompeuses
+Règle de merge (toujours valide) :
+- ne pas lancer Sprint 4 UX tant que Sprint 4.1 n'a pas stabilisé le runtime session
+- ne pas lancer Sprint 5 Journal/Today tant que Sprint 4 n'a pas retiré les promesses trompeuses
 
 # 8. Checklist developpeur
 

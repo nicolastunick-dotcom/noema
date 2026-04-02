@@ -37,13 +37,14 @@ Ce qu'il n'est pas réellement aujourd'hui:
 - un pipeline unifié où prompt principal, UI, Greffier et mapping partagent exactement le même contrat de données
 - un runtime cohérent entre DEV et production
 
-Etat global du système chat (post Sprint 4):
+Etat global du système chat (post Sprint 4.1) :
 - `réel`: accès à `/app/chat`, vérification entitlement backend (admin/sub/invite), envoi utilisateur, proxy Netlify, quota 25/jour backend uniquement, appel Anthropic principal, parsing `_ui`, mapping visible, `session_id` stable par conversation active, autosave upsert sur session live (une seule ligne par session), mémoire inter-sessions, logs Greffier admin, `api_usage.session_id` rempli
 - `partiel`: Greffier comme source de vérité, cohérence prompt/UI, exploitation de `memory` complète, DEV runtime
 - `legacy`: `src/App.original.jsx`, `src/constants/prompt-greffier.js`, panneaux latéraux V1, imports/états orphelins dans `AppShell`
 - `résolu Sprint 1`: double comptage quota client/serveur supprimé ; entitlement backend ajouté ; `invites` formalisée dans le schéma
 - `résolu Sprint 1.1`: race condition bootstrap corrigée — `openingMessage()` ne part plus avant résolution entitlement ; linkage invite sessionStorage bloquant avant ouverture chat
-- `résolu Sprint 4`: `session_id` UUID généré au mount, propagé à chaque appel, `sessions` passe de INSERT multi-lignes à UPSERT sur ID stable
+- `résolu Sprint 4.1 (anticipé)`: `session_id` UUID généré au mount, propagé à chaque appel, `sessions` passe de INSERT multi-lignes à UPSERT sur ID stable
+- `à faire Sprint 4`: réalignement UX réel — Landing / Pricing / Onboarding / Success / Journal / Today alignés sur l'état runtime
 
 ## 2. Vue d'ensemble du flux
 
@@ -546,7 +547,7 @@ Références:
 - schéma réellement lu par `applyUI()`
 - schéma Greffier runtime
 
-2. Session live — partiellement résolue (Sprint 4):
+2. Session live — résolue (Sprint 4.1 anticipé) :
 - `session_id` UUID généré au mount, propagé à chaque appel Anthropic
 - `sessions` utilise maintenant un upsert sur cet ID — une seule ligne par session active
 - `api_usage.session_id` rempli côté Sonnet et Greffier
@@ -577,7 +578,7 @@ Références:
 
 ### 11.4 Ambiguïtés produit réelles
 
-- "session" signifie désormais une vraie session live (Sprint 4) mais le refresh la recrée — pas de reprise cross-refresh pour l'instant
+- "session" signifie désormais une vraie session live (Sprint 4.1) mais le refresh la recrée — pas de reprise cross-refresh pour l'instant
 - "mapping mis à jour" ne signifie pas que le Greffier a écrit quelque chose
 - "25 messages par session" dans le prompt ne correspond pas clairement à l'implémentation runtime
 - l'écran vide après `newSession()` n'est pas le même comportement que l'ouverture initiale pilotée par prompt

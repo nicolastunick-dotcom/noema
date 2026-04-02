@@ -30,13 +30,13 @@ La réalité du système data n'est pas "une base cohérente pilotée par une un
 - une table `subscriptions` qui porte la vérité payante réelle, mais seulement après webhook Stripe
 - des surfaces `Journal` et `Today` encore presque totalement hors base
 
-Ce que les données sont réellement aujourd'hui (post Sprint 4):
+Ce que les données sont réellement aujourd'hui (post Sprint 4.1):
 - `réel`: `memory`, `sessions` (session live avec `session_id` stable et upsert), `rate_limits` (backend uniquement), `subscriptions`, `api_usage` (avec `session_id` rempli), `profiles` pour l'admin, `invites` avec `user_id` persistant pour la beta, `access_codes` pour un ancien flux de code
 - `partiel`: `profiles` comme vrai profil utilisateur, `api_usage` comme vision admin globale
 - `mocké`: persistance `Journal`, persistance `Today`, état post-paiement dans `Success`
 - `legacy`: `semantic_memory`, `match_semantic_memory`, une partie de `access_codes`, les commentaires Greffier sur `user_insights` / `ikigai_state`
 
-Les désalignements structurants les plus importants sont (post Sprint 4):
+Les désalignements structurants les plus importants sont (post Sprint 4.1):
 - ~~l'accès à l'app est décidé côté frontend, mais `/.netlify/functions/claude` ne vérifie que le JWT, pas l'abonnement~~ **RÉSOLU Sprint 1**
 - ~~`invites` existe dans le runtime, mais pas dans `supabase-schema.sql`~~ **RÉSOLU Sprint 1**
 - ~~`sessions` s'appelle session, mais stocke en pratique des snapshots répétés~~ **RÉSOLU Sprint 4** — upsert sur `session_id` stable, une ligne par session active
@@ -125,7 +125,7 @@ Références:
 - `claude.js` charge la mémoire depuis DB côté serveur via `buildServerMemoryContext()` — ne dépend plus du `memory_context` envoyé par le client
 - `AppShell.updateMemoryRef(ui)` enrichit `memoryRef.current` après chaque réponse `_ui`, sans attendre `saveSession()` — le contexte s'accumule mid-session
 
-`sessions` (post Sprint 4):
+`sessions` (post Sprint 4.1):
 - l'UI ne relit que `insights`, `ikigai`, `step` de la dernière ligne
 - `history` est stocké mais pas rechargé dans l'interface au bootstrap — limite volontaire (reprise cross-refresh hors périmètre)
 - `session_id` UUID généré au mount, propagé à chaque appel — upsert sur cet ID, une seule ligne par session active
@@ -142,7 +142,7 @@ Références:
 - aucune écriture client directe
 - la ligne n'est créée ou mise à jour qu'après événements Stripe
 
-`api_usage` (post Sprint 4):
+`api_usage` (post Sprint 4.1):
 - `session_id` rempli par `claude.js` (Sonnet) et par `greffier.js` (Haiku) — les deux parlent du même identifiant
 
 `invites`:
@@ -261,7 +261,7 @@ Références:
 - lit `rate_limits`
 - puis `upsert` `count + 1`
 
-`AppShell.saveSession()` (post Sprint 4):
+`AppShell.saveSession()` (post Sprint 4.1):
 1. `upsert` la ligne `sessions` sur `id = sessionIdRef.current` — une seule ligne par session active, mise à jour à chaque autosave
 2. relit `memory`
 3. fusionne forces/contradictions/blocages/ikigai/session_notes
@@ -538,10 +538,10 @@ Références:
 
 ### 8.2 `sessions`
 
-Rôle réel (post Sprint 4):
+Rôle réel (post Sprint 4.1):
 - session live : une ligne par conversation active, mise à jour à chaque autosave via upsert sur `id`
 
-Ce qui est maintenant vrai (Sprint 4):
+Ce qui est maintenant vrai (Sprint 4.1):
 - `sessionIdRef.current = crypto.randomUUID()` maintenu dans `AppShell` pendant toute la session active
 - `saveSession()` fait un `upsert` sur cet ID — autosave et `newSession()` mettent à jour la même ligne
 - `reset()` régénère le `session_id` — nouvelle session = nouvelle ligne
