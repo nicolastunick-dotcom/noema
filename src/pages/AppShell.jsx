@@ -411,6 +411,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
             sb={sb}
             nextAction={nextAction}
             onJournal={() => changeTab("journal")}
+            onChat={() => changeTab("chat")}
           />
         );
       default: // chat

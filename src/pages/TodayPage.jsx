@@ -27,10 +27,11 @@ const TODAY_ISO = new Date().toISOString().slice(0, 10);
 
 const FALLBACK_QUESTION = "Qu'est-ce que tu évites de regarder en face depuis quelques jours ?";
 
-export default function TodayPage({ user, sb, nextAction = "", onJournal }) {
+export default function TodayPage({ user, sb, nextAction = "", onJournal, onChat }) {
   const [defiDone, setDefiDone] = useState(false);
   const [lastJournalEntry, setLastJournalEntry] = useState(null); // { content, next_action, entry_date }
   const [loading, setLoading] = useState(true);
+  const [journeyDay, setJourneyDay] = useState(null);
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -42,17 +43,21 @@ export default function TodayPage({ user, sb, nextAction = "", onJournal }) {
     }
 
     (async () => {
-      // Cherche la dernière entrée journal (pas forcément aujourd'hui)
-      const { data, error } = await sb
-        .from("journal_entries")
-        .select("content, next_action, entry_date")
-        .eq("user_id", user.id)
-        .order("entry_date", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const [entryResult, countResult] = await Promise.all([
+        sb.from("journal_entries")
+          .select("content, next_action, entry_date")
+          .eq("user_id", user.id)
+          .order("entry_date", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        sb.from("journal_entries")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id),
+      ]);
 
-      if (error) console.error("[Today] Erreur chargement journal:", error);
-      if (data) setLastJournalEntry(data);
+      if (entryResult.error) console.error("[Today] Erreur chargement journal:", entryResult.error);
+      if (entryResult.data) setLastJournalEntry(entryResult.data);
+      if (countResult.count != null && countResult.count > 0) setJourneyDay(countResult.count);
       setLoading(false);
     })();
 
@@ -117,6 +122,11 @@ export default function TodayPage({ user, sb, nextAction = "", onJournal }) {
             Bonjour {firstName}.<br />Voici ton espace du jour.
           </h2>
           <p style={{ fontSize:"0.625rem", letterSpacing:"0.2em", textTransform:"uppercase", color:"rgba(197,197,216,0.7)", margin:0 }}>{TODAY}</p>
+          {journeyDay != null && (
+            <p style={{ fontSize:"0.7rem", color:"rgba(189,194,255,0.45)", marginTop:10, margin:"10px 0 0", letterSpacing:"0.04em" }}>
+              Jour {journeyDay} de ton parcours
+            </p>
+          )}
         </section>
 
         {loading ? (
@@ -132,9 +142,28 @@ export default function TodayPage({ user, sb, nextAction = "", onJournal }) {
                 <h3 style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"1.15rem", color:C.primary, margin:0 }}>Intention du jour</h3>
               </div>
               {hasData ? (
-                <p style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"1.15rem", color:C.onSurface, lineHeight:1.65, margin:0 }}>
-                  "{intentionSource}"
-                </p>
+                <>
+                  <p style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"1.15rem", color:C.onSurface, lineHeight:1.65, margin:"0 0 20px" }}>
+                    "{intentionSource}"
+                  </p>
+                  <button
+                    onClick={() => onJournal && onJournal()}
+                    style={{
+                      display:"inline-flex", alignItems:"center", gap:8,
+                      padding:"12px 22px", borderRadius:9999,
+                      background:"linear-gradient(135deg, #bdc2ff 0%, #7886ff 100%)",
+                      color:"#000965", fontWeight:700, fontSize:"0.875rem",
+                      border:"none", cursor:"pointer",
+                      fontFamily:"'Plus Jakarta Sans', sans-serif",
+                      transition:"transform 0.15s, box-shadow 0.15s",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow="0 6px 20px rgba(120,134,255,0.35)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="none"; }}
+                  >
+                    <span>Passer à l'action</span>
+                    <span className="material-symbols-outlined" style={{ fontSize:"1rem", fontVariationSettings:"'FILL' 0, 'wght' 400" }}>arrow_forward</span>
+                  </button>
+                </>
               ) : (
                 <p style={{ fontSize:"0.875rem", color:C.onSurfaceVariant, lineHeight:1.65, margin:0 }}>
                   Commence une conversation avec Noema pour que ton intention du jour apparaisse ici.
@@ -210,11 +239,27 @@ export default function TodayPage({ user, sb, nextAction = "", onJournal }) {
 
             {/* Card — Invitation à converser (si pas de données) */}
             {!hasData && (
-              <div style={{ borderRadius:24, background:C.surfaceContainerLow, border:"1px solid rgba(69,70,85,0.05)", padding:28, textAlign:"center" }}>
-                <span className="material-symbols-outlined" style={{ fontSize:"2rem", color:"rgba(120,134,255,0.4)", marginBottom:12, display:"block", fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>forum</span>
+              <div style={{ borderRadius:24, background:C.surfaceContainerLow, border:"1px solid rgba(69,70,85,0.05)", padding:28, textAlign:"center", display:"flex", flexDirection:"column", alignItems:"center", gap:16 }}>
+                <span className="material-symbols-outlined" style={{ fontSize:"2rem", color:"rgba(120,134,255,0.4)", fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>forum</span>
                 <p style={{ fontSize:"0.9rem", color:C.onSurfaceVariant, lineHeight:1.65, margin:0 }}>
-                  Ouvre une conversation avec Noema.<br />Ton espace du jour se personnalisera au fil de vos échanges.
+                  Commence une conversation avec Noema.<br />Ton intention du jour apparaîtra ici.
                 </p>
+                <button
+                  onClick={() => onChat && onChat()}
+                  style={{
+                    display:"inline-flex", alignItems:"center", gap:8,
+                    padding:"11px 22px", borderRadius:9999,
+                    background:"rgba(189,194,255,0.1)", border:"1px solid rgba(189,194,255,0.2)",
+                    color:C.primary, fontWeight:600, fontSize:"0.8rem",
+                    cursor:"pointer", fontFamily:"'Plus Jakarta Sans', sans-serif",
+                    transition:"background 0.15s",
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background="rgba(189,194,255,0.18)"}
+                  onMouseLeave={e => e.currentTarget.style.background="rgba(189,194,255,0.1)"}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize:"0.9rem", fontVariationSettings:"'FILL' 0, 'wght' 400" }}>chat</span>
+                  <span>Commencer une conversation</span>
+                </button>
               </div>
             )}
           </>

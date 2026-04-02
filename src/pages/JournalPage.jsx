@@ -36,22 +36,18 @@ export default function JournalPage({ user, sb, nextAction = "" }) {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [journeyDay, setJourneyDay] = useState(null);
   const taRef = useRef(null);
 
   const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
 
-  // Prompt principal : next_action si dispo, sinon fallback aléatoire
-  const mainPrompt = nextAction || FALLBACK_PROMPTS[0];
-  const altPrompts = nextAction
-    ? FALLBACK_PROMPTS
-    : FALLBACK_PROMPTS.slice(1);
+  const altPrompts = nextAction ? FALLBACK_PROMPTS : FALLBACK_PROMPTS.slice(1);
 
   // ── Chargement de l'entrée du jour au mount ──────────────────
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "auto";
 
-    // Définit le prompt actif (next_action ou fallback)
     setActivePrompt(nextAction || FALLBACK_PROMPTS[0]);
 
     if (!sb || !user) {
@@ -60,20 +56,23 @@ export default function JournalPage({ user, sb, nextAction = "" }) {
     }
 
     (async () => {
-      const { data, error } = await sb
-        .from("journal_entries")
-        .select("content, next_action")
-        .eq("user_id", user.id)
-        .eq("entry_date", TODAY_ISO)
-        .maybeSingle();
+      const [entryResult, countResult] = await Promise.all([
+        sb.from("journal_entries")
+          .select("content, next_action")
+          .eq("user_id", user.id)
+          .eq("entry_date", TODAY_ISO)
+          .maybeSingle(),
+        sb.from("journal_entries")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id),
+      ]);
 
-      if (error) console.error("[Journal] Erreur chargement entrée:", error);
-
-      if (data) {
-        if (data.content) setText(data.content);
-        // Si une next_action était enregistrée et qu'on n'en a pas de plus récente
-        if (!nextAction && data.next_action) setActivePrompt(data.next_action);
+      if (entryResult.error) console.error("[Journal] Erreur chargement entrée:", entryResult.error);
+      if (entryResult.data) {
+        if (entryResult.data.content) setText(entryResult.data.content);
+        if (!nextAction && entryResult.data.next_action) setActivePrompt(entryResult.data.next_action);
       }
+      if (countResult.count != null && countResult.count > 0) setJourneyDay(countResult.count);
       setLoading(false);
     })();
 
@@ -161,6 +160,11 @@ export default function JournalPage({ user, sb, nextAction = "" }) {
         <div style={{ marginBottom:40 }}>
           <p style={{ fontSize:"0.625rem", fontWeight:600, letterSpacing:"0.2em", textTransform:"uppercase", color:C.outline, marginBottom:8 }}>{TODAY}</p>
           <h1 style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"clamp(2rem,7vw,3rem)", lineHeight:1.15, color:C.onSurface, margin:0 }}>L'espace de réflexion</h1>
+          {journeyDay != null && (
+            <p style={{ fontSize:"0.7rem", color:"rgba(189,194,255,0.45)", marginTop:10, margin:"10px 0 0", letterSpacing:"0.04em" }}>
+              Jour {journeyDay} de ton parcours
+            </p>
+          )}
         </div>
 
         {loading ? (
@@ -178,7 +182,7 @@ export default function JournalPage({ user, sb, nextAction = "" }) {
                 <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20 }}>
                   <span className="material-symbols-outlined" style={{ fontSize:"0.875rem", color:C.primary, fontVariationSettings:"'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>psychology</span>
                   <span style={{ fontSize:"0.6rem", letterSpacing:"0.2em", textTransform:"uppercase", color:"rgba(189,194,255,0.8)", fontWeight:600 }}>
-                    {nextAction ? "Action de ta session" : "Suggestion de Noema"}
+                    Intention du jour
                   </span>
                 </div>
                 <blockquote style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"1.3rem", color:"#dfe0ff", lineHeight:1.5, margin:"0 0 16px" }}>
@@ -202,7 +206,7 @@ export default function JournalPage({ user, sb, nextAction = "" }) {
                   ref={taRef}
                   value={text}
                   onChange={e => setText(e.target.value)}
-                  placeholder="Écris librement ici…"
+                  placeholder={"Qu'as-tu fait aujourd'hui ?\nQu'as-tu ressenti ?\nQu'est-ce que tu comprends mieux ?"}
                   style={{
                     width:"100%", minHeight:280,
                     background:"transparent", border:"none", outline:"none",
@@ -213,7 +217,15 @@ export default function JournalPage({ user, sb, nextAction = "" }) {
                     caretColor:C.primary,
                   }}
                 />
-                <style>{`textarea::placeholder { color: rgba(69,70,85,0.5); }`}</style>
+                <style>{`textarea::placeholder { color: rgba(69,70,85,0.5); white-space: pre-line; }`}</style>
+                {text.trim().length > 0 && (
+                  <div style={{ borderTop:"1px solid rgba(255,255,255,0.05)", marginTop:20, paddingTop:16 }}>
+                    <p style={{ fontSize:"0.6rem", letterSpacing:"0.15em", textTransform:"uppercase", color:C.outline, margin:"0 0 8px", fontWeight:600 }}>Ce que tu retiens</p>
+                    <p style={{ fontSize:"0.8rem", color:"rgba(197,197,216,0.35)", lineHeight:1.6, margin:0, fontStyle:"italic" }}>
+                      Écris en bas ce que tu veux garder de cette réflexion.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -248,6 +260,21 @@ export default function JournalPage({ user, sb, nextAction = "" }) {
           </div>
         )}
       </main>
+
+      {/* ── Inline save feedback ── */}
+      {saved && (
+        <div style={{
+          position:"fixed", bottom:164, right:24, zIndex:40,
+          background:"rgba(30,31,37,0.9)", backdropFilter:"blur(8px)",
+          border:"1px solid rgba(76,175,80,0.3)", borderRadius:10,
+          padding:"8px 14px", fontSize:"0.75rem", color:"#81c784",
+          display:"flex", alignItems:"center", gap:6,
+          animation:"fadeIn 0.15s ease",
+        }}>
+          <span className="material-symbols-outlined" style={{ fontSize:"0.9rem", fontVariationSettings:"'FILL' 1, 'wght' 400" }}>check_circle</span>
+          Entrée enregistrée
+        </div>
+      )}
 
       {/* ── FAB Save ── */}
       <div style={{ position:"fixed", bottom:96, right:24, zIndex:40 }}>
