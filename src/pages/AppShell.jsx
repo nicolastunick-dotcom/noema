@@ -37,6 +37,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   const [nextAction,  setNextAction]  = useState("");
 
   const history         = useRef([]);
+  const sessionIdRef    = useRef(crypto.randomUUID()); // Sprint 4 : identifiant stable pour toute la session active
   const lastSessionNote = useRef("");
   const memoryRef       = useRef(null); // toujours à jour même dans les closures async
   const msgsRef         = useRef(null);
@@ -162,7 +163,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
         headers["Authorization"] = `Bearer ${session.access_token}`;
       }
     }
-    const bodyPayload = { model:"claude-sonnet-4-6", max_tokens:1100, memory_context, messages:h };
+    const bodyPayload = { model:"claude-sonnet-4-6", max_tokens:1100, memory_context, messages:h, session_id:sessionIdRef.current };
     const res = await fetch(ANTHROPIC_PROXY, {
       method:"POST", headers,
       body: JSON.stringify(bodyPayload),
@@ -302,6 +303,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
     if (history.current.length === 0) return;
 
     const sessionData = {
+      id:           sessionIdRef.current, // Sprint 4 : ID stable — upsert sur cet identifiant
       user_id:      user.id,
       ended_at:     new Date().toISOString(),
       history:      history.current,
@@ -310,8 +312,10 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
       step:         currentStep,
       session_note: lastSessionNote.current,
     };
-    const { error: insErr } = await sb.from("sessions").insert(sessionData);
-    if (insErr) { console.error("[Noema] Erreur insert session:", insErr); return; }
+    // Sprint 4 : upsert sur id — tous les autosaves mettent à jour la même ligne session active.
+    // Avant : insert → plusieurs lignes incohérentes par session. Après : une seule ligne par session.
+    const { error: insErr } = await sb.from("sessions").upsert(sessionData, { onConflict: "id" });
+    if (insErr) { console.error("[Noema] Erreur upsert session:", insErr); return; }
 
     const { data: mem, error: memErr } = await sb.from("memory").select("*").eq("user_id", user.id).maybeSingle();
     if (memErr) console.error("[Noema] Erreur lecture memory:", memErr);
@@ -335,6 +339,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   // ── 9. ACTIONS ───────────────────────────────────────────────
   function reset() {
     history.current = [];
+    sessionIdRef.current = crypto.randomUUID(); // Sprint 4 : nouvelle session = nouvel identifiant
     setMsgs([]); setStep(0); setMstate("exploring"); setNextAction("");
     setInsights({forces:[], blocages:{racine:"",entretien:"",visible:""}, contradictions:[]});
     setIkigai({aime:"", excelle:"", monde:"", paie:"", mission:""});

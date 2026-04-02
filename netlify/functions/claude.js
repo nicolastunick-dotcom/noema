@@ -241,6 +241,7 @@ export default async (request) => {
         model:             allowed.model,
         prompt_tokens:     data.usage.input_tokens,
         completion_tokens: data.usage.output_tokens,
+        session_id:        sessionId, // Sprint 4 : session_id propagé depuis le frontend
       }).then(() => {}, e => console.log('[Usage] log failed:', e.message))
     }
 
