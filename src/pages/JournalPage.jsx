@@ -30,7 +30,7 @@ const FALLBACK_PROMPTS = [
   "En quoi cette situation rejoint ce qu'on a découvert sur toi récemment ?",
 ];
 
-export default function JournalPage({ user, sb, nextAction = "", sessionId = null }) {
+export default function JournalPage({ user, sb, nextAction = "" }) {
   const [text, setText] = useState("");
   const [activePrompt, setActivePrompt] = useState("");
   const [saved, setSaved] = useState(false);
@@ -91,13 +91,15 @@ export default function JournalPage({ user, sb, nextAction = "", sessionId = nul
     }
 
     setSaving(true);
+    // session_id omis volontairement : la ligne sessions n'existe pas encore en DB
+    // tant que saveSession() n'a pas été déclenché (beforeunload / autosave 2min).
+    // Envoyer un UUID non persisté déclencherait une erreur FK 23503.
     const entry = {
-      user_id:    user.id,
-      session_id: sessionId,
-      entry_date: TODAY_ISO,
-      content:    text,
+      user_id:     user.id,
+      entry_date:  TODAY_ISO,
+      content:     text,
       next_action: nextAction || activePrompt,
-      updated_at: new Date().toISOString(),
+      updated_at:  new Date().toISOString(),
     };
 
     const { error } = await sb
