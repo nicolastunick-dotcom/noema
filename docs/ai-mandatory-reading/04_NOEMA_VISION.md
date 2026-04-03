@@ -314,4 +314,4 @@ Fichiers sources pour chaque affirmation de ce document :
 | Journal persisté dans `journal_entries` | `src/pages/JournalPage.jsx:74-80` |
 | Today consommant `next_action` live + dernière session | `src/pages/TodayPage.jsx:49-87` |
 | Greffier secondaire, non pilote du Mapping | `docs/system/NOEMA_CHAT_ORCHESTRATION_MAP.md` |
-| `sessions` = snapshots, pas session live | `docs/system/NOEMA_ALIGNMENT_PLAN.md:§Memory vs Sessions` |
+| `sessions` = snapshots, pas session live | `docs/system/NOEMA_SYSTEM_MAP.md` + `docs/system/NOEMA_RUNTIME_GAPS.md` |

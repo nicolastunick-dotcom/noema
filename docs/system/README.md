@@ -18,8 +18,6 @@ Le protocole documentaire obligatoire global est défini dans [`MASTER.md`](/Use
 3. [NOEMA_RUNTIME_GAPS.md](NOEMA_RUNTIME_GAPS.md)
 4. [NOEMA_CHAT_ORCHESTRATION_MAP.md](NOEMA_CHAT_ORCHESTRATION_MAP.md)
 5. [NOEMA_DATA_FLOW_MAP.md](NOEMA_DATA_FLOW_MAP.md)
-6. [NOEMA_ALIGNMENT_PLAN.md](NOEMA_ALIGNMENT_PLAN.md)
-7. [NOEMA_ALIGNMENT_EXECUTION_PLAN.md](NOEMA_ALIGNMENT_EXECUTION_PLAN.md)
 
 ---
 
@@ -32,13 +30,11 @@ Le protocole documentaire obligatoire global est défini dans [`MASTER.md`](/Use
 | `NOEMA_CHAT_ORCHESTRATION_MAP.md` | Flux complet du chat : frontend → AppShell → claude.js → Anthropic → Greffier → Supabase → UI |
 | `NOEMA_DATA_FLOW_MAP.md` | Tables Supabase, qui lit quoi, qui écrit quoi, sources de vérité par domaine |
 | `NOEMA_RUNTIME_GAPS.md` | Désalignements entre prompts, UI, schéma, code et documentation — ce qui est branché vs mocké vs legacy |
-| `NOEMA_ALIGNMENT_PLAN.md` | Décisions prises pour unifier les vérités système avant automatisation et scaling |
-| `NOEMA_ALIGNMENT_EXECUTION_PLAN.md` | Plan d'exécution sprint par sprint avec ordre exact, fichiers impactés, tests et risques |
 
 ---
 
 ## Règle documentaire
 
-Voir [NOEMA_DOCUMENTATION_POLICY.md](NOEMA_DOCUMENTATION_POLICY.md) pour le process complet.
+Le protocole documentaire officiel est désormais porté par [`MASTER.md`](/Users/nicolas/Projects/Noema/noema-project/MASTER.md), section `6. Protocole documentaire obligatoire pour les IA`.
 
 **Résumé** : toute modification touchant l'architecture, l'accès, les quotas, le prompt, l'état `_ui`, le Greffier, le mapping, la mémoire, les sessions, le billing, Journal, Today / `Aujourd'hui` / `Zen` ou une table Supabase doit être accompagnée d'une mise à jour des documents concernés dans ce dossier.

@@ -241,14 +241,9 @@ Toute IA qui travaille sur Noema doit suivre cet ordre de lecture puis cet ordre
 
 ### 6.2 Docs utiles mais non obligatoires en première lecture
 
-- `docs/system/NOEMA_ALIGNMENT_PLAN.md`
-- `docs/system/NOEMA_ALIGNMENT_EXECUTION_PLAN.md`
-- `docs/system/NOEMA_DOCUMENTATION_POLICY.md`
 - `antigravity_idea.md`
 
 Ces documents servent à :
-- préparer une exécution
-- cadrer un refactor
 - enrichir la réflexion produit
 
 Ils ne remplacent jamais les 9 lectures obligatoires ci-dessus.
