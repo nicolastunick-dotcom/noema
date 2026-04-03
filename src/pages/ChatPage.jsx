@@ -2,6 +2,7 @@ import { useRef, useEffect } from "react";
 import DOMPurify from "dompurify";
 import { fmt } from "../utils/helpers";
 import NoemaOrb from "../components/NoemaOrb";
+import PhaseSignal from "../components/PhaseSignal";
 
 // ─────────────────────────────────────────────────────────────
 // CHAT PAGE — Design Stitch, logique passée en props par AppShell
@@ -50,6 +51,8 @@ export default function ChatPage({
   proofState,
   quota,
   onPricing,
+  phaseContext,
+  bottomInset = 72,
 }) {
   const msgsRef = useRef(null);
   const continuityMode = continuity?.mode || "welcome";
@@ -272,6 +275,10 @@ export default function ChatPage({
           </div>
         )}
 
+        {phaseContext && (
+          <PhaseSignal phase={phaseContext} />
+        )}
+
         {quota && (
           <div style={{
             alignSelf: "stretch",
@@ -368,7 +375,11 @@ export default function ChatPage({
             }}>N</div>
             <div>
               <h2 style={{ fontFamily: "'Instrument Serif', serif", fontStyle: "italic", fontSize: "1.75rem", color: C.onSurface, marginBottom: 8 }}>
-                {continuityMode === "resume" ? "On reprend." : continuityMode === "restart" ? "On repart." : "Bonjour."}
+                {continuityMode === "resume"
+                  ? `On reprend en phase ${phaseContext?.name || "actuelle"}.`
+                  : continuityMode === "restart"
+                    ? "On repart."
+                    : "Bonjour."}
               </h2>
               <p style={{ color: C.onSurfaceVariant, fontSize: "0.875rem", maxWidth: 420 }}>
                 {continuityMode === "resume"
@@ -560,7 +571,7 @@ export default function ChatPage({
       {/* ── Bottom Input Shell ── */}
       <div style={{
         position: "fixed",
-        bottom: 72, // above the bottom nav
+        bottom: bottomInset,
         left: 0, right: 0,
         zIndex: 40,
         background: "linear-gradient(to top, #111318 60%, transparent)",

@@ -109,7 +109,7 @@ Puis `Zen` ajoute ce qui manque dans `NOEMA_VISION2.md` :
 |---|---|
 | Frontend | React 18 + Vite, routage manuel dans `src/App.jsx` |
 | Auth | Supabase Auth : login, signup, reset password, Google OAuth côté code |
-| Accès produit | Vérification frontend + backend ; `claude.js` valide le JWT et résout un tier d'accès |
+| Accès produit | Backend autoritaire ; `claude.js` valide le JWT et résout le tier, `useSubscriptionAccess` s'aligne sur cette vérité |
 | Tiers d'accès | `trial`, `subscriber`, `invite`, `admin` |
 | Quotas | Backend autoritaire : `8/jour` en trial, `25/jour` en accès complet ; garde-fou local `30/min` |
 | Chat | Réel, branché à Anthropic via `/.netlify/functions/claude` |
@@ -124,22 +124,24 @@ Puis `Zen` ajoute ce qui manque dans `NOEMA_VISION2.md` :
 
 ### Ce qui est partiel
 
-- La phase `Stratège` existe dans le prompt mais pas comme mode UI vraiment visible.
+- Une premiere lecture de phase est visible dans `AppShell`, `ChatPage` et `MappingPage`, mais elle reste encore initiale.
+- Une lecture cross-sessions alimente maintenant le prompt, le mapping et `Aujourd'hui`, avec une premiere trajectoire visible, mais elle reste encore heuristique.
 - Le Greffier écrit et enrichit, mais ne pilote pas directement l'UI.
-- Le mapping montre surtout un état courant, pas une progression longitudinale.
-- Le flux invite est hybride :
-  - backend : lecture de `invites`
-  - frontend : `useSubscriptionAccess` repose aujourd'hui sur `sessionStorage.noema_invite`
-- L'admin garde encore un bypass legacy via `VITE_ADMIN_EMAIL`.
+- Le mapping commence a montrer une progression longitudinale, mais reste encore loin d'un vrai miroir evolutif complet.
+- Le flux invite reste transitoire :
+  - `sessionStorage.noema_invite` transporte encore le token entre `/invite` et la premiere session authentifiee
+  - l'acces `invite` n'est plus accorde sans confirmation backend/base
+  - le linkage `invites.user_id` et sa migration prod restent a finaliser
+- L'admin repose maintenant sur `profiles.is_admin`, mais l'etat prod doit etre verifie pour les comptes concernes.
 - Le modèle "session" reste surtout un snapshot persistant, pas une entité métier très riche.
 
 ### Ce qui n'est pas branché
 
 - `semantic_memory`
-- détection explicite des schémas cross-sessions
+- détection profonde et proactive des schémas cross-sessions
 - `Page Zen` en tant que surface finale nommée et assumée
 - emails de fin de phase
-- représentation UI explicite et durable du passage en mode `Stratège`
+- incarnation UI durable et profonde du passage en mode `Stratège`
 
 ### Santé actuelle du repo
 
@@ -153,12 +155,12 @@ Puis `Zen` ajoute ce qui manque dans `NOEMA_VISION2.md` :
 
 | Vision officielle | Réalité du code aujourd'hui | Écart |
 |---|---|---|
-| Noema doit devenir visiblement `Guide` puis `Stratège` | le prompt le prévoit, l'UI ne le met presque pas en scène | fort |
-| Noema doit ramener les schémas récurrents à la surface | mémoire injectée oui, détection cross-sessions non | fort |
-| Le mapping doit devenir un miroir de progression | il reflète surtout l'état courant | fort |
-| Le journal et `Zen` doivent prolonger le fil central | `Journal` et `Aujourd'hui` sont déjà reliés, mais `Aujourd'hui` n'est pas encore une vraie surface `Zen` | fort |
-| La vérité d'accès doit être unifiée | backend et frontend ne s'appuient pas encore sur la même vérité invite | fort |
-| L'autorité admin doit être propre | présence persistante d'un bypass email legacy | moyen |
+| Noema doit devenir visiblement `Guide` puis `Stratège` | une premiere lecture de phase est maintenant visible, mais la bascule reste encore legere et surtout visuelle | moyen |
+| Noema doit ramener les schémas récurrents à la surface | une premiere lecture cross-sessions structuree existe maintenant, mais elle reste encore heuristique et peu proactive | moyen |
+| Le mapping doit devenir un miroir de progression | une couche `Progression vivante` existe, mais le mapping reste encore majoritairement centre sur l'etat courant | moyen |
+| Le journal et `Zen` doivent prolonger le fil central | `Aujourd'hui` embarque maintenant un premier rituel `Zen`, mais la surface finale n'est pas encore pleinement transformee | moyen |
+| La vérité d'accès doit être unifiée | l'invite locale ne donne plus l'acces seule, mais la migration `invites.user_id` maintient encore une zone transitoire | moyen |
+| L'autorité admin doit être propre | le bypass email legacy a ete retire du runtime ; il reste a verifier que tous les admins attendus sont bien portes par `profiles.is_admin` | faible |
 | La documentation doit décrire une seule vérité | plusieurs `.md` historiques restent partiellement contradictoires | moyen |
 
 ### Écart de vision à ne pas sur-prioriser
@@ -176,27 +178,27 @@ En revanche, `Zen` n'est plus à traiter comme une extension lointaine.
 
 ## 5. Priorités, dans l'ordre
 
-1. **Unifier la vérité d'accès**
-   Le frontend et le backend doivent reposer sur la même source pour `invite`, `admin` et `subscription`. Tant que ce n'est pas le cas, la continuité produit reste fragile.
+1. **Finaliser la vérité d'accès**
+   Le frontend ne donne plus l'invite sans confirmation backend, et le bypass admin email a ete retire. Il faut maintenant terminer la migration `invites.user_id` en prod et verifier les profils admin.
 
-2. **Rendre la phase `Stratège` visible dans l'expérience**
-   Le produit promet un basculement de posture. Le code l'a dans le prompt, mais l'utilisateur ne le ressent pas encore clairement.
+2. **Approfondir la lecture cross-sessions**
+   Le socle existe maintenant dans le prompt, le mapping et `Aujourd'hui`. Il faut le rendre plus precis, plus stable et plus utile.
 
-3. **Ajouter une vraie lecture cross-sessions**
-   Détecter ce qui revient, ce qui bloque, ce qui s'installe, puis le réinjecter dans le chat, le mapping et le rituel du jour.
+3. **Faire du mapping un vrai miroir de progression**
+   La couche de progression est lancee. Il faut maintenant y ajouter historique, evolution de l'ikigai et lecture plus vivante des blocages.
 
-4. **Faire du mapping un miroir de progression**
-   Historique, persistance des schémas, évolution de l'ikigai, progression dans le parcours.
-
-5. **Transformer `Aujourd'hui` en `Zen` sans perdre le runtime existant**
-   Il faut conserver la continuité déjà branchée, puis la densifier en surface `Zen` :
+4. **Transformer pleinement `Aujourd'hui` en `Zen`**
+   Une premiere couche `Zen` existe deja. Il faut conserver la continuité déjà branchée, puis la densifier en surface `Zen` :
    reprise, exercice adapté, ton plus apaisé, lien plus fort avec le journal.
 
-6. **Renforcer la continuité `Chat -> Journal -> Zen`**
+5. **Renforcer la continuité `Chat -> Journal -> Zen`**
    Le chaînage existe déjà dans `Chat -> Journal -> Aujourd'hui`. Il faut maintenant le rendre plus lisible, plus dense et plus indispensable sous sa forme `Zen`.
 
+6. **Approfondir la phase visible**
+   Le signal de phase existe maintenant dans l'UI. Il faut le rendre plus incarné, plus progressif et plus perceptible dans toute l'experience.
+
 7. **Supprimer les reliquats hybrides**
-   Admin email legacy, logique invite locale, documentation contradictoire, reliquats legacy qui embrouillent les futurs agents.
+   Transport local du token invite, documentation contradictoire, reliquats legacy qui embrouillent les futurs agents.
 
 8. **Traiter ensuite les extensions**
    `semantic_memory`, emails, sophistication avancée des surfaces, seulement après stabilisation du coeur.
@@ -336,7 +338,18 @@ Règle :
 
 ## 8. Ce qu'on modifie, dans l'ordre
 
-### 1. Transformer `Aujourd'hui` en `Zen`
+### 1. Rendre la phase visible
+
+Objectif :
+- que l'utilisateur sente où il en est
+- sans en faire une note scolaire
+
+À faire :
+- indicateur de phase discret
+- atmosphère ou wording qui change selon la phase
+- préparation du vrai passage visible au mode `Stratège`
+
+### 2. Transformer `Aujourd'hui` en `Zen`
 
 Objectif :
 - garder la base réelle actuelle
@@ -354,7 +367,7 @@ On ajoute :
 - un ton plus calme et plus immersif
 - une logique de recentrage, affirmation, méditation ou remise en question
 
-### 2. Réinjecter le journal dans le chat
+### 3. Réinjecter le journal dans le chat
 
 Objectif :
 - faire en sorte que Noema reparte aussi de ce que l'utilisateur a écrit, pas seulement de la session chat
@@ -362,17 +375,6 @@ Objectif :
 Effet attendu :
 - continuité beaucoup plus forte
 - sensation que Noema "sait vraiment"
-
-### 3. Rendre la phase visible
-
-Objectif :
-- que l'utilisateur sente où il en est
-- sans en faire une note scolaire
-
-À faire :
-- indicateur de phase discret
-- atmosphère ou wording qui change selon la phase
-- préparation du vrai passage visible au mode `Stratège`
 
 ### 4. Faire évoluer le mapping en miroir de progression
 

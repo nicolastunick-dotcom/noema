@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import PhaseSignal from "../components/PhaseSignal";
 
 // ─────────────────────────────────────────────────────────────
 // MAPPING PAGE — Profil psychologique visuel
@@ -238,8 +239,8 @@ const glass = {
 };
 
 // ── Zen Progress Ring ─────────────────────────────────────────
-function ZenRing({ step }) {
-  const pct = Math.min(step / 4, 1);
+function ZenRing({ step, phaseContext }) {
+  const pct = Math.min(step / 10, 1);
   const r = 44, circ = 2 * Math.PI * r;
   const dash = circ * pct;
   return (
@@ -256,7 +257,7 @@ function ZenRing({ step }) {
           />
           <defs>
             <linearGradient id="zenGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#bdc2ff" />
+              <stop offset="0%" stopColor={phaseContext?.accent || "#bdc2ff"} />
               <stop offset="100%" stopColor="#ffb68a" />
             </linearGradient>
           </defs>
@@ -269,14 +270,17 @@ function ZenRing({ step }) {
       </div>
       <div>
         <span style={{ display: "block", fontSize: "0.55rem", letterSpacing: "0.2em", textTransform: "uppercase", color: C.onSurfaceVariant, marginBottom: 4 }}>
-          Intégration émotionnelle
+          Progression visible
         </span>
         <span style={{
           display: "block",
           fontFamily: "'Instrument Serif', serif", fontStyle: "italic",
           fontSize: "1.2rem", color: C.onSurface,
         }}>
-          {pct < 0.25 ? "En Exploration" : pct < 0.5 ? "En Éveil" : pct < 0.75 ? "En Clarté" : "Vers la Sérénité"}
+          {phaseContext?.name ? `Phase ${phaseContext.index} - ${phaseContext.name}` : "Parcours en cours"}
+        </span>
+        <span style={{ display: "block", marginTop: 6, fontSize: "0.75rem", color: phaseContext?.accent || C.primary }}>
+          {phaseContext?.horizon || "Le parcours s'affine session apres session"}
         </span>
       </div>
     </div>
@@ -290,8 +294,54 @@ function Empty({ msg }) {
   );
 }
 
+function ProgressPulse({ label, value, hint, accent = C.primary }) {
+  return (
+    <div style={{
+      borderRadius: 16,
+      padding: "16px 14px",
+      background: "rgba(17,19,24,0.45)",
+      border: `1px solid ${accent}22`,
+      minHeight: 112,
+      display: "flex",
+      flexDirection: "column",
+      gap: 10,
+    }}>
+      <p style={{
+        margin: 0,
+        fontSize: "0.56rem",
+        letterSpacing: "0.18em",
+        textTransform: "uppercase",
+        color: C.outline,
+        fontWeight: 700,
+      }}>
+        {label}
+      </p>
+      <p style={{
+        margin: 0,
+        fontFamily: "'Instrument Serif', serif",
+        fontStyle: "italic",
+        fontSize: "1rem",
+        lineHeight: 1.45,
+        color: C.onSurface,
+      }}>
+        {value}
+      </p>
+      {hint && (
+        <p style={{
+          margin: "auto 0 0",
+          fontSize: "0.72rem",
+          lineHeight: 1.55,
+          color: accent,
+        }}>
+          {hint}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── Main ──────────────────────────────────────────────────────
-export default function MappingPage({ insights, ikigai, step }) {
+export default function MappingPage({ insights, ikigai, step, phaseContext, progressSignals }) {
   const [ikigaiExpanded, setIkigaiExpanded] = useState(false);
 
   useEffect(() => {
@@ -323,9 +373,70 @@ export default function MappingPage({ insights, ikigai, step }) {
 
         {/* Hero */}
         <div style={{ paddingBottom:24, borderBottom:"1px solid rgba(69,70,85,0.15)" }}>
+          {phaseContext && (
+            <div style={{ marginBottom: 16 }}>
+              <PhaseSignal phase={phaseContext} variant="compact" />
+            </div>
+          )}
           <h1 style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"clamp(2.2rem,8vw,3.5rem)", lineHeight:1.1, color:C.onSurface, margin:"0 0 12px" }}>Profil psychologique</h1>
-          <p style={{ color:C.onSurfaceVariant, fontSize:"0.875rem", lineHeight:1.65, maxWidth:480, margin:0 }}>Une exploration de votre architecture intérieure. Identifiez vos leviers d'épanouissement et les zones de tension à dénouer.</p>
+          <p style={{ color:C.onSurfaceVariant, fontSize:"0.875rem", lineHeight:1.65, maxWidth:560, margin:0 }}>
+            {phaseContext
+              ? `${phaseContext.summary} Le mapping commence maintenant a montrer ou tu te situes dans le parcours, pas seulement ce qui est present.`
+              : "Une exploration de votre architecture interieure. Identifiez vos leviers d'epanouissement et les zones de tension a denouer."}
+          </p>
         </div>
+
+        {progressSignals && (
+          <section style={{ ...glass, borderColor: phaseContext?.border || "rgba(69,70,85,0.1)" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, gap:16 }}>
+              <div>
+                <h2 style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"1.5rem", color:phaseContext?.accent || C.primary, margin:"0 0 8px" }}>
+                  Trajectoire actuelle
+                </h2>
+                <p style={{ margin:0, fontSize:"0.82rem", lineHeight:1.65, color:C.onSurfaceVariant, maxWidth:540 }}>
+                  {progressSignals.movementSummary || "La trajectoire se precise session apres session."}
+                </p>
+              </div>
+              <span className="material-symbols-outlined" style={{ color:phaseContext?.accent || C.primary, fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>
+                timeline
+              </span>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(160px, 1fr))", gap:12 }}>
+              <ProgressPulse
+                label="Cap du moment"
+                value={progressSignals.trajectoryLabel || "Trajectoire en construction"}
+                hint={progressSignals.continuitySummary || "Lecture en cours"}
+                accent={phaseContext?.accent || C.primary}
+              />
+              <ProgressPulse
+                label="Motif dominant"
+                value={progressSignals.dominantThread?.value || "Aucun motif dominant"}
+                hint={
+                  progressSignals.dominantThread
+                    ? `${progressSignals.dominantThread.count} session(s) · ${progressSignals.dominantThread.label}`
+                    : "Aucune recurrence nette"
+                }
+                accent={phaseContext?.accent || C.primary}
+              />
+              <ProgressPulse
+                label="Fils ouverts"
+                value={progressSignals.openLoops[0]?.value || "Aucun fil ouvert"}
+                hint={
+                  progressSignals.openLoops.length > 1
+                    ? `${progressSignals.openLoops.length} fils en cours`
+                    : "Un fil prioritaire a garder en vue"
+                }
+                accent={phaseContext?.accent || C.primary}
+              />
+              <ProgressPulse
+                label="Dernier cran"
+                value={progressSignals.latestStepLabel || "Niveau non resolu"}
+                hint={progressSignals.latestNote || "Le dernier point clair apparaitra ici"}
+                accent={phaseContext?.accent || C.primary}
+              />
+            </div>
+          </section>
+        )}
 
         {/* Ikigai section */}
         <section style={{ display:"flex", gap:20, alignItems:"start" }}>
@@ -450,14 +561,83 @@ export default function MappingPage({ insights, ikigai, step }) {
           )}
         </section>
 
+        {progressSignals?.hasRecurringThemes && (
+          <section style={{ ...glass }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+              <h2 style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"1.5rem", color:phaseContext?.accent || C.primary, margin:0 }}>
+                Progression vivante
+              </h2>
+              <span className="material-symbols-outlined" style={{ color:phaseContext?.accent || C.primary, fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>
+                timeline
+              </span>
+            </div>
+            <p style={{ margin:"0 0 16px", fontSize:"0.82rem", lineHeight:1.65, color:C.onSurfaceVariant }}>
+              {progressSignals.movementSummary || "Les motifs recurrents donnent ici une lecture plus longitudinale du parcours."}
+            </p>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+              <div style={{ background:"rgba(17,19,24,0.45)", border:"1px solid rgba(255,255,255,0.05)", borderRadius:16, padding:16 }}>
+                <p style={{ margin:0, fontSize:"0.58rem", letterSpacing:"0.16em", textTransform:"uppercase", color:C.outline, fontWeight:700 }}>
+                  Ce qui revient
+                </p>
+                <div style={{ display:"flex", flexDirection:"column", gap:10, marginTop:12 }}>
+                  {[...progressSignals.recurringBlockages, ...progressSignals.recurringContradictions].slice(0, 3).map((item) => (
+                    <div key={`${item.label}-${item.value}`} style={{ paddingBottom:10, borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+                      <p style={{ margin:0, fontSize:"0.8rem", color:C.onSurface, lineHeight:1.55 }}>{item.value}</p>
+                      <p style={{ margin:"6px 0 0", fontSize:"0.66rem", color:C.tertiary }}>
+                        {item.count} sessions
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{ background:"rgba(17,19,24,0.45)", border:"1px solid rgba(255,255,255,0.05)", borderRadius:16, padding:16 }}>
+                <p style={{ margin:0, fontSize:"0.58rem", letterSpacing:"0.16em", textTransform:"uppercase", color:C.outline, fontWeight:700 }}>
+                  Ce qui tient
+                </p>
+                <div style={{ display:"flex", flexDirection:"column", gap:10, marginTop:12 }}>
+                  {progressSignals.recurringForces.slice(0, 3).map((item) => (
+                    <div key={`${item.label}-${item.value}`} style={{ paddingBottom:10, borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+                      <p style={{ margin:0, fontSize:"0.8rem", color:C.onSurface, lineHeight:1.55 }}>{item.value}</p>
+                      <p style={{ margin:"6px 0 0", fontSize:"0.66rem", color:C.primary }}>
+                        {item.count} sessions
+                      </p>
+                    </div>
+                  ))}
+                  {progressSignals.openLoops[0]?.value && (
+                    <div>
+                      <p style={{ margin:0, fontSize:"0.8rem", color:C.onSurface, lineHeight:1.55 }}>
+                        {progressSignals.openLoops[0].value}
+                      </p>
+                      <p style={{ margin:"6px 0 0", fontSize:"0.66rem", color:C.onSurfaceVariant }}>
+                        Fil encore actif
+                      </p>
+                    </div>
+                  )}
+                  {progressSignals.continuitySummary && (
+                    <div style={{ paddingTop:4 }}>
+                      <p style={{ margin:0, fontSize:"0.68rem", color:phaseContext?.accent || C.primary, lineHeight:1.6 }}>
+                        {progressSignals.continuitySummary}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Zen Progress Ring */}
         <section style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20, alignItems:"center" }}>
           {/* Quote */}
           <div style={{ ...glass }}>
             <div style={{ position:"absolute", top:-40, left:-20, width:120, height:120, background:"rgba(189,194,255,0.06)", filter:"blur(40px)", borderRadius:"50%" }} />
-            <h2 style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"1.5rem", color:C.primary, marginBottom:12 }}>Le Zen Progress Ring</h2>
-            <p style={{ color:C.onSurfaceVariant, fontSize:"0.8rem", lineHeight:1.65, marginBottom:20 }}>Votre harmonie globale s'affine. Vous atteignez un point de bascule où l'observation remplace le jugement.</p>
-            <ZenRing step={step} />
+            <h2 style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"1.5rem", color:phaseContext?.accent || C.primary, marginBottom:12 }}>La phase actuelle</h2>
+            <p style={{ color:C.onSurfaceVariant, fontSize:"0.8rem", lineHeight:1.65, marginBottom:20 }}>
+              {phaseContext
+                ? `${phaseContext.paceLabel}. ${phaseContext.horizon}.`
+                : "Le parcours avance session apres session."}
+            </p>
+            <ZenRing step={step} phaseContext={phaseContext} />
           </div>
 
           {/* Citation */}

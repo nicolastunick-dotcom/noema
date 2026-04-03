@@ -510,7 +510,7 @@ Côté frontend:
 
 Côté backend:
 - 25 messages / jour dans `rate_limits`
-- bypass si email = `VITE_ADMIN_EMAIL`
+- quota illimite pour les admins resolus via `profiles.is_admin`
 
 Références:
 - `src/pages/AppShell.jsx:213-232`
@@ -520,9 +520,8 @@ Références:
 ### 10.2 Conséquence réelle
 
 `inférence basée sur le code`:
-- un envoi utilisateur peut incrémenter `rate_limits` côté client puis côté serveur
 - `openingMessage()` passe par le backend, mais pas par `checkRateLimit()`
-- la limite effective perçue utilisateur peut être inférieure à ce que racontent les textes de prompt ou l'admin panel
+- le quota produit réel est tranche par le backend, le garde-fou frontend restant un anti-spam minute
 
 ### 10.3 Garde-fous réels
 
@@ -638,7 +637,6 @@ Centre nerveux réel:
 Frontend:
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
-- `VITE_ADMIN_EMAIL`
 - `DEV`
 
 Backend:
@@ -646,7 +644,6 @@ Backend:
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
-- `VITE_ADMIN_EMAIL`
 
 ### 13.3 Fonctions backend majeures
 

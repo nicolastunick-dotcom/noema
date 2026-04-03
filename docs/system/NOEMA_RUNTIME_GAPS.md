@@ -1,8 +1,8 @@
 # NOEMA RUNTIME GAPS
 
-> **Dernière mise à jour : Sprint 9 (02/04/2026)**
+> **Dernière mise à jour : Sprint 11 (03/04/2026)**
 >
-> Corrections appliquées en Sprint 9 :
+> Corrections appliquées jusqu'au Sprint 11 :
 > - `ROADMAP.md` et `DEBATE.md` marqués explicitement comme archives historiques
 > - `PROJECT.md` mis à jour avec table d'état réel post-Sprint 9
 > - `src/App.original.jsx` et `src/constants/prompt-greffier.js` marqués comme LEGACY en commentaire de tête
@@ -12,6 +12,10 @@
 > - `session_count` : déjà corrigé depuis Sprint 4 (`hasCountedSessionSaveRef`)
 > - Bloc "Depuis ta dernière visite" : déjà implémenté via `buildReturnVisitState` + `chatContinuity`
 > - Preuve différentielle (`Nouveau/Confirmé/Revient/À poursuivre`) : déjà implémentée via `buildProofState`
+> - Sprint 1 lancé dans le code : lecture emotionnelle de phase derivee de `step`, visible dans `AppShell`, `ChatPage` et `MappingPage`
+> - Signaux cross-sessions : lecture recurrente et trajectoire visible injectees dans `claude.js`, `MappingPage` et `TodayPage`
+> - `TodayPage` : premiere materialisation de `Zen` via un rituel adapte a la phase et au fil actif
+> - `useSubscriptionAccess.js` : l'invite locale ne donne plus l'acces sans confirmation backend/base
 
 ---
 
@@ -45,18 +49,20 @@ Les écarts structurants les plus importants sont aujourd'hui:
 - ~~le contrat `_ui` du prompt principal ne correspond pas au contrat réellement consommé par `applyUI()`~~ **RÉSOLU Sprint 2**
 - ~~`Journal` et `Today` sont présentés dans la roadmap, le landing, l'onboarding et le pricing comme surfaces utiles de continuité, alors qu'ils restent presque entièrement statiques~~ **RÉSOLU Sprint 5** : `journal_entries` en base, écriture/lecture Supabase directe dans `JournalPage`, `TodayPage` consomme `next_action` live et persiste en `sessions`
 - ~~`sessions` donne l'impression d'une session métier stable, mais le runtime l'utilise comme système de snapshots répétés~~ **RÉSOLU Sprint 4.1 (anticipé)** : upsert sur `session_id`, une seule ligne par session active
+- la phase visible n'est plus absente, mais reste encore surtout signaletique : la bascule `Guide -> Stratege` n'est pas encore pleinement incarnee
+- la lecture cross-sessions existe, avec une premiere trajectoire visible, mais reste encore heuristique et peu profonde
 - le repo contient encore des reliquats V1/V2 (`App.original.jsx`, `prompt-greffier.js`, alias legacy, imports orphelins) capables de tromper une IA qui ne lirait pas les bons points de vérité
 - plusieurs documents historiques (`ROADMAP.md`, `DEBATE.md`, parties de `PROJECT.md`, parties de `codex.md`) décrivent un Noema plus cohérent, plus branché ou plus ancien que le runtime actuel
 
-Ce que Noema est réellement aujourd'hui (post Sprint 4) :
-- `réel`: auth, accès backend verrouillé (entitlement admin/sub/invite), quota backend unique, chat, mémoire inter-sessions, snapshots, Mapping, onboarding, admin panel partiel
+Ce que Noema est réellement aujourd'hui (post Sprint 11) :
+- `réel`: auth, accès backend verrouillé (entitlement admin/sub/invite), quota backend unique, chat, mémoire inter-sessions, snapshots, Mapping, onboarding, premiere phase visible dans l'UI, premiers signaux cross-sessions, premiere couche `Zen`, admin panel partiel
 - `partiel`: Greffier comme moteur secondaire de persistance, billing post-checkout (Success plus fiable mais toujours dépendant du webhook), `invites.user_id` linkage (migration à exécuter en prod), documentation globale du projet
 - `mocké`: partie du discours "rituel quotidien" et "journal guidé par Noema" (le journal guidé est maintenant réel, mais le rituel reste partiel)
 - `legacy`: `App.original.jsx`, `prompt-greffier.js`, une partie de `access_codes`, les commentaires Greffier sur `user_insights` / `ikigai_state`
 
 Écart résiduel Sprint 1 :
 - `invites.user_id` : la colonne doit être ajoutée en prod via la migration SQL (commentée dans `supabase-schema.sql`)
-- les utilisateurs beta existants (sessionStorage invite) seront liés en DB lors de leur prochaine session via le fire-and-forget dans `useSubscriptionAccess.js`
+- les utilisateurs beta existants peuvent toujours transporter leur token via `sessionStorage`, mais l'acces `invite` n'est plus ouvert tant que le linkage DB n'est pas confirmé
 - tant que la migration n'est pas exécutée, le check invite dans `claude.js` ne trouve rien → accès refusé pour les betas → risque à gérer avant déploiement
 
 ## 2. Vue d'ensemble des écarts
@@ -155,11 +161,11 @@ Billing:
 | Domaine | Vision / promesse | Runtime réel | Etat |
 |---|---|---|---|
 | Mémoire | continuité totale | `forces`, `blocages`, `contradictions`, `ikigai`, `step` injectés — mid-session live via `updateMemoryRef` | réel (Sprint 3) |
-| Guide quotidien | journal guidé + rituel du jour | `JournalPage` lit/écrit `journal_entries` Supabase, pré-rempli avec `next_action` ; `TodayPage` consomme `next_action` live + charge dernière entrée journal | réel (Sprint 5) |
-| Cartographie | miroir vivant de progression | Mapping branché au `_ui`, preuve produit maintenant différentielle (`Nouveau` / `Confirme` / `Revient` / `A poursuivre`) | réel mais partiel |
+| Guide quotidien | journal guidé + rituel du jour | `JournalPage` lit/écrit `journal_entries` Supabase, pré-rempli avec `next_action` ; `TodayPage` consomme `next_action` live + charge dernière entrée journal ; premier rituel `Zen` branché | réel mais partiel |
+| Cartographie | miroir vivant de progression | Mapping branché au `_ui`, preuve produit différentielle + premiere couche `Progression vivante` | réel mais partiel |
 | Paiement -> accès | activation claire après paiement | vérité dans `subscriptions`, relue par `Success`, avec état d'attente si webhook non synchronisé | partiel |
 | Session | 25 messages / session | 25/jour serveur + garde-fou local 30/min, `session_count` désormais incrémenté une seule fois par session live | partiel |
-| Phase 2 | bascule guide -> stratège | prompt la décrit, UI ne l'incarne presque pas | partiel |
+| Phase 2 | bascule guide -> stratège | une premiere lecture de phase est visible dans la nav, le chat et le mapping, mais le basculement reste encore leger | partiel |
 
 Références:
 - `src/constants/prompt.js:57-66`, `src/constants/prompt.js:95-137`

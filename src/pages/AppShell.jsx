@@ -5,6 +5,8 @@ import { QUOTES } from "../constants/prompt";
 import { applyTheme, mapEtat } from "../constants/themes";
 import { getTime, parseUI, stripUI, trimHistory } from "../utils/helpers";
 import { buildProofState, buildProofUpdateLabel, buildReturnVisitState } from "../lib/productProof";
+import { getPhaseState } from "../lib/phaseState";
+import { buildProgressSignals } from "../lib/progressionSignals";
 import ChatPage      from "./ChatPage";
 import MappingPage   from "./MappingPage";
 import JournalPage   from "./JournalPage";
@@ -33,6 +35,12 @@ function buildRestartContinuity() {
   };
 }
 
+function mergeRecentSessions(previous, nextSession) {
+  const existing = Array.isArray(previous) ? previous : [];
+  const merged = [nextSession, ...existing.filter((session) => session?.id !== nextSession.id)];
+  return merged.slice(0, 5);
+}
+
 // ─────────────────────────────────────────────────────────────
 // APP SHELL — Composant principal : chat + panneaux latéraux
 // Sections :
@@ -48,6 +56,7 @@ function buildRestartContinuity() {
 //  10. RENDER
 // ─────────────────────────────────────────────────────────────
 export default function AppShell({ onNav, user, initialTab = "chat", onTabChange, accessState = null }) {
+  const NAV_HEIGHT = 88;
   // ── 1. STATE & REFS ──────────────────────────────────────────
   const [msgs,     setMsgs]     = useState([]);
   const [input,    setInput]    = useState("");
@@ -61,6 +70,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   const [sessionNote, setSessionNote] = useState("");
   const [continuityMode, setContinuityMode] = useState("welcome");
   const [lastSessionSnapshot, setLastSessionSnapshot] = useState(null);
+  const [recentSessions, setRecentSessions] = useState([]);
   const [quotaState, setQuotaState] = useState(() => accessState?.quota || null);
 
   const history         = useRef([]);
@@ -113,6 +123,20 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
       : buildWelcomeContinuity();
   }, [continuityMode, insights, lastSessionSnapshot, nextAction, sessionNote, step]);
 
+  const phaseContext = useMemo(() => getPhaseState(step), [step]);
+  const progressSignals = useMemo(
+    () => buildProgressSignals({
+      sessions: recentSessions,
+      current: {
+        insights,
+        next_action: nextAction,
+        session_note: sessionNote,
+        step,
+      },
+    }),
+    [insights, nextAction, recentSessions, sessionNote, step]
+  );
+
   // ── 2. OPENING MESSAGE ───────────────────────────────────────
   async function openingMessage() {
     if (hasOpened.current) return;
@@ -152,12 +176,13 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
       if (mem) memoryRef.current = mem;
 
       const { data: sessions, error: sessErr } = await sb.from("sessions")
-        .select("insights,ikigai,step,next_action,session_note")
+        .select("insights,ikigai,step,next_action,session_note,ended_at")
         .eq("user_id", user.id)
         .order("ended_at", { ascending: false })
-        .limit(1);
+        .limit(5);
       if (sessErr) console.error("[Noema] Erreur chargement sessions:", sessErr);
       const last = sessions?.[0];
+      setRecentSessions(Array.isArray(sessions) ? sessions : []);
       if (last) {
         if (last.insights) setInsights(i => ({ ...i, ...last.insights }));
         if (last.ikigai)   setIkigai(k => ({ ...k, ...last.ikigai }));
@@ -371,7 +396,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
         nextAction: nextActionRef.current,
         step: stepRef.current,
       };
-      const { content: raw } = await callAPI();
+      const { content: raw, access, sessionLimit } = await callAPI();
       const ui    = parseUI(raw);
       const clean = stripUI(raw);
       const updateLabel = buildProofUpdateLabel({ ui, previous: previousState });
@@ -381,7 +406,15 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
         (ui.forces?.length > 0) || (ui.ikigai && Object.values(ui.ikigai).some(v => v)) ||
         (ui.contradictions?.length > 0) || (ui.blocages?.racine)
       );
-      setMsgs(m => [...m, {role:"noema", text:clean, time:streamTime, hasUpdate, updateLabel}]);
+      setMsgs(m => [...m, {
+        role:"noema",
+        text:clean,
+        time:streamTime,
+        hasUpdate,
+        updateLabel,
+        isErr: sessionLimit,
+        accessTier: access?.tier || null,
+      }]);
       history.current.push({role:"assistant", content:raw});
     } catch(e) {
       setMsgs(m => [...m, {role:"noema", text:"Une erreur est survenue. Réessaie dans un instant.", time:streamTime, isErr:true}]);
@@ -410,6 +443,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
     // Avant : insert → plusieurs lignes incohérentes par session. Après : une seule ligne par session.
     const { error: insErr } = await sb.from("sessions").upsert(sessionData, { onConflict: "id" });
     if (insErr) { console.error("[Noema] Erreur upsert session:", insErr); return; }
+    setRecentSessions((prev) => mergeRecentSessions(prev, sessionData));
 
     const { data: mem, error: memErr } = await sb.from("memory").select("*").eq("user_id", user.id).maybeSingle();
     if (memErr) console.error("[Noema] Erreur lecture memory:", memErr);
@@ -490,6 +524,8 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
             insights={insights}
             ikigai={ikigai}
             step={step}
+            phaseContext={phaseContext}
+            progressSignals={progressSignals}
           />
         );
       case "journal":
@@ -513,6 +549,8 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
             quota={quotaState}
             onJournal={() => changeTab("journal")}
             onChat={() => changeTab("chat")}
+            phaseContext={phaseContext}
+            progressSignals={progressSignals}
           />
         );
       default: // chat
@@ -533,6 +571,8 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
             proofState={proofState}
             quota={quotaState}
             onPricing={() => onNav("pricing")}
+            phaseContext={phaseContext}
+            bottomInset={NAV_HEIGHT}
           />
         );
     }
@@ -563,15 +603,45 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
         bottom: 0,
         left: 0,
         right: 0,
-        height: 72,
+        height: NAV_HEIGHT,
         backgroundColor: "#111318",
-        borderTop: "1px solid rgba(69,70,85,0.2)",
+        borderTop: `1px solid ${phaseContext.border}`,
         display: "flex",
-        alignItems: "stretch",
+        flexDirection: "column",
         zIndex: 100,
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
+        boxShadow: `0 -12px 32px rgba(0,0,0,0.24), inset 0 1px 0 ${phaseContext.accentSoft}`,
       }}>
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          padding: "8px 16px 4px",
+          borderBottom: "1px solid rgba(255,255,255,0.04)",
+        }}>
+          <span style={{
+            fontSize: "0.58rem",
+            letterSpacing: "0.16em",
+            textTransform: "uppercase",
+            color: phaseContext.accent,
+            fontWeight: 700,
+          }}>
+            {phaseContext.navLabel}
+          </span>
+          <span style={{
+            fontSize: "0.62rem",
+            color: "#c5c5d8",
+          }}>
+            {phaseContext.paceLabel}
+          </span>
+        </div>
+        <div style={{
+          display: "flex",
+          alignItems: "stretch",
+          flex: 1,
+        }}>
         {NAV_TABS.map(tab => {
           const active = activeTab === tab.id;
           return (
@@ -586,7 +656,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
                 justifyContent: "center",
                 gap: 4,
                 border: "none",
-                background: active ? "rgba(91,108,255,0.15)" : "none",
+                background: active ? phaseContext.accentSoft : "none",
                 cursor: "pointer",
                 borderRadius: 0,
                 transition: "background 0.2s",
@@ -597,7 +667,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
                 className="material-symbols-outlined"
                 style={{
                   fontSize: "1.375rem",
-                  color: active ? "#bdc2ff" : "#454655",
+                  color: active ? phaseContext.accent : "#454655",
                   fontVariationSettings: active
                     ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24"
                     : "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24",
@@ -608,13 +678,14 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
                 fontSize: "0.65rem",
                 fontFamily: "'Plus Jakarta Sans', sans-serif",
                 fontWeight: active ? 600 : 400,
-                color: active ? "#bdc2ff" : "#454655",
+                color: active ? phaseContext.accent : "#454655",
                 letterSpacing: "0.03em",
                 transition: "color 0.2s",
               }}>{tab.lbl}</span>
             </button>
           );
         })}
+        </div>
       </nav>
     </div>
   );

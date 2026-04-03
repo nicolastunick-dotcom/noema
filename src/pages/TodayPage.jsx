@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { buildImpactStats, buildReturnVisitState } from "../lib/productProof";
+import PhaseSignal from "../components/PhaseSignal";
+import { buildZenRitual } from "../lib/progressionSignals";
 
 // ─────────────────────────────────────────────────────────────
 // TODAY PAGE — Rituel quotidien
@@ -28,7 +30,7 @@ const TODAY_ISO = new Date().toISOString().slice(0, 10);
 
 const FALLBACK_QUESTION = "Qu'est-ce que tu évites de regarder en face depuis quelques jours ?";
 
-export default function TodayPage({ user, sb, nextAction = "", sessionNote = "", onJournal, onChat, proofState, quota }) {
+export default function TodayPage({ user, sb, nextAction = "", sessionNote = "", onJournal, onChat, proofState, quota, phaseContext, progressSignals }) {
   const [lastJournalEntry, setLastJournalEntry] = useState(null); // { content, next_action, entry_date }
   const [latestSession, setLatestSession] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -152,6 +154,16 @@ export default function TodayPage({ user, sb, nextAction = "", sessionNote = "",
     [intentionSource, latestSession, sessionNote]
   );
 
+  const zenRitual = useMemo(
+    () => buildZenRitual({
+      phaseContext,
+      progressSignals,
+      intention: intentionSource,
+      journalEntry: lastJournalEntry,
+    }),
+    [intentionSource, lastJournalEntry, phaseContext, progressSignals]
+  );
+
   const glass = {
     position: "relative", overflow: "hidden", borderRadius: 24,
     background: "rgba(30,31,37,0.4)", backdropFilter: "blur(20px)",
@@ -199,6 +211,10 @@ export default function TodayPage({ user, sb, nextAction = "", sessionNote = "",
           </div>
         ) : (
           <>
+            {phaseContext && (
+              <PhaseSignal phase={phaseContext} />
+            )}
+
             {quota && (
               <div style={{
                 borderRadius: 18,
@@ -373,6 +389,31 @@ export default function TodayPage({ user, sb, nextAction = "", sessionNote = "",
               <div style={{ position:"absolute", bottom:-32, right:-32, width:120, height:120, background:"rgba(189,194,255,0.05)", borderRadius:"50%", filter:"blur(30px)", pointerEvents:"none" }} />
             </div>
 
+            <div style={{
+              ...glass,
+              background: "rgba(18,20,26,0.72)",
+              border: `1px solid ${phaseContext?.border || "rgba(69,70,85,0.1)"}`,
+              boxShadow: `0 20px 40px rgba(0,0,0,0.24), 0 0 36px ${phaseContext?.glow || "rgba(120,134,255,0.12)"}`,
+            }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
+                <span className="material-symbols-outlined" style={{ fontSize:"0.9rem", color:phaseContext?.accent || C.primary, fontVariationSettings:"'FILL' 1, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>
+                  self_improvement
+                </span>
+                <h3 style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"1.15rem", color:phaseContext?.accent || C.primary, margin:0 }}>
+                  {zenRitual.title}
+                </h3>
+              </div>
+              <p style={{ margin:"0 0 12px", fontSize:"0.9rem", lineHeight:1.7, color:C.onSurfaceVariant }}>
+                {zenRitual.intro}
+              </p>
+              <p style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"1.2rem", lineHeight:1.6, color:C.onSurface, margin:"0 0 14px" }}>
+                {zenRitual.prompt}
+              </p>
+              <p style={{ margin:0, fontSize:"0.8rem", lineHeight:1.65, color:"rgba(197,197,216,0.68)" }}>
+                {zenRitual.close}
+              </p>
+            </div>
+
             {/* Card 2 — Question */}
             <div style={{ borderRadius:24, background:C.surfaceContainer, padding:28, display:"flex", flexDirection:"column", gap:20 }}>
               <div>
@@ -423,6 +464,41 @@ export default function TodayPage({ user, sb, nextAction = "", sessionNote = "",
                 <p style={{ fontFamily:"'Instrument Serif', serif", fontStyle:"italic", fontSize:"1.05rem", lineHeight:1.6, color:C.primary, margin:0 }}>
                   {intentionSource}
                 </p>
+              </div>
+            )}
+
+            {progressSignals?.hasRecurringThemes && (
+              <div style={{ ...glass, padding: 24 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize:"0.875rem", color:C.primary, fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>
+                    cycle
+                  </span>
+                  <h3 style={{ fontSize:"0.6rem", letterSpacing:"0.2em", textTransform:"uppercase", color:C.onSurfaceVariant, fontWeight:700, margin:0 }}>
+                    Ce qui revient vraiment
+                  </h3>
+                </div>
+                <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                  {[...progressSignals.recurringBlockages, ...progressSignals.recurringContradictions, ...progressSignals.recurringForces]
+                    .slice(0, 3)
+                    .map((item) => (
+                      <div key={`${item.label}-${item.value}`} style={{
+                        borderRadius: 14,
+                        padding: "14px 16px",
+                        background: "rgba(17,19,24,0.45)",
+                        border: "1px solid rgba(255,255,255,0.05)",
+                      }}>
+                        <p style={{ margin: 0, fontSize: "0.62rem", letterSpacing: "0.18em", textTransform: "uppercase", color: C.outline, fontWeight: 700 }}>
+                          {item.label}
+                        </p>
+                        <p style={{ margin: "8px 0 0", fontSize: "0.88rem", lineHeight: 1.65, color: C.onSurface }}>
+                          {item.value}
+                        </p>
+                        <p style={{ margin: "8px 0 0", fontSize: "0.68rem", color: C.primary }}>
+                          {item.count} sessions
+                        </p>
+                      </div>
+                    ))}
+                </div>
               </div>
             )}
           </>

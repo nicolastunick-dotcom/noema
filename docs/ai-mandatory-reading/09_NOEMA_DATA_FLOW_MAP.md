@@ -89,7 +89,7 @@ Persistance réelle vs support:
 - vérité produit visible: surtout état React local dans `AppShell`, hydraté depuis `sessions` puis mis à jour par le bloc `<_ui>`
 - vérité de continuité conversationnelle: surtout `memory`
 - vérité d'accès payant: `subscriptions`
-- vérité admin: `profiles.is_admin` avec bypass `VITE_ADMIN_EMAIL`
+- vérité admin: `profiles.is_admin`
 - support / observabilité: `api_usage`
 
 Références:
@@ -183,10 +183,9 @@ Références:
 ### 4.2 Résolution d'accès payant/beta/admin
 
 `useSubscriptionAccess()` lit dans cet ordre logique:
-1. rien en base si `VITE_ADMIN_EMAIL` matche déjà l'email du user
-2. `profiles.id, is_admin`
-3. `sessionStorage.noema_invite`
-4. `subscriptions` du user
+1. `profiles.id, is_admin`
+2. `sessionStorage.noema_invite`
+3. `subscriptions` du user
 
 Ce qui alimente réellement l'UI:
 - `access.hasActiveSubscription`
@@ -348,7 +347,7 @@ Références:
 - `upsert` ou `update` `subscriptions` selon le type d'événement Stripe
 
 `create-invite.js`:
-- vérifie admin via `profiles` ou `VITE_ADMIN_EMAIL`
+- vérifie admin via `profiles.is_admin`
 - `insert` `invites`
 
 `validate-invite.js`:
@@ -389,7 +388,7 @@ Chat:
 
 Admin:
 - le serveur décide réellement si un user est admin
-- cette décision repose sur `profiles.is_admin` ou un fallback email
+- cette décision repose sur `profiles.is_admin`
 
 Invites:
 - le serveur sait créer et valider des tokens
@@ -419,12 +418,11 @@ L'accès à `/app/*` est décidé par `App.jsx` + `useSubscriptionAccess()`, pas
 
 Ordre réel:
 1. être authentifié
-2. si `VITE_ADMIN_EMAIL` matche, accès accordé
-3. sinon, si `profiles.is_admin === true`, accès accordé
-4. sinon, si `sessionStorage.noema_invite` est présent et lié à ce user, accès accordé
-5. sinon, si une ligne `subscriptions` a `status in ["active", "trialing"]`, accès accordé
-6. sinon, redirect `/pricing`
-7. si accès accordé, lecture `memory.onboarding_done` pour décider `/onboarding`
+2. si `profiles.is_admin === true`, accès accordé
+3. sinon, si `sessionStorage.noema_invite` est présent, le frontend tente un linkage DB puis n'accorde l'accès qu'après confirmation backend/base
+4. sinon, si une ligne `subscriptions` a `status in ["active", "trialing"]`, accès accordé
+5. sinon, redirect `/pricing`
+6. si accès accordé, lecture `memory.onboarding_done` pour décider `/onboarding`
 
 Références:
 - `src/App.jsx:166-207`

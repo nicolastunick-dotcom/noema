@@ -32,9 +32,9 @@ Techniquement, c'est :
 - une preuve produit différentielle visible dans Chat et Today
 - une direction produit actée : `Today` doit évoluer en `Zen` sans perdre sa base runtime
 
-Etat réel du produit aujourd'hui (post-Sprint 8) :
-- `réel`: auth, signup, reset password, invite beta, paywall, checkout, webhook Stripe, chat, mémoire inter-sessions, mapping, onboarding, trial layer, proof layer, journal réel, today réel, bloc de reprise visible, admin panel partiel
-- `partiel`: Greffier (enrichit la mémoire, ne pilote pas le Mapping), billing global, Phase 2 visible dans l'UI (dans le prompt mais pas dans les surfaces)
+Etat réel du produit aujourd'hui (post-Sprint 11) :
+- `réel`: auth, signup, reset password, invite beta, paywall, checkout, webhook Stripe, chat, mémoire inter-sessions, mapping, onboarding, trial layer, proof layer, journal réel, today reel, bloc de reprise visible, lecture de phase visible, signaux cross-sessions, trajectoire visible, premier rituel `Zen`, admin panel partiel
+- `partiel`: Greffier (enrichit la mémoire, ne pilote pas le Mapping), billing global, incarnation profonde de la phase dans toute l'UX, progression longitudinale encore simple, finalisation du linkage invite en prod
 - `mocké`: offre Pro
 - `mort / legacy`: `src/App.original.jsx`, `src/constants/prompt-greffier.js`, plusieurs composants de panneaux latéraux, une partie de la logique `access_codes`
 
@@ -52,9 +52,10 @@ Les 4 phases du parcours utilisateur (vision cible) :
 4. **Agir** — coaching d'action, accountability, réussite mesurable
 
 Limites structurantes actuelles :
-- la Phase 2 du prompt (Le Stratège) existe et fonctionne, mais l'UI ne la distingue pas encore visuellement
-- le Mapping est un miroir d'état courant, pas encore de progression cross-sessions
-- la détection de schémas répétitifs cross-sessions n'est pas encore implémentée
+- une premiere lecture de phase est visible dans l'UI, mais le passage `Guide -> Stratege` reste encore leger et surtout signaletique
+- le Mapping embarque maintenant une couche `Progression vivante`, mais n'est pas encore un vrai miroir longitudinal complet
+- la détection de schémas répétitifs cross-sessions existe maintenant, mais elle reste encore heuristique
+- la vérité d'accès est presque alignée entre frontend et backend, mais depend encore de `invites.user_id` en prod et d'un bypass admin legacy
 - la notion de "session" persistée est un snapshot, pas un objet session live arbitrairement stable
 
 ## 2. Vue système globale
@@ -64,11 +65,11 @@ Limites structurantes actuelles :
 | Couche | Fichiers centraux | Rôle réel | Etat |
 |---|---|---|---|
 | Routage + garde d'accès | `src/App.jsx`, `src/lib/access.js` | Auth, paywall, onboarding, navigation SPA | réel |
-| App privée | `src/pages/AppShell.jsx`, `src/lib/entitlements.js`, `src/lib/productProof.js` | Orchestration chat, mémoire, quota trial/full, preuve produit, save session, tabs | réel |
-| UI chat | `src/pages/ChatPage.jsx` | Affichage messages + saisie + essai gratuit + preuve visible + CTA pricing | réel |
-| Mapping | `src/pages/MappingPage.jsx` | Lecture visuelle de `insights`, `ikigai`, `step` | réel |
+| App privée | `src/pages/AppShell.jsx`, `src/lib/entitlements.js`, `src/lib/productProof.js`, `src/lib/phaseState.js`, `src/lib/progressionSignals.js` | Orchestration chat, mémoire, quota trial/full, preuve produit, lecture de phase, signaux cross-sessions, save session, tabs | réel |
+| UI chat | `src/pages/ChatPage.jsx`, `src/components/PhaseSignal.jsx` | Affichage messages + saisie + essai gratuit + preuve visible + phase actuelle + CTA pricing | réel |
+| Mapping | `src/pages/MappingPage.jsx`, `src/components/PhaseSignal.jsx` | Lecture visuelle de `insights`, `ikigai`, `step`, phase visible, progression vivante | réel |
 | Journal | `src/pages/JournalPage.jsx` | Lecture/écriture `journal_entries` Supabase, pré-rempli avec `next_action` session | réel (Sprint 5) |
-| Today | `src/pages/TodayPage.jsx` | Consomme `next_action` live depuis AppShell + charge dernière entrée journal + expose impact/proof ; socle de transition vers `Zen` | réel |
+| Today | `src/pages/TodayPage.jsx` | Consomme `next_action` live depuis AppShell + charge dernière entrée journal + expose impact/proof ; premier rituel `Zen` et lecture cross-sessions | réel |
 | Supabase client | `src/lib/supabase.js` | Client Supabase + construction de contexte mémoire | réel |
 | IA principale | `netlify/functions/claude.js` | Vérif JWT, résolution du tier d'accès, quota serveur, appel Anthropic, lancement Greffier | réel |
 | Greffier | `netlify/functions/greffier.js` | Extraction secondaire Haiku + écritures DB partielles | partiel |
@@ -483,15 +484,15 @@ Sessions:
 ### 6.4 Billing / accès
 
 Vérité principale:
-- `subscriptions` lue par `useSubscriptionAccess()`
+- `claude.js` résout le tier final côté backend
+- `useSubscriptionAccess()` s'aligne sur la même logique côté frontend
 
-Bypass:
-- `VITE_ADMIN_EMAIL`
-- `sessionStorage.noema_invite`
+Transitoires:
+- `sessionStorage.noema_invite` pour transporter le token avant linkage
 
 Conséquence:
-- il n'y a pas un seul point de vérité d'accès
-- il y a une vérité principale + deux contournements assumés
+- l'invite locale ne donne plus l'accès à elle seule
+- le sujet restant est surtout opérationnel : migration `invites.user_id` en prod + verification des profils admin
 
 ### 6.5 `access_codes`: état réel
 
@@ -515,8 +516,8 @@ Conclusion:
 
 Responsabilités:
 - lecture `profiles`
-- fallback admin via `VITE_ADMIN_EMAIL`
-- lecture `sessionStorage.noema_invite`
+- lecture du statut admin via `profiles.is_admin`
+- lecture `sessionStorage.noema_invite` pour transporter le token invite avant confirmation backend/base
 - lecture `subscriptions`
 - synthèse `hasActiveSubscription`, `isAdmin`, `subscription`, `profile`
 
@@ -776,7 +777,6 @@ Legacy:
 Frontend:
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
-- `VITE_ADMIN_EMAIL`
 - `DEV`
 
 Backend:
@@ -788,7 +788,6 @@ Backend:
 - `ADMIN_CODES`
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
-- `VITE_ADMIN_EMAIL`
 
 ### 12.3 Fonctions backend
 

@@ -324,9 +324,6 @@ export default function AdminPanel({ user, sb, accessState, history, lastGreffie
             <div>
               <p style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: C.primary, margin: 0 }}>Panneau Admin</p>
               <p style={{ fontSize: "0.65rem", color: C.outline, margin: "3px 0 0" }}>{user.email}</p>
-              {adminSource === "legacy_email" && (
-                <p style={{ fontSize: "0.58rem", color: C.tertiary, margin: "4px 0 0" }}>Accès transitoire via email</p>
-              )}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 9999, background: "rgba(189,194,255,0.06)", border: "1px solid rgba(69,70,85,0.3)" }}>
               <span className="material-symbols-outlined" style={{ fontSize: "0.75rem", color: C.outline, fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>tag</span>

@@ -77,8 +77,6 @@ async function getVerifiedUser(request, sbAdmin) {
 }
 
 async function getAdminAccess(sbAdmin, user) {
-  const legacyAdminEmail = process.env.VITE_ADMIN_EMAIL || "";
-
   try {
     const { data } = await sbAdmin
       .from("profiles")
@@ -91,10 +89,6 @@ async function getAdminAccess(sbAdmin, user) {
     }
   } catch (error) {
     console.error("[admin-tools] Erreur lecture profil admin:", error.message);
-  }
-
-  if (legacyAdminEmail && user.email === legacyAdminEmail) {
-    return { isAdmin: true, source: "legacy_email" };
   }
 
   return { isAdmin: false, source: null };

@@ -55,16 +55,16 @@ Son principal retard n'est plus l'absence de briques, mais l'écart entre :
 | Auth | réel | Supabase Auth, email/password, reset password, Google OAuth côté code |
 | Onboarding | réel | basé sur `memory.onboarding_done` |
 | Chat | réel | appel backend `claude.js`, mémoire et snapshots branchés |
-| Mapping | réel mais dépendant du chat | pas de moteur autonome, pas de progression historique |
+| Mapping | réel | depend du chat mais affiche maintenant une trajectoire visible et une premiere couche de progression cross-sessions |
 | Journal | réel | `journal_entries` lecture/écriture Supabase |
-| Aujourd'hui | réel | relié à `next_action`, dernière session et dernier journal ; doit évoluer en `Zen` |
+| Aujourd'hui | réel evolutif | relie a `next_action`, derniere session et dernier journal ; embarque un premier rituel `Zen` |
 | Trial | réel | tout utilisateur authentifié sans abonnement actif devient `trial` |
 | Quota | réel | backend autoritaire : `8/jour` trial, `25/jour` full |
 | Billing | réel | checkout, webhook, `subscriptions`, page `Success` |
-| Invites | partiel | backend sur table `invites`, frontend encore sur `sessionStorage` |
-| Admin | partiel | `profiles.is_admin` + fallback email legacy |
+| Invites | partiel | `sessionStorage` transporte encore le token, mais l'acces `invite` n'est plus accorde sans confirmation backend/base |
+| Admin | réel | `profiles.is_admin` est la source de vérité runtime |
 | Greffier | partiel | enrichit mémoire/observabilité, ne pilote pas directement l'UI |
-| Phase Stratège visible | partiel | présente dans le prompt, peu visible dans l'UI |
+| Phase Stratège visible | réel initial | lecture emotionnelle derivee de `step`, visible dans `AppShell`, `Chat` et `Mapping`, encore a densifier |
 | `semantic_memory` | non branché | table et RPC présentes, runtime absent |
 | Tests automatisés | absents | `npm test` ne trouve aucun fichier de test |
 
@@ -78,6 +78,8 @@ Son principal retard n'est plus l'absence de briques, mais l'écart entre :
 - Le mapping visible vient du modèle principal, pas du Greffier.
 - Le journal n'est plus une simple promesse : il persiste réellement.
 - `Aujourd'hui` n'est plus statique : il consomme des données réelles.
+- La phase actuelle est maintenant visible dans l'experience, meme si elle reste encore legere.
+- Une lecture cross-sessions alimente maintenant le prompt, le mapping et `Aujourd'hui`, avec une premiere trajectoire visible.
 - La prochaine évolution produit retenue est : `Aujourd'hui` devient `Zen` sans perdre ce runtime.
 - L'abonnement sert à continuer l'expérience après la découverte gratuite.
 
@@ -91,8 +93,8 @@ Son principal retard n'est plus l'absence de briques, mais l'écart entre :
 
 ### Prudence
 
-- Le frontend et le backend n'utilisent pas encore exactement la même vérité pour les invites.
-- Le bypass admin par email legacy existe encore.
+- Le flux invite n'accorde plus l'acces depuis `sessionStorage` seul, mais depend encore du linkage `invites.user_id` en base.
+- Le statut admin repose maintenant sur `profiles.is_admin`.
 - Le repo contient encore des reliquats legacy :
   - `src/App.original.jsx`
   - `src/constants/prompt-greffier.js`
@@ -101,20 +103,20 @@ Son principal retard n'est plus l'absence de briques, mais l'écart entre :
 
 ## Écarts majeurs encore ouverts
 
-1. **Phase produit vs phase visible**
-Le prompt sait déjà opérer en logique `Guide/Stratège`, mais l'utilisateur ne voit pas encore clairement ce basculement.
+1. **Phase visible encore trop légère**
+Le produit montre maintenant une lecture emotionnelle `Perdu -> Guide -> Stratege`, mais la bascule reste encore plus signalee qu'incarnee.
 
-2. **Cross-session trop faible**
-La mémoire existe, mais Noema ne ramène pas encore explicitement les schémas récurrents à l'écran.
+2. **Cross-session encore trop léger**
+Noema commence a faire remonter une trajectoire et des motifs recurrents, mais la lecture reste encore simple et peu proactive.
 
-3. **Mapping encore trop instantané**
-Il affiche surtout l'état courant et pas encore une vraie progression dans le temps.
+3. **Mapping encore insuffisamment longitudinal**
+Une couche de progression existe, mais le mapping reste encore majoritairement centre sur l'etat courant.
 
-4. **`Aujourd'hui` n'est pas encore `Zen`**
-La base de continuité est là, mais la surface ne propose pas encore le vrai moment de recentrage, d'exercice adapté ou de calme personnalisé décrit dans `NOEMA_VISION2.md`.
+4. **`Aujourd'hui` n'est encore qu'un premier `Zen`**
+La surface propose maintenant un premier rituel adapte, mais elle n'incarne pas encore completement la page `Zen` de `NOEMA_VISION2.md`.
 
-5. **Accès encore hybride**
-Le backend vérifie `invites` en base, mais le frontend s'appuie encore sur `sessionStorage` pour la logique invite.
+5. **Accès encore transitoire**
+Le frontend ne donne plus l'invite sans confirmation backend, mais le flux depend encore de `invites.user_id` en prod.
 
 6. **Documentation encore éclatée**
 Les docs système sont utiles, mais plusieurs `.md` historiques peuvent encore induire en erreur si on ne lit pas `MASTER.md` et `docs/system/`.
@@ -123,12 +125,12 @@ Les docs système sont utiles, mais plusieurs `.md` historiques peuvent encore i
 
 ## Priorités actuelles
 
-1. Unifier complètement la vérité d'accès entre frontend et backend.
-2. Rendre la phase `Stratège` visible dans l'UI.
-3. Ajouter une vraie détection des patterns cross-sessions.
-4. Transformer le mapping en miroir de progression.
-5. Transformer `Aujourd'hui` en `Zen` en gardant la continuité déjà branchée.
-6. Renforcer encore la continuité entre `Chat`, `Journal` et `Zen`.
+1. Finaliser la vérité d'accès en prod (`invites.user_id` + verification des admins dans `profiles.is_admin`).
+2. Approfondir la détection des patterns cross-sessions.
+3. Transformer le mapping en miroir de progression.
+4. Transformer `Aujourd'hui` en `Zen` en gardant la continuité déjà branchée.
+5. Renforcer encore la continuité entre `Chat`, `Journal` et `Zen`.
+6. Approfondir la phase visible dans toute l'expérience.
 7. Supprimer les reliquats hybrides et legacy qui brouillent la lecture du système.
 
 ---

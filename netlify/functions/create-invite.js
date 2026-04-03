@@ -57,8 +57,7 @@ export default async function handler(request) {
     .eq("id", verifiedUser.id)
     .maybeSingle();
 
-  const adminEmail = process.env.VITE_ADMIN_EMAIL || "";
-  const isAdmin = profile?.is_admin === true || (adminEmail && verifiedUser.email === adminEmail);
+  const isAdmin = profile?.is_admin === true;
   if (!isAdmin) return json({ error: "Forbidden" }, 403);
 
   const inviteToken = generateToken();

@@ -15,3 +15,11 @@ Ordre :
 9. `09_NOEMA_DATA_FLOW_MAP.md`
 
 Les fichiers d'origine restent à leur emplacement initial.
+
+Note de pilotage :
+
+- `01_MASTER.md` contient maintenant la trajectoire produit officielle alignée sur `NOEMA_VISION2.md`
+- `02_PROJECT.md` contient l'état actuel et la prochaine étape recommandée
+- le Sprint 1 est lance : la phase est maintenant visible de facon initiale dans le runtime
+- la suite a aussi demarre : signaux cross-sessions, trajectoire visible, progression vivante et premiere couche `Zen`
+- la verite d'acces est presque alignee : l'invite locale ne donne plus l'acces sans confirmation backend/base

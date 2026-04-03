@@ -2,6 +2,7 @@
 // Proxy sécurisé — la clé API Anthropic ne passe jamais côté client
 import { NOEMA_SYSTEM } from '../../src/constants/prompt.js'
 import { buildQuotaState, getDailyLimitForTier, isTrialTier, resolveAccessTier } from '../../src/lib/entitlements.js'
+import { buildProgressPromptContext } from '../../src/lib/progressionSignals.js'
 import { runGreffier } from './greffier.js'
 import { createClient } from '@supabase/supabase-js'
 
@@ -82,15 +83,7 @@ export default async (request) => {
     isAdmin = true
   }
 
-  // 2. Bypass admin email legacy (transitoire — à retirer une fois profiles.is_admin généralisé)
-  if (!isAdmin) {
-    const adminEmail = process.env.VITE_ADMIN_EMAIL || ''
-    if (adminEmail && verifiedUser.email === adminEmail) {
-      isAdmin = true
-    }
-  }
-
-  // 3. Abonnement actif ou en période d'essai
+  // 2. Abonnement actif ou en période d'essai
   if (!isAdmin) {
     const { data: sub } = await sbAdmin
       .from('subscriptions')
@@ -101,7 +94,7 @@ export default async (request) => {
     if (sub) hasSubscription = true
   }
 
-  // 4. Invite beta liée en base (persistée via validate-invite.js avec JWT)
+  // 3. Invite beta liée en base (persistée via validate-invite.js avec JWT)
   if (!isAdmin && !hasSubscription) {
     const { data: invite } = await sbAdmin
       .from('invites')
@@ -124,7 +117,7 @@ export default async (request) => {
   // memory  → forces, blocages, contradictions, ikigai, session_notes
   // sessions → step (absent de la table memory — pas de migration SQL requise)
   let serverMemoryContext = ''
-  const [{ data: memRow }, { data: lastSessionRow }] = await Promise.all([
+  const [{ data: memRow }, { data: lastSessionRow }, { data: recentSessions }, { data: lastJournalEntry }] = await Promise.all([
     sbAdmin
       .from('memory')
       .select('forces, contradictions, blocages, ikigai, session_notes, session_count')
@@ -137,10 +130,24 @@ export default async (request) => {
       .order('ended_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
+    sbAdmin
+      .from('sessions')
+      .select('insights, next_action, session_note, step, ended_at')
+      .eq('user_id', userId)
+      .order('ended_at', { ascending: false })
+      .limit(5),
+    sbAdmin
+      .from('journal_entries')
+      .select('content, entry_date, next_action')
+      .eq('user_id', userId)
+      .order('entry_date', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ])
   if (memRow || lastSessionRow) {
     serverMemoryContext = buildServerMemoryContext(memRow, lastSessionRow?.step ?? null)
   }
+  serverMemoryContext += buildProgressPromptContext({ sessions: recentSessions || [], journalEntry: lastJournalEntry || null })
 
   try {
     const body = await request.json()

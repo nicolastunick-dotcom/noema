@@ -22,8 +22,6 @@ const INITIAL_STATE = {
   error: null,
 };
 
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || "";
-
 export function useSubscriptionAccess(user) {
   const [state, setState] = useState(INITIAL_STATE);
 
@@ -35,31 +33,10 @@ export function useSubscriptionAccess(user) {
       return noUserState;
     }
 
-    if (ADMIN_EMAIL && user.email === ADMIN_EMAIL) {
-      const accessTier = resolveAccessTier({ isAuthenticated: true, isAdmin: true });
-      const adminState = {
-        loading: false,
-        hasActiveSubscription: false,
-        hasFullAccess: true,
-        hasProductAccess: true,
-        accessTier,
-        subscription: { status: "active", plan: "admin" },
-        records: [],
-        isAdmin: true,
-        adminSource: "legacy_email",
-        profile: null,
-        quota: buildQuotaState({ tier: accessTier, used: 0 }),
-        error: null,
-      };
-      setState(adminState);
-      return adminState;
-    }
-
     if (!sb) {
-      const hasLegacyAdminAccess = Boolean(ADMIN_EMAIL && user.email === ADMIN_EMAIL);
       const accessTier = resolveAccessTier({
         isAuthenticated: true,
-        isAdmin: hasLegacyAdminAccess,
+        isAdmin: false,
       });
       const nextState = {
         loading: false,
@@ -67,10 +44,10 @@ export function useSubscriptionAccess(user) {
         hasFullAccess: isFullAccessTier(accessTier),
         hasProductAccess: hasProductAccessForTier(accessTier),
         accessTier,
-        subscription: hasLegacyAdminAccess ? { status: "active", plan: "admin" } : null,
+        subscription: null,
         records: [],
-        isAdmin: hasLegacyAdminAccess,
-        adminSource: hasLegacyAdminAccess ? "legacy_email" : null,
+        isAdmin: false,
+        adminSource: null,
         profile: null,
         quota: buildQuotaState({ tier: accessTier, used: 0 }),
         error: "SUPABASE_UNAVAILABLE",
@@ -82,8 +59,8 @@ export function useSubscriptionAccess(user) {
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
     let profile = null;
-    let isAdmin = Boolean(ADMIN_EMAIL && user.email === ADMIN_EMAIL);
-    let adminSource = isAdmin ? "legacy_email" : null;
+    let isAdmin = false;
+    let adminSource = null;
     let hasInvite = false;
     let subscription = null;
     let records = [];
@@ -106,10 +83,9 @@ export function useSubscriptionAccess(user) {
     }
 
     // ── Invite beta ────────────────────────────────────────────────
-    // Sprint 1 : source de vérité = table invites (user_id lié).
-    // Fallback : sessionStorage (utilisateurs existants pas encore liés en base).
-    // Lorsque sessionStorage invite est présent, on tente de le persister en base via
-    // validate-invite (avec JWT) pour que le backend puisse vérifier l'entitlement.
+    // Source de vérité d'accès : table invites liée en base.
+    // sessionStorage sert uniquement à transporter le token entre l'écran d'invite
+    // et la première session authentifiée, jamais à accorder l'accès à lui seul.
 
     // 1. Vérification en base (source de vérité après linkage)
     if (!isAdmin) {
@@ -126,52 +102,69 @@ export function useSubscriptionAccess(user) {
       }
     }
 
-    // 2. Fallback sessionStorage + tentative de persistance en base
+    // 2. Transport token sessionStorage + tentative de persistance en base
     const inviteRaw = !isAdmin && !hasInvite ? sessionStorage.getItem("noema_invite") : null;
     if (inviteRaw && !hasInvite) {
       let invite;
       try { invite = JSON.parse(inviteRaw); } catch { invite = { token: inviteRaw }; }
 
-      // Lier à cet utilisateur dans sessionStorage si pas encore fait
       if (!invite.userId) {
         invite.userId = user.id;
         sessionStorage.setItem("noema_invite", JSON.stringify(invite));
       }
 
-      if (invite.userId === user.id) {
-        // Persister le lien en base pour que le backend (claude.js) puisse vérifier l'entitlement
-        if (invite.token) {
-          // Sprint 1.1 : linkage ATTENDU (plus fire-and-forget).
-          // invites.user_id doit être lié AVANT que loading passe à false,
-          // sinon claude.js ne trouve pas l'entitlement et retourne 403 sur openingMessage().
-          try {
-            const { data: { session: authSession } } = await sb.auth.getSession();
-            if (authSession?.access_token) {
-              const baseUrl = import.meta.env.VITE_NETLIFY_URL || window.location.origin;
-              const res = await fetch(`${baseUrl}/.netlify/functions/validate-invite`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "Authorization": `Bearer ${authSession.access_token}`,
-                },
-                body: JSON.stringify({ token: invite.token }),
-              });
-              if (!res.ok) {
-                const errText = await res.text().catch(() => String(res.status));
-                console.error("[Noema] Invite linkage HTTP error:", errText);
+      if (invite.userId === user.id && invite.token) {
+        try {
+          const { data: { session: authSession } } = await sb.auth.getSession();
+
+          if (!authSession?.access_token) {
+            if (!errorMessage) errorMessage = "INVITE_AUTH_REQUIRED";
+          } else {
+            const baseUrl = import.meta.env.VITE_NETLIFY_URL || window.location.origin;
+            const res = await fetch(`${baseUrl}/.netlify/functions/validate-invite`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${authSession.access_token}`,
+              },
+              body: JSON.stringify({ token: invite.token }),
+            });
+
+            if (!res.ok) {
+              const errText = await res.text().catch(() => String(res.status));
+              console.error("[Noema] Invite linkage HTTP error:", errText);
+              if (!errorMessage) errorMessage = "INVITE_LINK_FAILED";
+            } else {
+              const inviteResult = await res.json().catch(() => null);
+
+              if (!inviteResult?.valid) {
+                sessionStorage.removeItem("noema_invite");
+                if (!errorMessage) errorMessage = "INVITE_INVALID";
               } else {
-                console.log("[Noema] Invite linkage confirmé avant résolution entitlement.");
+                const { data: linkedInvite, error: linkedInviteError } = await sb
+                  .from("invites")
+                  .select("id")
+                  .eq("user_id", user.id)
+                  .eq("active", true)
+                  .maybeSingle();
+
+                if (linkedInviteError) {
+                  console.error("[Noema] Erreur verification invite liée:", linkedInviteError);
+                  if (!errorMessage) errorMessage = linkedInviteError.message || "INVITE_LINK_CHECK_FAILED";
+                } else if (linkedInvite) {
+                  hasInvite = true;
+                  subscription = { status: "active", plan: "invite" };
+                  sessionStorage.setItem("noema_invite", JSON.stringify({ ...invite, userId: user.id, linked: true }));
+                } else if (!errorMessage) {
+                  errorMessage = "INVITE_LINK_PENDING";
+                }
               }
             }
-          } catch (e) {
-            // Non-bloquant sur erreur réseau : accès frontend accordé quand même.
-            // La prochaine session re-tentera automatiquement.
-            console.warn("[Noema] Invite linkage failed:", e.message);
           }
+        } catch (e) {
+          console.warn("[Noema] Invite linkage failed:", e.message);
+          if (!errorMessage) errorMessage = "INVITE_LINK_FAILED";
         }
-
-        hasInvite = true;
-        subscription = { status: "active", plan: "invite" };
       }
     }
 
@@ -235,7 +228,7 @@ export function useSubscriptionAccess(user) {
 
     setState(nextState);
     return nextState;
-  }, [user?.email, user?.id]);
+  }, [user?.id]);
 
   useEffect(() => {
     refresh();
