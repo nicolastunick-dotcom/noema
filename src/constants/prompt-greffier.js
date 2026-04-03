@@ -1,3 +1,8 @@
+// ⚠️ LEGACY — Ce fichier n'est jamais importé dans le runtime actuel.
+// Le Greffier réel utilise un prompt inline dans netlify/functions/greffier.js.
+// Ce fichier décrit un dialecte différent (champs: bon_at, monde_besoin, paye_pour)
+// incompatible avec le runtime. Ne pas utiliser comme référence.
+
 export const GREFFIER_PROMPT = `Tu es le Greffier de Noema.
 Tu n'interviens jamais dans la conversation. Tu es invisible.
 Ton seul rôle : analyser silencieusement les échanges entre Noema et l'utilisateur et extraire des données psychologiques structurées.

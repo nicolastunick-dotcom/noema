@@ -431,7 +431,7 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
               color: `rgba(143,143,161,0.4)`,
             }}>
               <span className="material-symbols-outlined" style={{ fontSize: "0.875rem" }}>verified_user</span>
-              <span style={{ fontSize: "0.625rem", textTransform: "uppercase", letterSpacing: "0.2em" }}>Cryptage de bout en bout</span>
+              <span style={{ fontSize: "0.625rem", textTransform: "uppercase", letterSpacing: "0.2em" }}>Données confidentielles et sécurisées</span>
             </div>
           </div>
         </div>

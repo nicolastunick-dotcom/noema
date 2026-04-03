@@ -640,19 +640,30 @@ export default function Pricing({ onNav, user, accessState, notice = null }) {
           <section
             style={{
               marginTop: 40,
-              padding: 24,
+              padding: 28,
               borderRadius: 18,
               background: "rgba(30, 31, 37, 0.4)",
               border: `1px solid rgba(69, 70, 85, 0.15)`,
             }}
           >
-            <p style={{ margin: "0 0 8px", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.18em", color: COLORS.primary, fontWeight: 700 }}>
-              Ce qui est vrai aujourd'hui
+            <p style={{ margin: "0 0 16px", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.18em", color: COLORS.primary, fontWeight: 700 }}>
+              Pourquoi 19 EUR ?
             </p>
-            <p style={{ margin: 0, fontSize: "0.95rem", lineHeight: 1.7, color: COLORS.onSurfaceVariant }}>
-              La continuite existe deja dans le produit, mais elle reste cadre par un quota simple.
-              Journal et Aujourd'hui sont deja disponibles dans l'application. Rien ici ne promet
-              une memoire illimitee ou des fonctions fantomes.
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {[
+                { icon: "timeline", text: "Noema conserve ce qui a ete clarifie — forces, blocages, tensions — et le reintroduit a chaque session." },
+                { icon: "auto_stories", text: "Le Journal reste accessible, relie a ton intention active, sans repartir de zero." },
+                { icon: "wb_sunny", text: "Aujourd'hui reprend le fil la ou tu t'es arrete. Pas de page blanche, pas de repetition." },
+                { icon: "lock_open", text: "Rien n'est perdu entre deux sessions. Ce que tu as compris reste visible." },
+              ].map(({ icon, text }) => (
+                <div key={icon} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                  <SymbolIcon fill style={{ color: COLORS.primary, fontSize: "1.1rem", flexShrink: 0, marginTop: 2 }}>{icon}</SymbolIcon>
+                  <span style={{ fontSize: "0.9rem", lineHeight: 1.65, color: COLORS.onSurfaceVariant }}>{text}</span>
+                </div>
+              ))}
+            </div>
+            <p style={{ margin: "20px 0 0", fontSize: "0.82rem", lineHeight: 1.6, color: "rgba(197, 197, 216, 0.55)" }}>
+              Quota annonce clairement. Aucune promesse de memoire illimitee. Annulable a tout moment.
             </p>
           </section>
 

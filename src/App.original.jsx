@@ -1,3 +1,8 @@
+// ⚠️ LEGACY — Ce fichier est une archive de l'implémentation V1/V2 de Noema.
+// Il n'est PAS importé par le runtime actuel. Ne pas modifier ni utiliser comme référence.
+// Source de vérité : src/pages/AppShell.jsx + src/App.jsx
+// Conservé uniquement pour référence historique.
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 

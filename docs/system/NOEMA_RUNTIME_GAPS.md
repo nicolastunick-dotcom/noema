@@ -1,5 +1,20 @@
 # NOEMA RUNTIME GAPS
 
+> **Dernière mise à jour : Sprint 9 (02/04/2026)**
+>
+> Corrections appliquées en Sprint 9 :
+> - `ROADMAP.md` et `DEBATE.md` marqués explicitement comme archives historiques
+> - `PROJECT.md` mis à jour avec table d'état réel post-Sprint 9
+> - `src/App.original.jsx` et `src/constants/prompt-greffier.js` marqués comme LEGACY en commentaire de tête
+> - `Login.jsx` : "Cryptage de bout en bout" remplacé par "Données confidentielles et sécurisées"
+> - `Pricing.jsx` : section "Ce qui est vrai aujourd'hui" remplacée par "Pourquoi 19 EUR ?" avec preuves concrètes
+> - `useSubscriptionAccess.js` : `accessTier`, `hasProductAccess` et `quota` désormais exposés — corrige la divergence entre les valeurs utilisées dans `App.jsx`/`Pricing.jsx` et celles retournées par le hook
+> - `session_count` : déjà corrigé depuis Sprint 4 (`hasCountedSessionSaveRef`)
+> - Bloc "Depuis ta dernière visite" : déjà implémenté via `buildReturnVisitState` + `chatContinuity`
+> - Preuve différentielle (`Nouveau/Confirmé/Revient/À poursuivre`) : déjà implémentée via `buildProofState`
+
+---
+
 Document de cartographie approfondie des écarts structurels entre vision, documentation et runtime réel de Noema.
 
 Base d'analyse:
