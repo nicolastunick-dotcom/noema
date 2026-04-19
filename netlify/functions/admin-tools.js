@@ -155,6 +155,137 @@ export default async function handler(request) {
       return json({ ok: true, source: adminAccess.source });
     }
 
+    // ── get-all-costs — coûts API sur tous les users (pas juste l'admin) ─────
+    case "get-all-costs": {
+      const { data, error: usageError } = await sbAdmin
+        .from("api_usage")
+        .select("model, prompt_tokens, completion_tokens, user_id");
+
+      if (usageError) {
+        console.error("[admin-tools] Erreur get-all-costs:", usageError.message);
+        return json({ error: "Impossible de lire les coûts API." }, 500);
+      }
+
+      return json({ ...aggregateCosts(data || []), source: adminAccess.source });
+    }
+
+    // ── get-overview — stats globales avec service role ───────────────────────
+    case "get-overview": {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const [
+        profilesRes,
+        activeSubsRes,
+        trialSubsRes,
+        sessionsTodayRes,
+        recentSessionsRes,
+      ] = await Promise.all([
+        sbAdmin.from("profiles").select("*", { count: "exact", head: true }),
+        sbAdmin.from("subscriptions").select("*", { count: "exact", head: true }).eq("status", "active"),
+        sbAdmin.from("subscriptions").select("*", { count: "exact", head: true }).in("status", ["trialing", "trial"]),
+        sbAdmin.from("sessions").select("*", { count: "exact", head: true }).gte("created_at", today.toISOString()),
+        sbAdmin.from("sessions")
+          .select("user_id, created_at, step")
+          .order("created_at", { ascending: false })
+          .limit(10),
+      ]);
+
+      const totalUsers = profilesRes.count   ?? 0;
+      const activeSubs = activeSubsRes.count  ?? 0;
+      const trialUsers = trialSubsRes.count   ?? 0;
+      const freeUsers  = Math.max(0, totalUsers - activeSubs - trialUsers);
+
+      return json({
+        ok:            true,
+        totalUsers,
+        activeSubs,
+        trialUsers,
+        freeUsers,
+        sessionsToday: sessionsTodayRes.count ?? 0,
+        monthlyRevenue: activeSubs * 19,
+        recentSessions: recentSessionsRes.data || [],
+      });
+    }
+
+    // ── list-users — tous les users avec email (service role) ────────────────
+    case "list-users": {
+      // Pagination : récupère tous les users
+      let allAuthUsers = [];
+      let page = 1;
+      while (true) {
+        const { data, error: listError } = await sbAdmin.auth.admin.listUsers({ page, perPage: 1000 });
+        if (listError) {
+          console.error("[admin-tools] listUsers error:", listError.message);
+          break;
+        }
+        allAuthUsers = allAuthUsers.concat(data?.users || []);
+        if (!data?.nextPage) break;
+        page++;
+      }
+
+      // Subscriptions
+      const { data: subs = [] } = await sbAdmin
+        .from("subscriptions")
+        .select("user_id, status, created_at, stripe_subscription_id");
+
+      // Dernières sessions (pour déduire la phase)
+      const { data: sessions = [] } = await sbAdmin
+        .from("sessions")
+        .select("user_id, step, created_at")
+        .order("created_at", { ascending: false })
+        .limit(5000);
+
+      // Profils admin
+      const { data: profiles = [] } = await sbAdmin
+        .from("profiles")
+        .select("id, is_admin, created_at");
+
+      // Build maps
+      const subMap     = {};
+      const sessionMap = {};
+      const profileMap = {};
+
+      subs.forEach(s => { subMap[s.user_id] = s; });
+      sessions.forEach(s => {
+        if (!sessionMap[s.user_id]) sessionMap[s.user_id] = s;
+      });
+      profiles.forEach(p => { profileMap[p.id] = p; });
+
+      function stepToPhase(step) {
+        if (!step || step <= 2) return "perdu";
+        if (step <= 6) return "guide";
+        return "stratege";
+      }
+
+      const users = allAuthUsers.map(u => {
+        const sub     = subMap[u.id];
+        const session = sessionMap[u.id];
+        const profile = profileMap[u.id];
+        return {
+          id:          u.id,
+          email:       u.email || "—",
+          created_at:  profile?.created_at || u.created_at,
+          subStatus:   sub?.status || "free",
+          stripeId:    sub?.stripe_subscription_id || null,
+          subCreated:  sub?.created_at || null,
+          phase:       stepToPhase(session?.step),
+          lastStep:    session?.step ?? null,
+          lastSession: session?.created_at || null,
+          isAdmin:     profile?.is_admin || false,
+        };
+      });
+
+      // Sort: admins first, then by created_at desc
+      users.sort((a, b) => {
+        if (a.isAdmin && !b.isAdmin) return -1;
+        if (!a.isAdmin && b.isAdmin) return 1;
+        return new Date(b.created_at) - new Date(a.created_at);
+      });
+
+      return json({ ok: true, users, total: users.length });
+    }
+
     default:
       return json({ error: "Action admin inconnue." }, 400);
   }

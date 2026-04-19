@@ -4,56 +4,27 @@ import { ANTHROPIC_PROXY } from "../constants/config";
 import { QUOTES } from "../constants/prompt";
 import { applyTheme, mapEtat } from "../constants/themes";
 import { getTime, parseUI, stripUI, trimHistory } from "../utils/helpers";
-import { buildProofState, buildProofUpdateLabel, buildReturnVisitState } from "../lib/productProof";
+import { buildProofState, buildProofUpdateLabel } from "../lib/productProof";
 import { getPhaseState } from "../lib/phaseState";
 import { buildProgressSignals } from "../lib/progressionSignals";
-import ChatPage      from "./ChatPage";
-import MappingPage   from "./MappingPage";
-import JournalPage   from "./JournalPage";
-import TodayPage     from "./TodayPage";
-import AdminPanel    from "../components/AdminPanel";
-
-function buildWelcomeContinuity() {
-  return {
-    mode: "welcome",
-    title: "",
-    items: [],
-    detail: "",
-    meta: "",
-    prompt: "",
-  };
-}
-
-function buildRestartContinuity() {
-  return {
-    mode: "restart",
-    title: "On repart d'ici",
-    items: [],
-    detail: "Un nouveau fil, sans perdre ce que Noema a deja compris.",
-    meta: "Tu peux ouvrir un sujet neuf ou reprendre ce qui insiste.",
-    prompt: "",
-  };
-}
-
-function mergeRecentSessions(previous, nextSession) {
-  const existing = Array.isArray(previous) ? previous : [];
-  const merged = [nextSession, ...existing.filter((session) => session?.id !== nextSession.id)];
-  return merged.slice(0, 5);
-}
+import { NoemaContext } from "../context/NoemaContext";
+import { useNoemaSession } from "../hooks/useNoemaSession";
+import ShellV2   from "./v2/ShellV2";
+import AdminPanel from "../components/AdminPanel";
 
 // ─────────────────────────────────────────────────────────────
 // APP SHELL — Composant principal : chat + panneaux latéraux
 // Sections :
 //   1. STATE & REFS
 //   2. OPENING MESSAGE
-//   3. EFFECTS (mémoire, thème, scroll)
+//   3. EFFECTS (miroirs, thème, scroll)
 //   4. API (callAPI)
 //   5. UI HANDLER (applyUI)
 //   6. RATE LIMIT (checkRateLimit)
 //   7. SEND
-//   8. SAVE SESSION
-//   9. ACTIONS (reset, newSession, genIkigai)
-//  10. RENDER
+//   8. ACTIONS (reset, newSession, genIkigai)
+//   9. RENDER
+// Session persistence → useNoemaSession hook
 // ─────────────────────────────────────────────────────────────
 export default function AppShell({ onNav, user, initialTab = "chat", onTabChange, accessState = null }) {
   const NAV_HEIGHT = 88;
@@ -68,28 +39,41 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   const [ikigai,      setIkigai]      = useState({aime:"",excelle:"",monde:"",paie:"",mission:""});
   const [nextAction,  setNextAction]  = useState("");
   const [sessionNote, setSessionNote] = useState("");
-  const [continuityMode, setContinuityMode] = useState("welcome");
-  const [lastSessionSnapshot, setLastSessionSnapshot] = useState(null);
-  const [recentSessions, setRecentSessions] = useState([]);
   const [quotaState, setQuotaState] = useState(() => accessState?.quota || null);
 
-  const history         = useRef([]);
-  const sessionIdRef    = useRef(crypto.randomUUID()); // Sprint 4 : identifiant stable pour toute la session active
-  const lastSessionNote = useRef("");
-  const hasCountedSessionSaveRef = useRef(false);
-  const memoryRef       = useRef(null); // toujours à jour même dans les closures async
-  const msgsRef         = useRef(null);
-  const taRef           = useRef(null);
-  const minuteTimestamps = useRef([]);  // rate limiting local (par minute)
-  const hasOpened       = useRef(false);
-  const lastGreffierLog = useRef(null); // admin: dernier log Greffier
-  const [greffierLogTick, setGreffierLogTick] = useState(0); // force re-render quand log maj
+  const history          = useRef([]);
+  const msgsRef          = useRef(null);
+  const taRef            = useRef(null);
+  const minuteTimestamps = useRef([]);
+  const hasOpened        = useRef(false);
+  const lastGreffierLog  = useRef(null);
+  const [greffierLogTick, setGreffierLogTick] = useState(0);
 
-  // Refs miroirs pour les valeurs d'état — toujours à jour dans les closures async/événements
-  const insightsRef    = useRef(insights);
-  const ikigaiRef      = useRef(ikigai);
-  const stepRef        = useRef(step);
-  const nextActionRef  = useRef(nextAction);
+  // Mirror refs — always up-to-date in async closures and events
+  const insightsRef   = useRef(insights);
+  const ikigaiRef     = useRef(ikigai);
+  const stepRef       = useRef(step);
+  const nextActionRef = useRef(nextAction);
+
+  // ── Session hook ────────────────────────────────────────────────────────────
+  const {
+    sessionIdRef,
+    recentSessions,
+    lastSessionSnapshot,
+    memoryRef,
+    lastSessionNote,
+    saveSession,
+    resetSessionState,
+    chatContinuity,
+  } = useNoemaSession({
+    user,
+    accessState,
+    insights, ikigai, step, nextAction, sessionNote,
+    setInsights, setIkigai, setStep, setNextAction,
+    insightsRef, ikigaiRef, stepRef, nextActionRef,
+    historyRef: history,
+    onNeedsOpeningMessage: () => openingMessage(),
+  });
 
   useEffect(() => {
     setNavTab(initialTab || "chat");
@@ -105,23 +89,6 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
     () => buildProofState({ insights, nextAction, step, previous: lastSessionSnapshot }),
     [insights, lastSessionSnapshot, nextAction, step]
   );
-
-  const chatContinuity = useMemo(() => {
-    if (continuityMode === "restart") return buildRestartContinuity();
-    if (continuityMode !== "resume") return buildWelcomeContinuity();
-
-    const continuity = buildReturnVisitState({
-      previousSession: lastSessionSnapshot,
-      currentNextAction: nextAction,
-      currentSessionNote: sessionNote,
-      currentInsights: insights,
-      currentStep: step,
-    });
-
-    return continuity.hasData
-      ? { mode: "resume", detail: "", meta: "", ...continuity }
-      : buildWelcomeContinuity();
-  }, [continuityMode, insights, lastSessionSnapshot, nextAction, sessionNote, step]);
 
   const phaseContext = useMemo(() => getPhaseState(step), [step]);
   const progressSignals = useMemo(
@@ -139,6 +106,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
 
   // ── 2. OPENING MESSAGE ───────────────────────────────────────
   async function openingMessage() {
+    if (!user?.id) return;
     if (hasOpened.current) return;
     hasOpened.current = true;
     const q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
@@ -163,51 +131,6 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   }
 
   // ── 3. EFFECTS ───────────────────────────────────────────────
-  useEffect(() => {
-    if (!sb || !user) return;
-    // Sprint 1.1 : ne pas ouvrir le chat avant que l'entitlement soit résolu.
-    // accessState.loading reste true pendant que useSubscriptionAccess vérifie admin/sub/invite.
-    // Pour les comptes invités sessionStorage, il reste true jusqu'à la fin du linkage invites.user_id.
-    // Cela garantit que claude.js trouve l'entitlement et ne retourne pas un faux 403.
-    if (accessState?.loading) return;
-    (async () => {
-      const { data: mem, error: memErr } = await sb.from("memory").select("*").eq("user_id", user.id).maybeSingle();
-      if (memErr) console.error("[Noema] Erreur chargement memory:", memErr);
-      if (mem) memoryRef.current = mem;
-
-      const { data: sessions, error: sessErr } = await sb.from("sessions")
-        .select("insights,ikigai,step,next_action,session_note,ended_at")
-        .eq("user_id", user.id)
-        .order("ended_at", { ascending: false })
-        .limit(5);
-      if (sessErr) console.error("[Noema] Erreur chargement sessions:", sessErr);
-      const last = sessions?.[0];
-      setRecentSessions(Array.isArray(sessions) ? sessions : []);
-      if (last) {
-        if (last.insights) setInsights(i => ({ ...i, ...last.insights }));
-        if (last.ikigai)   setIkigai(k => ({ ...k, ...last.ikigai }));
-        if (typeof last.step === "number") {
-          setStep(last.step);
-          // Sprint 3 : injecter le step dans memoryRef pour qu'il soit inclus dans buildMemoryContext()
-          if (memoryRef.current) memoryRef.current = { ...memoryRef.current, step: last.step };
-        }
-        // Sprint 5.1 : restaure next_action après refresh pour que Today/Journal retrouvent l'intention
-        if (last.next_action) setNextAction(last.next_action);
-        setLastSessionSnapshot(last);
-        setContinuityMode("resume");
-      } else {
-        setLastSessionSnapshot(null);
-        setContinuityMode("welcome");
-      }
-      if (!last && !accessState?.quota?.exhausted) await openingMessage();
-    })();
-  }, [user, accessState?.loading, accessState?.quota?.exhausted]);
-
-  useEffect(() => {
-    if (user) return;
-    openingMessage();
-  }, []);
-
   // Sync des refs miroirs à chaque changement d'état
   useEffect(() => { insightsRef.current   = insights;    }, [insights]);
   useEffect(() => { ikigaiRef.current     = ikigai;      }, [ikigai]);
@@ -222,27 +145,12 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
     });
   }, [msgs, typing]);
 
-  // ── Sauvegarde automatique ────────────────────────────────────
-  // beforeunload : sauvegarde quand l'utilisateur ferme ou recharge
-  // setInterval  : sauvegarde silencieuse toutes les 5 minutes
-  useEffect(() => {
-    const doSave = () =>
-      saveSession(insightsRef.current, ikigaiRef.current, stepRef.current);
-
-    window.addEventListener("beforeunload", doSave);
-    // Sprint 3.1 : 5min → 2min pour réduire les pertes de session_notes sur refresh rapide.
-    // beforeunload reste en place mais n'est pas fiable sur mobile / navigateurs modernes pour async.
-    const timer = setInterval(doSave, 2 * 60 * 1000);
-
-    return () => {
-      window.removeEventListener("beforeunload", doSave);
-      clearInterval(timer);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // ── 4. API ───────────────────────────────────────────────────
   async function callAPI(options = {}) {
+    if (!user?.id) {
+      throw new Error("AUTH_REQUIRED");
+    }
+
     const h = trimHistory(history.current);
     const memory_context = buildMemoryContext(memoryRef.current);
     const headers = { "Content-Type":"application/json" };
@@ -268,6 +176,11 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
     const payload = await res.json().catch(() => null);
     if (!res.ok) {
       throw new Error(payload?.error?.message || `HTTP ${res.status}`);
+    }
+    // Détecte une réponse non-JSON (HTML, texte brut, réponse vide).
+    // Cause typique : fonction Netlify non démarrée ou endpoint introuvable.
+    if (payload === null || typeof payload !== "object") {
+      throw new Error("Réponse invalide du serveur. Vérifie que netlify dev tourne bien sur :8888.");
     }
     if (payload?._greffier) {
       lastGreffierLog.current = payload._greffier;
@@ -369,6 +282,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
 
   // ── 7. SEND ──────────────────────────────────────────────────
   const send = useCallback(async (text) => {
+    if (!user?.id) return;
     const t = text.replace(/<[^>]*>/g, "").trim().slice(0, 2000);
     if (!t || typing) return;
     if (quotaState?.exhausted) {
@@ -421,68 +335,36 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
       console.error(e);
     }
     setTyping(false);
-  }, [quotaState, typing]);
-
-  // ── 8. SAVE SESSION ──────────────────────────────────────────
-  async function saveSession(currentInsights, currentIkigai, currentStep) {
-    if (!sb || !user) return;
-    if (history.current.length === 0) return;
-
-    const sessionData = {
-      id:           sessionIdRef.current, // Sprint 4 : ID stable — upsert sur cet identifiant
-      user_id:      user.id,
-      ended_at:     new Date().toISOString(),
-      history:      history.current,
-      insights:     currentInsights,
-      ikigai:       currentIkigai,
-      step:         currentStep,
-      session_note: lastSessionNote.current,
-      next_action:  nextActionRef.current, // Sprint 5 : persist pour que Today puisse le relire
-    };
-    // Sprint 4 : upsert sur id — tous les autosaves mettent à jour la même ligne session active.
-    // Avant : insert → plusieurs lignes incohérentes par session. Après : une seule ligne par session.
-    const { error: insErr } = await sb.from("sessions").upsert(sessionData, { onConflict: "id" });
-    if (insErr) { console.error("[Noema] Erreur upsert session:", insErr); return; }
-    setRecentSessions((prev) => mergeRecentSessions(prev, sessionData));
-
-    const { data: mem, error: memErr } = await sb.from("memory").select("*").eq("user_id", user.id).maybeSingle();
-    if (memErr) console.error("[Noema] Erreur lecture memory:", memErr);
-    const notes = [...(mem?.session_notes || []), lastSessionNote.current].filter(Boolean).slice(-10);
-    const previousSessionCount = mem?.session_count || 0;
-    const newMemory = {
-      user_id:        user.id,
-      updated_at:     new Date().toISOString(),
-      forces:         [...new Set([...(mem?.forces || []), ...currentInsights.forces])],
-      contradictions: [...new Set([...(mem?.contradictions || []), ...currentInsights.contradictions])],
-      blocages:       { ...(mem?.blocages || {}), ...currentInsights.blocages },
-      ikigai:         { ...(mem?.ikigai || {}), ...currentIkigai },
-      session_notes:  notes,
-      // Ne compter qu'une fois par session live, pas à chaque autosave.
-      session_count:  hasCountedSessionSaveRef.current ? previousSessionCount : previousSessionCount + 1,
-    };
-    const { error: upsErr } = await sb.from("memory").upsert(newMemory, { onConflict: "user_id" });
-    if (upsErr) console.error("[Noema] Erreur upsert memory:", upsErr);
-    else {
-      memoryRef.current = newMemory;
-      hasCountedSessionSaveRef.current = true;
-    }
-    lastSessionNote.current = "";
-  }
+  }, [quotaState, typing, user?.id]);
 
   // ── 9. ACTIONS ───────────────────────────────────────────────
   function reset() {
     history.current = [];
-    sessionIdRef.current = crypto.randomUUID(); // Sprint 4 : nouvelle session = nouvel identifiant
-    hasCountedSessionSaveRef.current = false;
-    lastSessionNote.current = "";
+    resetSessionState(); // resets sessionId, flags, continuityMode in the hook
     setMsgs([]); setStep(0); setMstate("exploring"); setNextAction(""); setSessionNote("");
     setInsights({forces:[], blocages:{racine:"",entretien:"",visible:""}, contradictions:[]});
     setIkigai({aime:"", excelle:"", monde:"", paie:"", mission:""});
-    setContinuityMode("restart");
   }
 
   async function newSession() { await saveSession(insights, ikigai, step); reset(); }
   function genIkigai() { send("Je veux voir mon Ikigai"); }
+
+  async function handleLogout() {
+    sessionStorage.removeItem("noema_invite");
+
+    if (!sb) {
+      onNav("/");
+      return;
+    }
+
+    try {
+      await sb.auth.signOut();
+    } catch (error) {
+      console.error("[Noema] Erreur logout:", error);
+    } finally {
+      onNav("/");
+    }
+  }
 
   // ── 10. ADMIN ────────────────────────────────────────────────
   function adminResetMemory() {
@@ -503,190 +385,87 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   }
 
   // ── 11. RENDER ───────────────────────────────────────────────
-  const NAV_TABS = [
-    { id: "chat",    icon: "forum",         lbl: "Chat" },
-    { id: "mapping", icon: "psychology_alt", lbl: "Mapping" },
-    { id: "journal", icon: "auto_stories",  lbl: "Journal" },
-    { id: "today",   icon: "light_mode",    lbl: "Aujourd'hui" },
-  ];
-  const activeTab = NAV_TABS.some((tab) => tab.id === navTab) ? navTab : "chat";
+
+  // ── Runtime context — adapter stable pour les pages et composants UI ──────
+  // Expose l'état et les actions dont l'UI a besoin, sans fuiter la logique interne.
+  // Les pages peuvent utiliser useNoemaRuntime() au lieu de recevoir des props.
+  // Aucune logique métier ici — uniquement des références à ce qui existe déjà.
+  const runtimeValue = useMemo(() => ({
+    // State conversationnel
+    msgs,
+    typing,
+    input,
+    setInput,
+    // State sémantique
+    step,
+    etat: mstate,
+    insights,
+    ikigai,
+    nextAction,
+    sessionNote,
+    // Phase & progression
+    phaseContext,
+    progressSignals,
+    proofState,
+    chatContinuity,
+    lastSessionSnapshot,
+    recentSessions,
+    // Quota & accès
+    quotaState,
+    accessState,
+    // Actions
+    send,
+    newSession,
+    genIkigai,
+    handleLogout,
+    changeTab,
+    // Navigation
+    navTab,
+    onNav,
+    onPricing: () => onNav("pricing"),
+    // Refs DOM
+    taRef,
+    msgsRef,
+    // Données utilisateur
+    user,
+    sb,
+    sessionId: sessionIdRef.current,
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [
+    msgs, typing, input, step, mstate, insights, ikigai,
+    nextAction, sessionNote, phaseContext, progressSignals,
+    proofState, chatContinuity, lastSessionSnapshot, recentSessions,
+    quotaState, accessState, send, newSession, user,
+  ]);
 
   function changeTab(nextTab) {
     setNavTab(nextTab);
     onTabChange?.(nextTab);
   }
 
-  const renderPanel = () => {
-    switch (activeTab) {
-      case "mapping":
-        return (
-          <MappingPage
-            insights={insights}
-            ikigai={ikigai}
-            step={step}
-            phaseContext={phaseContext}
-            progressSignals={progressSignals}
-          />
-        );
-      case "journal":
-        return (
-          <JournalPage
-            user={user}
-            sb={sb}
-            nextAction={nextAction}
-            proofState={proofState}
-            sessionId={sessionIdRef.current}
-          />
-        );
-      case "today":
-        return (
-          <TodayPage
-            user={user}
-            sb={sb}
-            nextAction={nextAction}
-            sessionNote={sessionNote}
-            proofState={proofState}
-            quota={quotaState}
-            onJournal={() => changeTab("journal")}
-            onChat={() => changeTab("chat")}
-            phaseContext={phaseContext}
-            progressSignals={progressSignals}
-          />
-        );
-      default: // chat
-        return (
-          <ChatPage
-            msgs={msgs}
-            typing={typing}
-            input={input}
-            setInput={setInput}
-            send={send}
-            genIkigai={genIkigai}
-            onNav={onNav}
-            newSession={newSession}
-            user={user}
-            sb={sb}
-            taRef={taRef}
-            continuity={chatContinuity}
-            proofState={proofState}
-            quota={quotaState}
-            onPricing={() => onNav("pricing")}
-            phaseContext={phaseContext}
-            bottomInset={NAV_HEIGHT}
-          />
-        );
-    }
-  };
-
+  // ── 11. RENDER ───────────────────────────────────────────────
+  // AppShell = logique pure. ShellV2 possède le layout, la nav, les transitions.
   return (
-    <div style={{ backgroundColor: "#111318", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <AdminPanel
-        user={user}
-        sb={sb}
-        accessState={accessState}
-        history={history.current}
-        lastGreffierLog={lastGreffierLog.current}
-        onResetMemory={adminResetMemory}
-        onForcePhase2={adminForcePhase2}
-        onSimulateLimit={adminSimulateLimit}
-        onShowOnboarding={() => onNav("onboarding")}
-        setInsights={setInsights}
-        setIkigai={setIkigai}
-        setStep={setStep}
-        setNavTab={changeTab}
+    <NoemaContext.Provider value={runtimeValue}>
+      <ShellV2
+        adminSlot={
+          <AdminPanel
+            user={user}
+            sb={sb}
+            accessState={accessState}
+            history={history.current}
+            lastGreffierLog={lastGreffierLog.current}
+            onResetMemory={adminResetMemory}
+            onForcePhase2={adminForcePhase2}
+            onSimulateLimit={adminSimulateLimit}
+            onShowOnboarding={() => onNav("onboarding")}
+            setInsights={setInsights}
+            setIkigai={setIkigai}
+            setStep={setStep}
+            setNavTab={changeTab}
+          />
+        }
       />
-      {renderPanel()}
-
-      {/* ── Bottom Nav ── */}
-      <nav style={{
-        position: "fixed",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: NAV_HEIGHT,
-        backgroundColor: "#111318",
-        borderTop: `1px solid ${phaseContext.border}`,
-        display: "flex",
-        flexDirection: "column",
-        zIndex: 100,
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        boxShadow: `0 -12px 32px rgba(0,0,0,0.24), inset 0 1px 0 ${phaseContext.accentSoft}`,
-      }}>
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-          padding: "8px 16px 4px",
-          borderBottom: "1px solid rgba(255,255,255,0.04)",
-        }}>
-          <span style={{
-            fontSize: "0.58rem",
-            letterSpacing: "0.16em",
-            textTransform: "uppercase",
-            color: phaseContext.accent,
-            fontWeight: 700,
-          }}>
-            {phaseContext.navLabel}
-          </span>
-          <span style={{
-            fontSize: "0.62rem",
-            color: "#c5c5d8",
-          }}>
-            {phaseContext.paceLabel}
-          </span>
-        </div>
-        <div style={{
-          display: "flex",
-          alignItems: "stretch",
-          flex: 1,
-        }}>
-        {NAV_TABS.map(tab => {
-          const active = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => changeTab(tab.id)}
-              style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 4,
-                border: "none",
-                background: active ? phaseContext.accentSoft : "none",
-                cursor: "pointer",
-                borderRadius: 0,
-                transition: "background 0.2s",
-                padding: "8px 4px",
-              }}
-            >
-              <span
-                className="material-symbols-outlined"
-                style={{
-                  fontSize: "1.375rem",
-                  color: active ? phaseContext.accent : "#454655",
-                  fontVariationSettings: active
-                    ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24"
-                    : "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24",
-                  transition: "color 0.2s",
-                }}
-              >{tab.icon}</span>
-              <span style={{
-                fontSize: "0.65rem",
-                fontFamily: "'Plus Jakarta Sans', sans-serif",
-                fontWeight: active ? 600 : 400,
-                color: active ? phaseContext.accent : "#454655",
-                letterSpacing: "0.03em",
-                transition: "color 0.2s",
-              }}>{tab.lbl}</span>
-            </button>
-          );
-        })}
-        </div>
-      </nav>
-    </div>
+    </NoemaContext.Provider>
   );
 }

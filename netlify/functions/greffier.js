@@ -259,7 +259,17 @@ Analyse les derniers messages et fournis le JSON mis à jour. S'il y a un nouvel
     if (text.startsWith("{```json")) text = text.replace("{```json", "{");
     if (text.endsWith("```")) text = text.replace(/```$/, "");
 
-    const parsed = normalizeGreffierPayload(JSON.parse(text.trim()), safeUserMemory);
+    let rawParsed;
+    try {
+      rawParsed = JSON.parse(text.trim());
+    } catch (jsonErr) {
+      console.warn("Greffier JSON parse failed — returning null silently.", {
+        error: jsonErr.message,
+        rawSnippet: text.slice(0, 300),
+      });
+      return null;
+    }
+    const parsed = normalizeGreffierPayload(rawParsed, safeUserMemory);
 
     // Update Silent Database Tables (memory / user_insights)
     // As requested: "Met à jour silencieusement les tables user_insights et ikigai_state."

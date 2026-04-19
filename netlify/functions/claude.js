@@ -8,12 +8,47 @@ import { createClient } from '@supabase/supabase-js'
 
 const FULL_ACCESS_LIMIT_MSG = "La limite du jour est atteinte. Reviens demain pour continuer."
 const TRIAL_LIMIT_MSG = "Ton essai gratuit du jour est termine. Tu peux continuer avec Noema des maintenant."
+const MODEL_HEAVY = 'claude-sonnet-4-6'         // synthèse (greffier)
+const MODEL_LIGHT = 'claude-haiku-4-5-20251001' // échanges standard
+const MAX_TOKENS_TRIAL      = 1200
+const MAX_TOKENS_SUBSCRIBER = 1800
+const MAX_MESSAGES_PER_REQUEST = 24
+const MAX_USER_REQUESTS_PER_MINUTE = 30
+const inMemoryUserRateLimit = new Map()
 
 function getSupabaseAdmin() {
-  const url = process.env.VITE_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY
-  if (!url || !key) return null
-  try { return createClient(url, key) } catch { return null }
+  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) {
+    throw new Error('SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY manquante côté serveur.')
+  }
+  return createClient(url, key)
+}
+
+function json(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      ...corsHeaders(),
+    },
+  })
+}
+
+// Additional server-side burst protection.
+// This is intentionally lightweight: DB quotas remain the source of truth for daily limits.
+function enforceInMemoryRateLimit(userId) {
+  const now = Date.now()
+  const timestamps = (inMemoryUserRateLimit.get(userId) || []).filter((ts) => now - ts < 60_000)
+
+  if (timestamps.length >= MAX_USER_REQUESTS_PER_MINUTE) {
+    inMemoryUserRateLimit.set(userId, timestamps)
+    return false
+  }
+
+  timestamps.push(now)
+  inMemoryUserRateLimit.set(userId, timestamps)
+  return true
 }
 
 export default async (request) => {
@@ -40,21 +75,22 @@ export default async (request) => {
       { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
     )
   }
-  const sbAdmin = getSupabaseAdmin()
-  if (!sbAdmin) {
-    return new Response(
-      JSON.stringify({ error: { message: 'Configuration serveur manquante.' } }),
-      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
-    )
+  let sbAdmin
+  try {
+    sbAdmin = getSupabaseAdmin()
+  } catch (error) {
+    return json({ error: { message: error.message } }, 500)
   }
   const { data: { user: verifiedUser }, error: authError } = await sbAdmin.auth.getUser(token)
   if (authError || !verifiedUser) {
-    return new Response(
-      JSON.stringify({ error: { message: 'Session invalide ou expirée.' } }),
-      { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
-    )
+    return json({ error: { message: 'Session invalide ou expirée.' } }, 401)
   }
   const userId = verifiedUser.id
+
+  // Security layer 1: reject unauthenticated public traffic before any model work starts.
+  if (!enforceInMemoryRateLimit(userId)) {
+    return json({ error: { message: 'Trop de requêtes. Attends une minute avant de continuer.' } }, 429)
+  }
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
@@ -151,7 +187,7 @@ export default async (request) => {
 
   try {
     const body = await request.json()
-    const shouldConsumeQuota = body.consume_quota !== false
+    const rawMessages = Array.isArray(body.messages) ? body.messages.slice(-MAX_MESSAGES_PER_REQUEST) : []
 
     // ── Quota produit (journalier) ────────────────────────────────
     // Unique source de vérité : backend seulement depuis Sprint 1.
@@ -169,53 +205,44 @@ export default async (request) => {
         .maybeSingle()
       quotaUsed = rl?.count || 0
 
-      if (shouldConsumeQuota && quotaUsed >= dailyLimit) {
-        return new Response(JSON.stringify({
+      if (quotaUsed >= dailyLimit) {
+        return json({
           content: isTrialTier(accessTier) ? TRIAL_LIMIT_MSG : FULL_ACCESS_LIMIT_MSG,
           _greffier: null,
           _quota: buildQuotaState({ tier: accessTier, used: quotaUsed }),
           _access: { tier: accessTier },
           _session_limit: true,
           _trial_ended: isTrialTier(accessTier),
-        }), {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            ...corsHeaders()
-          }
         })
       }
 
-      if (shouldConsumeQuota) {
-        quotaUsed += 1
-        // Incrément — seule écriture quota produit dans tout le système
-        await sbAdmin.from('rate_limits').upsert(
-          { user_id: userId, date: today, count: quotaUsed },
-          { onConflict: 'user_id,date' }
-        )
-      }
+      quotaUsed += 1
+      // Incrément — seule écriture quota produit dans tout le système
+      await sbAdmin.from('rate_limits').upsert(
+        { user_id: userId, date: today, count: quotaUsed },
+        { onConflict: 'user_id,date' }
+      )
     }
-
-    const quota = buildQuotaState({ tier: accessTier, used: quotaUsed })
+    const messages   = rawMessages
+    const sessionId  = body.session_id || null
+    const userMemory = body.user_memory && typeof body.user_memory === 'object' ? body.user_memory : {}
+    // Mini-sprint coût : Greffier toutes les 2 requêtes utilisateur — couvre les sessions courtes (1-2 messages).
+    const userMsgCount = messages.filter(m => m.role === 'user').length
+    const shouldRunGreffier = userMsgCount > 0 && userMsgCount % 2 === 0
 
     // Whitelist des champs autorisés — ne jamais forwarder le body brut
     // Le system prompt est toujours NOEMA_SYSTEM + serverMemoryContext (chargé depuis DB ci-dessus)
+    // Security layer 2: strict request shaping. Only a safe subset of the body reaches Anthropic.
+    // Hybrid model: Haiku pour les échanges standard, Sonnet lors des synthèses Greffier.
     const allowed = {
-      model:      body.model      || 'claude-sonnet-4-6',
-      max_tokens: Math.min(body.max_tokens || 1100, 4096),
+      model:      shouldRunGreffier ? MODEL_HEAVY : MODEL_LIGHT,
+      max_tokens: Math.min(body.max_tokens || 1100, isTrialTier(accessTier) ? MAX_TOKENS_TRIAL : MAX_TOKENS_SUBSCRIBER),
       system:     NOEMA_SYSTEM + serverMemoryContext,
-      messages:   Array.isArray(body.messages) ? body.messages : [],
+      messages:   rawMessages,
       stream:     false,
     }
-
-    const messages   = allowed.messages
-    const sessionId  = body.session_id || null
-    const userMemory = body.user_memory && typeof body.user_memory === 'object' ? body.user_memory : {}
-    // Mini-sprint coût : Greffier toutes les 3 requêtes utilisateur — ~67% de réduction de coût Greffier.
-    const userMsgCount = messages.filter(m => m.role === 'user').length
-    const shouldRunGreffier = userMsgCount > 0 && userMsgCount % 3 === 0
     const greffierPromise = shouldRunGreffier
-      ? runGreffier({ apiKey, sb: sbAdmin, userId, sessionId, history: messages, userMemory })
+      ? runGreffier({ apiKey, sb: sbAdmin, userId, sessionId, history: messages, userMemory: memRow ?? {} })
           .then((result) => {
             console.log('[Greffier] succès:', JSON.stringify(result)?.slice(0, 120))
             return result
@@ -239,10 +266,7 @@ export default async (request) => {
     if (!anthropicResponse.ok) {
       const errText = await anthropicResponse.text().catch(() => '')
       console.error('[claude] Anthropic HTTP error:', anthropicResponse.status, errText)
-      return new Response(
-        JSON.stringify({ error: { message: `Anthropic HTTP ${anthropicResponse.status}` } }),
-        { status: anthropicResponse.status, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
-      )
+      return json({ error: { message: `Anthropic HTTP ${anthropicResponse.status}` } }, anthropicResponse.status)
     }
 
     const data = await anthropicResponse.json()
@@ -252,6 +276,7 @@ export default async (request) => {
         .map((block) => block.text)
         .join('')
       : ''
+    const quota = buildQuotaState({ tier: accessTier, used: quotaUsed })
 
     if (userId && data.usage) {
       sbAdmin.from('api_usage').insert({
@@ -266,24 +291,15 @@ export default async (request) => {
     console.log('[Greffier]', shouldRunGreffier ? 'déclenchement' : 'skipped', '— userMsgCount:', userMsgCount, 'userId:', userId)
     const greffierResult = await greffierPromise
 
-    return new Response(JSON.stringify({
+    return json({
       content: fullText,
       _greffier: greffierResult,
       _quota: quota,
       _access: { tier: accessTier },
-    }), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        ...corsHeaders()
-      }
     })
 
   } catch (err) {
-    return new Response(
-      JSON.stringify({ error: { message: err.message } }),
-      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
-    )
+    return json({ error: { message: err.message } }, 500)
   }
 }
 
@@ -335,8 +351,4 @@ function corsHeaders() {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   }
-}
-
-export const config = {
-  path: '/.netlify/functions/claude'
 }

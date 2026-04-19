@@ -30,6 +30,7 @@ const NAV_TARGETS = {
   "reset-password": "/reset-password",
   invite: "/invite",
   "onboarding-preview": "/onboarding-preview",
+  admin: "/admin",
   app: APP_TAB_PATHS.chat,
   chat: APP_TAB_PATHS.chat,
   mapping: APP_TAB_PATHS.mapping,
@@ -111,6 +112,10 @@ export function parseNoemaPath(pathname = "/") {
 
   if (normalizedPath === "/onboarding-preview") {
     return { page: "onboarding-preview", appTab: null, canonicalPath: "/onboarding-preview" };
+  }
+
+  if (normalizedPath === "/admin") {
+    return { page: "admin", appTab: null, canonicalPath: "/admin" };
   }
 
   if (INTERNAL_PATH_TO_TAB[normalizedPath]) {

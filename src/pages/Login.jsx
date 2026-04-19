@@ -1,24 +1,7 @@
 import { useState, useEffect } from "react";
 import { sb } from "../lib/supabase";
 import { GoogleSVG } from "../components/SVGs";
-
-const C = {
-  bg: "#111318",
-  surface: "#111318",
-  surfaceContainer: "#1e1f25",
-  surfaceContainerHigh: "#282a2f",
-  surfaceContainerHighest: "#33353a",
-  surfaceContainerLow: "#1a1b21",
-  outlineVariant: "#454655",
-  outline: "#8f8fa1",
-  onBackground: "#e2e2e9",
-  onSurface: "#e2e2e9",
-  onSurfaceVariant: "#c5c5d8",
-  primary: "#bdc2ff",
-  primaryContainer: "#7886ff",
-  onPrimaryContainer: "#00118c",
-  error: "#ffb4ab",
-};
+import { T } from "../design-system/tokens";
 
 const TAB_TITLES = {
   login:  { h: "Bon retour",      sub: "Reconnectez-vous à votre espace de pensée." },
@@ -35,6 +18,7 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
   const [code,      setCode]      = useState("");
   const [generated, setGenerated] = useState(null);
   const [copied,    setCopied]    = useState(false);
+  const [focused,   setFocused]   = useState(null); // "email" | "password" | "name" | null
 
   // Scroll autorisé sur cette page
   useEffect(() => {
@@ -162,11 +146,18 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
 
   const { h, sub } = TAB_TITLES[tab];
 
+  // Focus-aware input style factory
+  const focusedInputStyle = (fieldName) => ({
+    ...inputStyle,
+    border: `1px solid ${focused === fieldName ? T.color.accent.default + "88" : T.color.textOff}`,
+    boxShadow: focused === fieldName ? `0 0 0 2px ${T.color.accent.default}44` : "none",
+  });
+
   return (
     <div style={{
-      backgroundColor: C.bg,
-      color: C.onBackground,
-      fontFamily: "'Plus Jakarta Sans', sans-serif",
+      backgroundColor: T.color.bg,
+      color: T.color.text,
+      fontFamily: T.font.sans,
       minHeight: "100vh",
       display: "flex",
       flexDirection: "column",
@@ -190,10 +181,11 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
           style={{
             background: "none",
             border: "none",
-            fontFamily: "'Newsreader', serif",
+            fontFamily: T.font.serif,
+            fontStyle: "italic",
             fontSize: "1.5rem",
             fontWeight: 700,
-            color: C.onBackground,
+            color: T.color.text,
             letterSpacing: "-0.05em",
             cursor: "pointer",
             padding: 0,
@@ -205,8 +197,8 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
             background: "none",
             border: "1px solid rgba(189,194,255,0.18)",
             borderRadius: 9999,
-            color: C.primary,
-            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            color: T.color.accent.default,
+            fontFamily: T.font.sans,
             fontSize: "0.75rem",
             fontWeight: 600,
             letterSpacing: "0.06em",
@@ -260,12 +252,12 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
                 fontFamily: "'Instrument Serif', serif",
                 fontSize: "3rem",
                 fontStyle: "italic",
-                color: C.primary,
+                color: T.color.accent.default,
                 lineHeight: 1.1,
                 marginBottom: 8,
               }}>{h}</h1>
               <p style={{
-                color: C.onSurfaceVariant,
+                color: T.color.textSub,
                 fontWeight: 300,
                 letterSpacing: "0.02em",
                 fontSize: "0.875rem",
@@ -279,7 +271,7 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
                 borderRadius: 10,
                 background: "rgba(189,194,255,0.1)",
                 border: "1px solid rgba(189,194,255,0.2)",
-                color: C.primary,
+                color: T.color.accent.default,
                 fontSize: "0.85rem",
                 lineHeight: 1.5,
               }}>
@@ -291,7 +283,7 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
             <div style={{
               display: "flex",
               gap: 4,
-              background: C.surfaceContainerHigh,
+              background: T.color.high,
               borderRadius: 12,
               padding: 4,
               marginBottom: 28,
@@ -308,13 +300,13 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
                     padding: "8px 4px",
                     border: "none",
                     borderRadius: 9,
-                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    fontFamily: T.font.sans,
                     fontSize: "0.8rem",
                     fontWeight: tab === t.id ? 600 : 400,
                     cursor: "pointer",
                     transition: "all 0.2s",
-                    background: tab === t.id ? C.surfaceContainer : "none",
-                    color: tab === t.id ? C.primary : C.onSurfaceVariant,
+                    background: tab === t.id ? T.color.container : "none",
+                    color: tab === t.id ? T.color.accent.default : T.color.textSub,
                     boxShadow: tab === t.id ? "0 1px 4px rgba(0,0,0,0.3)" : "none",
                   }}
                 >{t.label}</button>
@@ -332,7 +324,9 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
                       value={f.name}
                       onChange={e => upd("name", e.target.value)}
                       onKeyDown={onEnter}
-                      style={inputStyle}
+                      onFocus={() => setFocused("name")}
+                      onBlur={() => setFocused(null)}
+                      style={focusedInputStyle("name")}
                     />
                   </Field>
                 )}
@@ -344,7 +338,9 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
                     value={f.email}
                     onChange={e => upd("email", e.target.value)}
                     onKeyDown={onEnter}
-                    style={inputStyle}
+                    onFocus={() => setFocused("email")}
+                    onBlur={() => setFocused(null)}
+                    style={focusedInputStyle("email")}
                   />
                 </Field>
 
@@ -356,7 +352,7 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
                         background: "none", border: "none", cursor: "pointer",
                         fontSize: "0.625rem", textTransform: "uppercase",
                         letterSpacing: "0.1em", color: `rgba(189,194,255,0.7)`,
-                        fontFamily: "'Plus Jakarta Sans', sans-serif",
+                        fontFamily: T.font.sans,
                       }} onClick={handleForgotPassword}>Oublié ?</button>
                     )}
                   </div>
@@ -368,8 +364,10 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
                       value={f.password}
                       onChange={e => upd("password", e.target.value)}
                       onKeyDown={onEnter}
+                      onFocus={() => setFocused("password")}
+                      onBlur={() => setFocused(null)}
                       autoComplete={tab === "signup" ? "new-password" : "current-password"}
-                      style={{ ...inputStyle, paddingRight: 44 }}
+                      style={{ ...focusedInputStyle("password"), paddingRight: 44 }}
                     />
                     <button
                       type="button"
@@ -378,7 +376,7 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
                         position: "absolute", right: 14, top: "50%",
                         transform: "translateY(-50%)", background: "none",
                         border: "none", cursor: "pointer", padding: 0,
-                        color: C.outline, fontSize: "1.1rem",
+                        color: T.color.textMuted, fontSize: "1.1rem",
                       }}
                     >{show ? "🙈" : "👁"}</button>
                   </div>
@@ -416,7 +414,7 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
                 fontSize: "0.85rem",
                 background: msg.e ? "rgba(255,180,171,0.1)" : "rgba(189,194,255,0.1)",
                 border: `1px solid ${msg.e ? "rgba(255,180,171,0.25)" : "rgba(189,194,255,0.25)"}`,
-                color: msg.e ? "#ffb4ab" : C.primary,
+                color: msg.e ? T.color.error : T.color.accent.default,
                 lineHeight: 1.5,
               }}>{msg.t}</div>
             )}
@@ -445,19 +443,20 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
         flexWrap: "wrap",
         gap: 16,
         borderTop: "1px solid rgba(69,70,85,0.15)",
-        backgroundColor: C.surface,
+        backgroundColor: T.color.surface,
         padding: "40px 32px",
       }}>
         <div style={{
-          fontFamily: "'Newsreader', serif",
+          fontFamily: T.font.serif,
+          fontStyle: "italic",
           fontSize: "1.125rem",
-          color: C.onBackground,
+          color: T.color.text,
           fontWeight: 700,
         }}>Noema</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 24 }}>
           {[
-            { label: "Privacy Policy", target: "privacy" },
-            { label: "Terms of Service", target: "terms" },
+            { label: "Confidentialité", target: "privacy" },
+            { label: "Conditions d'utilisation", target: "terms" },
             { label: "Ethical AI", target: "ethical-ai" },
             { label: "Contact", target: "contact" },
           ].map(({ label, target }) => (
@@ -465,21 +464,21 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
               background: "none",
               border: "none",
               padding: 0,
-              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontFamily: T.font.sans,
               fontSize: "0.75rem",
               textTransform: "uppercase",
               letterSpacing: "0.1em",
-              color: "#454655",
+              color: T.color.textOff,
               cursor: "pointer",
               transition: "color 0.2s",
             }}
-              onMouseEnter={e => e.currentTarget.style.color = C.primary}
-              onMouseLeave={e => e.currentTarget.style.color = "#454655"}
+              onMouseEnter={e => e.currentTarget.style.color = T.color.accent.default}
+              onMouseLeave={e => e.currentTarget.style.color = T.color.textOff}
             >{label}</button>
           ))}
         </div>
-        <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#454655" }}>
-          © 2024 Noema. Conversation introspective continue.
+        <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.1em", color: T.color.textOff }}>
+          © 2026 Noema. Conversation introspective continue.
         </div>
       </footer>
     </div>
@@ -544,7 +543,6 @@ function Loader() {
 const inputStyle = {
   width: "100%",
   background: "rgba(51,53,58,0.5)",
-  border: "none",
   borderRadius: 12,
   padding: "14px 14px 14px 44px",
   color: "#e2e2e9",
@@ -552,7 +550,7 @@ const inputStyle = {
   fontSize: "0.9rem",
   outline: "none",
   boxSizing: "border-box",
-  transition: "box-shadow 0.2s",
+  transition: "box-shadow 0.2s, border 0.2s",
 };
 
 const iconStyle = {

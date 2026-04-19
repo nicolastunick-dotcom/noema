@@ -66,7 +66,7 @@ export default function JournalPage({ user, sb, nextAction = "", proofState = nu
 
     setActivePrompt(nextAction || FALLBACK_PROMPTS[0]);
 
-    if (!sb || !user) {
+    if (!sb || !user?.id) {
       setLoading(false);
       return;
     }
@@ -98,9 +98,7 @@ export default function JournalPage({ user, sb, nextAction = "", proofState = nu
 
   // ── Sauvegarde réelle dans Supabase ──────────────────────────
   async function handleSave() {
-    if (!sb || !user) {
-      // Fallback visuel si pas de Supabase (DEV sans config)
-      setSaveState("saved");
+    if (!sb || !user?.id) {
       return;
     }
 

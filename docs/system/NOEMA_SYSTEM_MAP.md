@@ -6,7 +6,7 @@ Base d'analyse:
 - code du frontend `src/`
 - Netlify Functions `netlify/functions/`
 - schéma `supabase-schema.sql`
-- configs `netlify.toml`, `vite.config.js`, `package.json`
+- configs `netlify.toml`, `netlify/_headers`, `vite.config.js`, `package.json`
 - documentation locale `PROJECT.md`, `ROADMAP.md`, `DEBATE.md`, `RETENTION.md`, `codex.md`, `docs/appshell-refactor-plan.md`
 
 Principe:
@@ -32,8 +32,8 @@ Techniquement, c'est :
 - une preuve produit différentielle visible dans Chat et Today
 - une direction produit actée : `Today` doit évoluer en `Zen` sans perdre sa base runtime
 
-Etat réel du produit aujourd'hui (post-Sprint 11) :
-- `réel`: auth, signup, reset password, invite beta, paywall, checkout, webhook Stripe, chat, mémoire inter-sessions, mapping, onboarding, trial layer, proof layer, journal réel, today reel, bloc de reprise visible, lecture de phase visible, signaux cross-sessions, trajectoire visible, premier rituel `Zen`, admin panel partiel
+Etat réel du produit aujourd'hui (post-Session 2 — 2026-04-19) :
+- `réel`: auth, signup, reset password, invite beta, paywall, checkout, webhook Stripe, chat, mémoire inter-sessions, mapping, onboarding, trial layer, proof layer, journal réel, today reel, bloc de reprise visible, lecture de phase visible, signaux cross-sessions, trajectoire visible, premier rituel `Zen`, admin panel partiel, toggle mensuel/annuel Pricing, état Jour 0 TodayV2, LivingAtmosphere partagé
 - `partiel`: Greffier (enrichit la mémoire, ne pilote pas le Mapping), billing global, incarnation profonde de la phase dans toute l'UX, progression longitudinale encore simple, finalisation du linkage invite en prod
 - `mocké`: offre Pro
 - `mort / legacy`: `src/App.original.jsx`, `src/constants/prompt-greffier.js`, plusieurs composants de panneaux latéraux, une partie de la logique `access_codes`
@@ -127,6 +127,8 @@ V2:
 - `src/pages/AppShell.jsx` orchestre l'app privée
 - pages séparées par surface (`Chat`, `Mapping`, `Journal`, `Today`)
 - paywall et onboarding branchés au runtime
+- composants V2 dans `src/components/v2/` : `LivingAtmosphere.jsx` (composant partagé d'atmosphère vivante, remplace ~180 lignes dupliquées dans `MappingV2`, `JournalV2`, `TodayV2`), `ChatV2.jsx`, `ShellV2.jsx`, `MappingV2.jsx`, `TodayV2.jsx`, `JournalV2.jsx`
+- design system centralisé dans `src/design-system/tokens.js` : tokens `T.type.tiny`, `T.type.input`, `T.color.phase`, `T.nav`, helper `focusRing`
 
 Transitions inachevées:
 - `src/App.original.jsx` est toujours présent
@@ -176,6 +178,7 @@ Login:
 
 Pricing:
 - checkout mensuel branché
+- toggle Mensuel / Annuel : offre annuelle à 180 €/an (= 15 €/mois, −21 % vs mensuel)
 - offre Pro présentée mais non branchée
 - essai gratuit mentionné explicitement avant paiement
 - l'abonnement est présenté comme suite de l'expérience, pas comme prérequis d'entrée
@@ -250,7 +253,8 @@ Transition produit actée :
    - résout le tier d'accès (`trial` / `subscriber` / `invite` / `admin`)
    - applique un quota serveur sur `rate_limits`
    - construit `system = NOEMA_SYSTEM + memory_context`
-   - lance `runGreffier()` en parallèle
+   - lance `runGreffier()` en parallèle toutes les **2 interactions** (seuil abaissé depuis 3 pour couvrir les sessions courtes)
+   - la mémoire injectée dans `runGreffier()` provient de `memRow` (DB authoritative), non du payload frontend
    - appelle Anthropic Sonnet
    - loggue `api_usage`
    - renvoie `{ content, _greffier, _quota }`
@@ -380,6 +384,8 @@ Le fichier `src/constants/prompt-greffier.js` n'est pas utilisé par le runtime 
 ### 5.2 Fonctionnement réel
 
 Le Greffier:
+- déclenché toutes les **2 interactions** depuis `claude.js` (seuil abaissé depuis 3 — couvre les sessions courtes)
+- reçoit la mémoire depuis `memRow` (ligne DB authoritative), pas depuis le payload frontend
 - prend les 6 derniers messages
 - prend un snapshot de mémoire utilisateur si fourni
 - appelle Anthropic Haiku

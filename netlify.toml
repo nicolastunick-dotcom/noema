@@ -1,9 +1,25 @@
 [build]
-  command   = "npm run build"
+  command   = "npm run build && cp netlify/_headers dist/_headers"
   publish   = "dist"
 
 [functions]
-  directory = "netlify/functions"
+  directory      = "netlify/functions"
+  node_bundler   = "esbuild"
+
+# ── Dev local via `npm run dev:netlify` (netlify dev) ──────────────────────
+# Démarre Vite sur :5173 et expose les fonctions Netlify sur le même port proxy.
+# Les appels /api/* sont redirigés vers /.netlify/functions/* (voir [[redirects]] ci-dessous).
+# NE PAS utiliser `npm run dev` seul — les fonctions API ne seront pas accessibles.
+[dev]
+  command     = "npm run dev"
+  targetPort  = 5173
+  port        = 8888
+  autoLaunch  = false
+
+[[redirects]]
+  from   = "/api/*"
+  to     = "/.netlify/functions/:splat"
+  status = 200
 
 [build.environment]
   NODE_VERSION            = "20"
@@ -15,12 +31,6 @@
   to     = "/index.html"
   status = 200
 
-# Headers de sécurité
-[[headers]]
-  for = "/*"
-  [headers.values]
-    X-Frame-Options        = "DENY"
-    X-Content-Type-Options = "nosniff"
-    Referrer-Policy        = "strict-origin-when-cross-origin"
-    Permissions-Policy     = "camera=(), microphone=(), geolocation=()"
-    Content-Security-Policy = "default-src 'self'; connect-src 'self' https://zdqwrxykyhjidjfcldzd.supabase.co https://js.stripe.com https://hooks.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://js.stripe.com; font-src 'self' https://fonts.gstatic.com data:; script-src 'self' https://js.stripe.com https://hooks.stripe.com; frame-src https://js.stripe.com https://hooks.stripe.com; img-src 'self' data: blob: https:"
+# Les headers de sécurité sont générés uniquement pour le build de production
+# via netlify/_headers afin de ne pas casser le preamble inline de Vite/React
+# pendant `netlify dev`.

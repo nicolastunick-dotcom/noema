@@ -62,7 +62,7 @@ Son principal retard n'est plus l'absence de briques, mais l'écart entre :
 | Quota | réel | backend autoritaire : `8/jour` trial, `25/jour` full |
 | Billing | réel | checkout, webhook, `subscriptions`, page `Success` |
 | Invites | partiel | `sessionStorage` transporte encore le token, mais l'acces `invite` n'est plus accorde sans confirmation backend/base |
-| Admin | réel | `profiles.is_admin` est la source de vérité runtime |
+| Admin | réel | `profiles.is_admin` est la source de vérité runtime · Dashboard `/admin` accessible via `VITE_ADMIN_EMAIL` |
 | Greffier | partiel | enrichit mémoire/observabilité, ne pilote pas directement l'UI |
 | Phase Stratège visible | réel initial | lecture emotionnelle derivee de `step`, visible dans `AppShell`, `Chat` et `Mapping`, encore a densifier |
 | `semantic_memory` | non branché | table et RPC présentes, runtime absent |
@@ -89,6 +89,7 @@ Son principal retard n'est plus l'absence de briques, mais l'écart entre :
 - Le quota quotidien est décidé côté backend.
 - `sessions` et `memory` sont réellement relus et mis à jour.
 - `Success` revalide `subscriptions.status`.
+- Les headers de sécurité de production sont désormais portés par `netlify/_headers` copié au build, afin de ne pas casser `netlify dev` avec la CSP stricte.
 - Le build production passe.
 
 ### Prudence
@@ -134,6 +135,69 @@ Les docs système sont utiles, mais plusieurs `.md` historiques peuvent encore i
 7. Supprimer les reliquats hybrides et legacy qui brouillent la lecture du système.
 
 ---
+
+## Session 2 — 2026-04-19
+
+### Bugs UI résolus
+
+**Login.jsx**
+- Police du logo corrigée : Newsreader → Instrument Serif italic (cohérence typographique avec le reste du design system)
+- Footer traduit en français : `© 2026 Noema`
+- `const C` supprimé et migré vers `T` (tokens centralisés dans `src/design-system/tokens.js`)
+- Focus states ajoutés sur les inputs (accessibilité)
+
+**ChatV2.jsx**
+- Bug `rgba(hex)` corrigé sur les prompts de démarrage (la fonction `rgba()` n'accepte pas les valeurs hex CSS, les couleurs sont désormais exprimées en valeurs séparées)
+- Focus ring ajouté sur le textarea
+
+**ShellV2.jsx**
+- Transitions de page affinées : durée 0.16s → 0.24s, déplacement x:6 → x:12, ajout de blur
+- Label de phase renommé : `PERDU / GUIDE / STRATÈGE` → `Exploration · Phase 1 / Développement · Phase 2 / Stratégie · Phase 3`
+- Tab indicator arrondi : `borderRadius: 6`
+
+### Corrections backend
+
+**netlify/functions/claude.js**
+- Greffier déclenché toutes les **2 interactions** (au lieu de 3) — couverture des sessions courtes
+- `body.user_memory` remplacé par `memRow` dans l'appel `runGreffier()` — la mémoire injectée dans le Greffier est désormais authoritative depuis la DB, pas depuis le payload frontend
+
+### Nouvelles features
+
+**`src/components/v2/LivingAtmosphere.jsx`** (nouveau fichier)
+- Composant partagé créé, remplace ~180 lignes dupliquées dans `MappingV2`, `JournalV2` et `TodayV2`
+- Centralise le rendu de l'atmosphère vivante (fond animé, particules, ambiance)
+
+**MappingV2**
+- ZenRing corrigé : calcul `step/6` au lieu de `step/10` (anneau de progression plus lisible)
+- `session_note` étendu à 200 caractères
+- CTAs `Explorer en session →` ajoutés sur les sections Forces et Blocages
+
+**TodayV2**
+- État Jour 0 dédié : quand `sessionCount === 0`, affichage d'un écran d'accueil avec CTA vers Chat (au lieu du fallback générique)
+
+**`src/design-system/tokens.js`**
+- Nouveaux tokens : `T.type.tiny`, `T.type.input`, `T.color.phase`, `T.nav`
+- Helper `focusRing` ajouté (cohérence des états de focus à travers les composants)
+
+**Pricing.jsx**
+- Toggle Mensuel / Annuel ajouté : offre annuelle à 180 €/an (= 15 €/mois, −21 % vs mensuel)
+
+---
+
+## Dashboard Admin
+
+Route `/admin` — accessible uniquement si `user.email === VITE_ADMIN_EMAIL`.
+
+Sections :
+- **Vue d'ensemble** — 6 cards live (profiles, subscriptions, sessions today, MRR, trial, free)
+- **Utilisateurs** — table searchable avec phase, statut, date, actions (génération code, sessions expandables)
+- **Revenus** — MRR, ARR estimé, historique abonnements
+- **Actions rapides** — génération invite, broadcast (UI, backend requis), logs Greffier (localStorage)
+- **Navigation libre** — navigue vers toute page sans être bloqué par les gardes d'accès (`?adminpreview=1`)
+
+Accès depuis l'app : badge Admin → bouton **Dashboard** en haut du panneau flottant.
+
+Fichiers modifiés : `src/pages/AdminDashboard.jsx` (créé), `src/App.jsx`, `src/lib/access.js`, `src/components/AdminPanel.jsx`.
 
 ## Vérification rapide
 

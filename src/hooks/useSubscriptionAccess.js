@@ -236,7 +236,7 @@ export function useSubscriptionAccess(user) {
 
   return {
     ...state,
-    isAuthenticated: Boolean(user),
+    isAuthenticated: Boolean(user?.id),
     refresh,
   };
 }

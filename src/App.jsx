@@ -1,17 +1,18 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { sb } from "./lib/supabase";
-import Landing       from "./pages/Landing";
-import Login         from "./pages/Login";
-import Onboarding    from "./pages/Onboarding";
-import AppShell      from "./pages/AppShell";
-import Pricing       from "./pages/Pricing";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import TermsOfService from "./pages/TermsOfService";
-import EthicalAI    from "./pages/EthicalAI";
-import Contact      from "./pages/Contact";
-import Success        from "./pages/Success";
-import ResetPassword  from "./pages/ResetPassword";
-import InvitePage     from "./pages/InvitePage";
+import Landing          from "./pages/Landing";
+import Login            from "./pages/Login";
+import Onboarding       from "./pages/Onboarding";
+import AppShell         from "./pages/AppShell";
+import Pricing          from "./pages/Pricing";
+import PrivacyPolicy    from "./pages/PrivacyPolicy";
+import TermsOfService   from "./pages/TermsOfService";
+import EthicalAI        from "./pages/EthicalAI";
+import Contact          from "./pages/Contact";
+import Success          from "./pages/Success";
+import ResetPassword    from "./pages/ResetPassword";
+import InvitePage       from "./pages/InvitePage";
+import AdminDashboard   from "./pages/AdminDashboard";
 import "./styles/app.css";
 import { buildLocation, getAppPath, parseNoemaLocation, resolveNoemaTarget } from "./lib/access";
 import { useSubscriptionAccess } from "./hooks/useSubscriptionAccess";
@@ -20,20 +21,12 @@ import { useSubscriptionAccess } from "./hooks/useSubscriptionAccess";
 // ROOT — Gestion navigation + auth + verrou abonnement
 // ─────────────────────────────────────────────────────────────
 export default function App() {
-  const DEV_USER = import.meta.env.DEV
-    ? { id: "dev-user", email: "dev@noema.local", user_metadata: { full_name: "Dev" } }
-    : null;
-
-  const [user, setUser] = useState(DEV_USER);
-  const [authReady, setAuthReady] = useState(import.meta.env.DEV || !sb);
+  const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(!sb);
   const [locationState, setLocationState] = useState(() => {
-    if (import.meta.env.DEV) {
-      window.history.replaceState({}, "", "/app/chat");
-      return { pathname: "/app/chat", search: "" };
-    }
     return { pathname: window.location.pathname, search: window.location.search };
   });
-  const [onboardingReady, setOnboardingReady] = useState(import.meta.env.DEV);
+  const [onboardingReady, setOnboardingReady] = useState(!sb);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   const route = useMemo(
@@ -93,8 +86,6 @@ export default function App() {
   }, [syncLocation]);
 
   useEffect(() => {
-    if (import.meta.env.DEV) return; // bypass auth en local — DEV_USER déjà défini
-
     if (!sb) {
       setAuthReady(true);
       return;
@@ -165,16 +156,14 @@ export default function App() {
 
     if (route.page === "app") {
       if (!user) {
-        navigate(buildLocation("/login", { reason: "auth_required", next: currentAppPath }), { replace: true });
+        navigate("/", { replace: true });
         return;
       }
 
-      if (!import.meta.env.DEV) {
-        if (access.loading) return;
-        if (!access.hasProductAccess) {
-          navigate(buildLocation("/pricing", { reason: "subscription_required" }), { replace: true });
-          return;
-        }
+      if (access.loading) return;
+      if (!access.hasProductAccess) {
+        navigate(buildLocation("/pricing", { reason: "subscription_required" }), { replace: true });
+        return;
       }
 
       if (!onboardingReady) return;
@@ -188,7 +177,7 @@ export default function App() {
 
     if (route.page === "onboarding") {
       if (!user) {
-        navigate(buildLocation("/login", { reason: "auth_required", next: "/onboarding" }), { replace: true });
+        navigate("/", { replace: true });
         return;
       }
 
@@ -208,7 +197,8 @@ export default function App() {
     }
 
     // Utilisateur connecté + abonnement actif sur la landing → redirige vers l'app
-    if (route.page === "landing" && user && authReady) {
+    // Sauf si l'admin prévisualise la page avec ?adminpreview=1
+    if (route.page === "landing" && user && authReady && !isAdminPreview) {
       if (access.loading) return;
       if (!access.hasProductAccess) return;
 
@@ -219,6 +209,12 @@ export default function App() {
 
       navigate(needsOnboarding ? buildLocation("/onboarding", { next: getAppPath("chat") }) : getAppPath("chat"), { replace: true });
     }
+
+    // Login bypass adminpreview
+    if (route.page === "login" && user && isAdminPreview) return;
+
+    // Onboarding bypass adminpreview
+    if (route.page === "onboarding" && !needsOnboarding && isAdminPreview) return;
   }, [
     access.hasProductAccess,
     access.loading,
@@ -233,12 +229,18 @@ export default function App() {
     user,
   ]);
 
+  // Admin bypass : ?adminpreview=1 sur les pages qui redirigent les utilisateurs connectés
+  const isAdminPreview = route.query?.adminpreview === "1";
+
   // Sprint 1.1 : bloquer le rendu d'AppShell tant que l'entitlement n'est pas résolu (prod uniquement).
   // Sans ce garde, AppShell peut monter avec accessState.loading=true et déclencher openingMessage()
   // avant que useSubscriptionAccess ait terminé son check admin/sub/invite.
-  const shouldBlockForChecks = !authReady
-    || (!import.meta.env.DEV && route.page === "app" && user && access.loading)
-    || ((route.page === "app" || route.page === "login" || route.page === "onboarding") && user && !onboardingReady);
+  // Exception : page admin elle-même ne doit pas bloquer.
+  const shouldBlockForChecks = route.page !== "admin" && (
+    !authReady
+    || (route.page === "app" && user && access.loading)
+    || ((route.page === "app" || route.page === "login" || route.page === "onboarding") && user && !onboardingReady)
+  );
 
   if (shouldBlockForChecks) {
     return <LoadingScreen message="Verification de votre acces..." />;
@@ -314,6 +316,10 @@ export default function App() {
         accessState={access}
       />
     );
+  }
+
+  if (route.page === "admin") {
+    return <AdminDashboard user={user} onNav={handleNav} />;
   }
 
   return <LoadingScreen message="Preparation de Noema..." />;

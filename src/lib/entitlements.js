@@ -1,4 +1,4 @@
-export const TRIAL_DAILY_LIMIT = 8;
+export const TRIAL_DAILY_LIMIT = 15;
 export const FULL_DAILY_LIMIT = 25;
 
 export function resolveAccessTier({

@@ -1,7 +1,7 @@
 import { useRef, useEffect } from "react";
 import DOMPurify from "dompurify";
 import { fmt } from "../utils/helpers";
-import NoemaOrb from "../components/NoemaOrb";
+import OrbPhase from "../components/v2/OrbPhase";
 import PhaseSignal from "../components/PhaseSignal";
 
 // ─────────────────────────────────────────────────────────────
@@ -53,6 +53,7 @@ export default function ChatPage({
   onPricing,
   phaseContext,
   bottomInset = 72,
+  onLogout,
 }) {
   const msgsRef = useRef(null);
   const continuityMode = continuity?.mode || "welcome";
@@ -147,7 +148,7 @@ export default function ChatPage({
           >Nouvelle session</button>
           {sb && (
             <button
-              onClick={() => { sessionStorage.removeItem("noema_invite"); sb.auth.signOut(); }}
+              onClick={onLogout}
               style={{
                 background: "none", border: "none",
                 color: C.outline, cursor: "pointer",
@@ -431,8 +432,9 @@ export default function ChatPage({
                   style={{
                     fontFamily: "'Instrument Serif', serif",
                     fontStyle: "italic",
-                    fontSize: m.isErr ? "0.9rem" : "1.2rem",
-                    lineHeight: 1.65,
+                    fontSize: m.isErr ? "0.9rem" : "1.175rem",
+                    lineHeight: 1.82,
+                    letterSpacing: "0.005em",
                     color: m.isErr ? "#ffb4ab" : C.onSurfaceVariant,
                     position: "relative",
                   }}
@@ -459,7 +461,7 @@ export default function ChatPage({
                 padding: "16px 20px",
                 borderRadius: "24px 24px 4px 24px",
               }}>
-                <p style={{ fontSize: "0.875rem", lineHeight: 1.65, color: C.onSurface }}>{m.text}</p>
+                <p style={{ fontSize: "0.875rem", lineHeight: 1.75, color: C.onSurface }}>{m.text}</p>
               </div>
             )}
             <span style={{
@@ -480,7 +482,7 @@ export default function ChatPage({
         {/* Typing indicator pendant l'attente de la réponse complète */}
         {typing && (
           <div style={{ alignSelf: "flex-start", padding: "4px 0 4px 4px" }}>
-            <NoemaOrb size={50} showText={false} />
+            <OrbPhase size={50} typing={true} phaseContext={phaseContext} />
           </div>
         )}
 

@@ -5,13 +5,19 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    // Proxy les fonctions Netlify vers le serveur local de fonctions (port 9999).
+    // En dev : lancer `npm run dev:functions` dans un terminal séparé.
+    // En prod : Netlify sert /.netlify/functions/* nativement, ce proxy n'est pas actif.
+    proxy: {
+      '/.netlify/functions': {
+        target: 'http://localhost:9999',
+        changeOrigin: true,
+      },
+    },
   },
-  // --- CODEX CHANGE START ---
-  // Codex modification - enable a lightweight Vitest setup for targeted
-  // stabilization tests without changing the app runtime.
+  // Vitest — setup de test ciblé sans changer le runtime app
   test: {
     environment: 'node',
     globals: true,
-  }
-  // --- CODEX CHANGE END ---
+  },
 })

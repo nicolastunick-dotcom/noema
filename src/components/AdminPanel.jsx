@@ -220,7 +220,7 @@ export default function AdminPanel({ user, sb, accessState, history, lastGreffie
       return null;
     }
 
-    const response = await fetch("/.netlify/functions/admin-tools", {
+    const response = await fetch("/api/admin-tools", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -325,10 +325,34 @@ export default function AdminPanel({ user, sb, accessState, history, lastGreffie
               <p style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: C.primary, margin: 0 }}>Panneau Admin</p>
               <p style={{ fontSize: "0.65rem", color: C.outline, margin: "3px 0 0" }}>{user.email}</p>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 9999, background: "rgba(189,194,255,0.06)", border: "1px solid rgba(69,70,85,0.3)" }}>
-              <span className="material-symbols-outlined" style={{ fontSize: "0.75rem", color: C.outline, fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>tag</span>
-              <span style={{ fontSize: "0.7rem", color: C.onSurface, fontWeight: 600 }}>{msgCount}</span>
-              <span style={{ fontSize: "0.65rem", color: C.outline }}>/25</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {/* Dashboard link */}
+              <button
+                onClick={() => {
+                  window.history.pushState({}, "", "/admin");
+                  window.dispatchEvent(new PopStateEvent("popstate"));
+                  setOpen(false);
+                }}
+                title="Ouvrir le Dashboard Admin"
+                style={{
+                  display: "flex", alignItems: "center", gap: 4,
+                  padding: "4px 10px", borderRadius: 9999,
+                  background: "rgba(189,194,255,0.12)", border: "1px solid rgba(189,194,255,0.25)",
+                  color: C.primary, cursor: "pointer", fontSize: "0.65rem", fontWeight: 700,
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  textTransform: "uppercase", letterSpacing: "0.1em",
+                }}
+              >
+                Dashboard
+                <span className="material-symbols-outlined" style={{ fontSize: "0.7rem", fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>
+                  open_in_new
+                </span>
+              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 9999, background: "rgba(189,194,255,0.06)", border: "1px solid rgba(69,70,85,0.3)" }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "0.75rem", color: C.outline, fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>tag</span>
+                <span style={{ fontSize: "0.7rem", color: C.onSurface, fontWeight: 600 }}>{msgCount}</span>
+                <span style={{ fontSize: "0.65rem", color: C.outline }}>/25</span>
+              </div>
             </div>
           </div>
 

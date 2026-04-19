@@ -17,7 +17,7 @@ function pushCount(map, label, value) {
   map.set(key, existing);
 }
 
-function pickTop(entries, limit = 3, minCount = 2) {
+function pickTop(entries, limit = 3, minCount = 1) {
   return Array.from(entries.values())
     .filter((entry) => entry.count >= minCount)
     .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value))

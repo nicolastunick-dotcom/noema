@@ -64,12 +64,18 @@ export default async function handler(request) {
         const stripe       = new Stripe(stripeKey);
         const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
 
+        const priceItem     = subscription.items.data[0]?.price;
+        const annualPriceId = process.env.STRIPE_PRICE_ANNUAL;
+        const resolvedPlan  = priceItem?.lookup_key
+          || (annualPriceId && priceItem?.id === annualPriceId ? "noema_annual" : null)
+          || "noema_monthly";
+
         const { error } = await sbAdmin.from("subscriptions").upsert(
           {
             user_id:                userId,
             stripe_customer_id:     stripeCustomerId,
             stripe_subscription_id: stripeSubscriptionId,
-            plan:                   subscription.items.data[0]?.price?.lookup_key || "noema_monthly",
+            plan:                   resolvedPlan,
             status:                 subscription.status,
             current_period_end:     new Date(subscription.current_period_end * 1000).toISOString(),
             cancel_at_period_end:   subscription.cancel_at_period_end,
