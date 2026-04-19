@@ -1,437 +1,429 @@
 # TESTER REPORT — Noema
-**Date :** 2026-04-19 · **Session 2** · **7 agents** (6 utilisateurs + 1 audit design premium)
+**Date :** 2026-04-19 · **Session 3** · **8 agents** (6 utilisateurs + 1 analyste prompt/phases + 1 expert sémantique)
+
+> Session 3 — Analyse post-correctifs. Tous les agents ont lu le code réel.
 
 ---
 
-## Agent 1 — L'Utilisateur Perdu (Lucas, 22 ans)
+## Agent 1 — Lucas (Utilisateur Perdu, Jour 0-1)
 
-**Profil :** Étudiant en L3 psy, légèrement sceptique, arrive sans attente précise depuis une story Instagram.
+**Profil :** Étudiant en psycho, 22 ans, légèrement sceptique. Arrive depuis une story Instagram.
 
-**Ce qui fonctionne ✅ :**
-- La première question de Noema est juste : "Qu'est-ce qui occupe le plus de place dans ta tête en ce moment — pas ce que tu devrais faire, ce qui est là, maintenant ?"
-- Les starter prompts dans ChatV2 sont honnêtes et non-productivistes ("Je me sens bloqué sans savoir pourquoi")
-- L'esthétique dark / ambient intrigue sans intimider — inattendu dans le bon sens
-- La règle des réponses courtes sur les signaux faibles (≤5 mots → 2 phrases max)
-- Le message de quota épuisé est humain ("Ce qui s'est précisé ici reste visible. Garder ce fil vivant")
-- Règle "jamais je comprends, jamais c'est tout à fait normal" dans le prompt — différenciateur réel
+**Ce qui fonctionne ✅**
+- TodayV2 Jour 0 : early return propre, condition `sessionCount === 0` solide, CTA vers Chat présent
+- Label "Exploration · Phase 1" remplace "PERDU" — psychologiquement beaucoup moins chargé
+- TRIAL_DAILY_LIMIT à 15 — la limite de 8 était absurde, 15 donne le temps d'arriver à quelque chose
+- Onboarding Slide 2 : cartes Chat/Mapping/Journal lisibles, descriptions sans corporate speak
+- Slide 3 : bullets anti-clichés ("Pas de diagnostic / Pas de conseil standard / Pas d'objectif imposé") — désamorce les résistances
 
-**Ce qui ne fonctionne pas ❌ :**
-- TodayV2 est vide et froide pour un nouvel utilisateur — conçue pour les récurrents, pas pour l'arrivée (au Jour 1 : "Commence une conversation pour définir ton intention du jour." = cul-de-sac)
-- Navigation à 4 onglets dès le Jour 1 — "Mapping" est totalement incompréhensible sans contexte
-- La pill de phase "PERDU" visible en étiquette de l'interface — catégorisation perçue comme diagnostic
-- Session "complète" promise à 25 messages vs trial 15 messages/jour — collision de promesses
-- Aucun onboarding réel entre inscription et premier chat — Lucas arrive dans ShellV2 sans cadrage
+**Ce qui ne fonctionne pas ❌**
+- Écran Jour 0 sans prénom — `firstName` est calculé mais non utilisé dans l'early return. Premier moment où Noema s'adresse à moi et elle ne sait pas qui je suis
+- "Chaque session compte" en Slide 2 — je n'ai encore eu aucune session. Cette accroche n'a aucun ancrage dans mon vécu
+- "Ta première question t'attend" en Slide 4 sans livrable : j'arrive dans le Chat et Noema ne m'a pas encore parlé. La promesse est creuse
+- Pas de pré-amorce Chat depuis le CTA Jour 0 — l'interface s'ouvre vide, sans message d'ouverture
+- Durée d'une session non mentionnée — l'ambiguïté temporelle crée de l'évitement
 
-**Ce qui devient redondant après 1 semaine ⚠️ :**
-- Question du jour : cycle de 5 questions par phase (dayOfYear % 5) — répétition visible en < 2 semaines
-- Les blobs animés — imperceptibles mentalement au Jour 7
-- Header "Bonjour · Jour X de ton parcours" sans données évolutives = horloge vide
+**Ce qui devient redondant après 1 semaine ⚠️**
+- Slides 3 et 4 de l'onboarding — pertinentes au Jour 0, sans valeur de re-lecture
+- Le label "Exploration · Phase 1" peut devenir anxiogène si la progression est invisible sur 10+ sessions
 
-**Ma recommandation :** TodayV2 doit avoir un état Jour 0 dédié — pas l'interface vide des récurrents. Et le label "PERDU" doit disparaître de l'interface visible : c'est une variable interne, pas un miroir à présenter à quelqu'un en recherche.
+**Ma recommandation :** Injecter le prénom dans l'écran Jour 0. Pré-amorcer le Chat avec un message d'ouverture de Noema quand on arrive depuis ce CTA. Ce sont deux lignes de code, et elles changent tout.
 
-**Mon verdict : 6,5/10** — Le moteur conversationnel est remarquable mais l'expérience de premier contact est criblée de frictions évitables.
+**Mon verdict : 6,5/10**
 
 ---
 
-## Agent 2 — L'Utilisateur Avancé (Camille, 28 ans)
+## Agent 2 — Camille (Utilisatrice Avancée, 10+ sessions)
 
-**Profil :** Ex-ingénieure en reconversion coaching, 10-12 sessions au compteur, Phase 2/3, cherche de la substance.
+**Profil :** Ex-ingénieure en reconversion coaching. Cherche de la profondeur et détecte immédiatement si un dashboard ment.
 
-**Ce qui fonctionne ✅ :**
-- Section "Contradictions détectées" — honnête et rare dans ce type de produit
-- "Ombres à dissoudre" avec 3 niveaux (racine, entretien, visible) — lecture réelle du fonctionnement
-- Continuité inter-sessions via buildMemoryContext() — c'est ce qui fait vraiment revenir
-- Greffier Haiku avec prefill JSON — extrait sans halluciner, normalizeGreffierPayload est défensif
-- "Progression vivante" conditionnel sur hasRecurringThemes — n'apparaît que quand il y a des données
+**Ce qui fonctionne ✅**
+- `computeForceStrengths()` : calcul sur données réelles, fallback progressif honnête, plafond 95% sage
+- Ikigai dynamique (42%-72%) : logique de taille lisible, indicateurs de complétion honnêtes
+- `buildHarmonieText()` : texte personnel basé sur les données réelles, non-générique
+- `buildProgressSignals()` : fonctions pures, priorité blocages > contradictions > forces — bonne sémantique coaching
+- ZenRing step/6 : corrigé, plus de bug de progression
+- Empty states avec CTA : invite à la session plutôt que le vide mort
+- Historique "Ton parcours" : timeline propre, date + note, pas d'over-engineering
 
-**Ce qui ne fonctionne pas ❌ :**
-- computeForceStrengths() : cap à 3 sessions → pourcentages toujours artificiellement élevés ; fallback 25+5i est purement décoratif
-- Ikigai : cercles taille fixe (66%), "Harmonie détectée" = template string, pas d'analyse réelle
-- session_note tronquées à 90 caractères — coupe avant le 2e insight (les notes Greffier sont denses)
-- ZenRing calcule step/10 alors que step max Greffier = 6 → jamais plus de 60% — bug silencieux
-- Aucune dimension temporelle dans les forces (stable depuis 6 mois ou apparu cette semaine ?)
+**Ce qui ne fonctionne pas ❌**
+- Barres de blocage hardcodées : `BLOCAGE_CONFIG` avec barW à 85%/50%/30% fixes. Un blocage apparu une seule fois lit "85% — Critique". Le problème qu'on a corrigé sur les forces existe toujours sur les blocages
+- Titre "Harmonie détectée" toujours affiché même quand ikigaiFilledCount < 2 — le titre JSX n'est pas conditionnel, seul le contenu intérieur l'est. Mensonge d'en-tête visible
+- `getStepLabel()` sans accents : "Stratege", "Premiere", "precedente" dans les strings — visible à l'écran
+- `buildMovementSummary()` basée sur delta de step opaque — l'utilisateur ne peut pas vérifier ce chiffre
+- PastEntryCard non expandable : annoncée comme telle dans les notes, mais c'est une liste statique sans toggle
 
-**Ce qui devient redondant après 1 mois ⚠️ :**
-- PulseTiles si progressSignals ne change pas assez rapidement entre les sessions
-- Le hero cinématique (blur, scale, 4 blobs, 22-28s loops) — 900ms d'attente pour du connu après 15 visites
-- "Harmonie détectée" — template string identique à chaque visite une fois l'ikigai rempli
-- Citation finale "Le cartographe de l'esprit..." — statique, jamais changée
-- ZenRing + "Session 11 · Le profil s'affine" sans changement de phase visible
+**Ce qui devient redondant après 1 mois ⚠️**
+- ZenRing à 100% depuis longtemps sans mécanisme de cycle
+- CTA "Explorer en session →" partout une fois les sections remplies — bruit commercial dans un espace psychologique
+- `buildHarmonieText()` : 3 patterns limités, texte identique à chaque visite une fois l'ikigai stable
 
-**Ma recommandation :** Supprimer les pourcentages de forces ou les remplacer par une timeline d'apparition ("présente depuis session 3"). Étendre session_note à 200 caractères. Corriger le ZenRing pour step/6. Rendre l'ikigai visuellement sensible à sa complétion (taille de cercles proportionnelle aux champs remplis).
+**Ma recommandation :** Trois correctifs urgents — barres de blocage dynamiques (même logique que forces), titre "Harmonie détectée" conditionnel, PastEntryCard expandable livrée.
 
-**Mon verdict : 6,5/10** — Le moteur est là et il est bon, mais le tableau de bord ment parfois sur la profondeur de ce qu'il mesure.
-
----
-
-## Agent 3 — Le Sceptique (Thomas, 30 ans)
-
-**Profil :** Développeur fullstack — ne croit pas aux apps de développement personnel, cherche les failles, s'il reste c'est que ça marche vraiment.
-
-**Ce qui fonctionne ✅ :**
-- Sécurité backend solide : JWT côté serveur, whitelist champs, rate-limit mémoire 30 req/min
-- Mémoire inter-sessions : 4 queries en Promise.all, buildServerMemoryContext couvre les 5 axes
-- Greffier robuste : normalizeGreffierPayload défensif, prefill JSON, clampProgression
-- Modèle hybride justifié (shouldRunGreffier = userMsgCount % 3 === 0, documenté "~67% réduction")
-- progressionSignals.js solide : pickTop avec minCount:2, priorité blockage > contradiction > force
-
-**Ce qui ne fonctionne pas ❌ :**
-- Greffier tourne TOUJOURS sur Haiku (greffier.js ligne 2 : HAIKU_MODEL). MODEL_HEAVY=Sonnet est uniquement pour la réponse principale quand shouldRunGreffier=true — pas un vrai hybrid sur la synthèse
-- userMemory vient du CLIENT (body.user_memory) alors que la mémoire authoritative est déjà en DB dans memRow — vecteur de divergence et de contamination
-- Quota incrémenté AVANT la réponse Anthropic — si Anthropic échoue, le message est brûlé sans réponse
-- step non persisté dans memory, lu depuis sessions.step séparément — fragile si la query échoue
-
-**Ce qui est techniquement fragile ⚠️ :**
-- Greffier timeout 6000ms — cold start Netlify + double upsert Supabase = limite serrée
-- Greffier toutes les 3 interactions — sessions courtes (2-4 msgs) ne déclenchent jamais le Greffier = aucune mise à jour mémoire sur les sessions les plus probables en early adopter
-- pickTop minCount:2 — un blocage fort mentionné une seule fois n'est jamais remonté
-- Pas de réconciliation entre le bloc `_ui` (prompt) et le Greffier (backend) — deux sources de vérité indépendantes
-- MAX_TOKENS_PER_REQUEST=1200 sur Haiku peut couper les réponses longues de Phase 2
-
-**Ma recommandation :** Fix prioritaire — remplacer `body.user_memory` par les données issues de `memRow` dans l'appel runGreffier (fix d'une ligne, supprime un vrai risque d'intégrité). Ajouter un trigger de fin de session qui force une passe Greffier indépendamment du userMsgCount.
-
-**Mon verdict : 6,5/10** — Architecture sérieuse mais 3 bugs de logique réels qui font paraître le produit cassé sur des cas d'usage courants.
+**Mon verdict : 6,5/10**
 
 ---
 
-## Agent 4 — L'Impatient (Axel, 19 ans)
+## Agent 3 — Thomas (Sceptique Technique)
 
-**Profil :** Sans emploi, attention span TikTok — veut une micro-révélation immédiate ou il part.
+**Profil :** Développeur fullstack, 30 ans. Cherche les failles réelles.
 
-**Ce qui fonctionne ✅ :**
-- Règle 5 mots dans le prompt : "Quelque chose coince ?" + une question courte — exactement juste
-- Starter prompts cliquables sans réfléchir (1 tap, c'est parti)
-- Mode "welcome" sobre : "Dis-moi ce qui t'occupe l'esprit." — pas d'injonction
-- Navigation bottom bar immédiate, Chat visible en premier
-- Première question obligatoire bien calibrée pour la Phase 1
+**Ce qui fonctionne ✅**
+- `memRow` remplace `body.user_memory` dans `runGreffier` — vecteur de contamination mémoire fermé
+- Greffier `/2` effectif — se déclenche aux messages 2, 4, 6...
+- Hybride Haiku/Sonnet implémenté, tiering MAX_TOKENS non bypassable par le client
+- `pickTop minCount = 1` : les signaux apparaissent dès la 1ère session
+- Sécurité entitlements : résolution complète côté backend
 
-**Ce qui ne fonctionne pas ❌ :**
-- TodayV2 est un mur de contenu — Axel scrolle 2 secondes et ferme l'app
-- Le mot "Rituel" dans le header sonne vieux pour un 19 ans
-- Starter "Je veux comprendre ce qui me freine vraiment" — trop analytique, présuppose une intention de travail sur soi qu'Axel n'a pas encore
-- Onglet "Mapping" — flou total (icône psychology_alt + mot "Mapping")
-- Le prompt Noema prescrit 4 étapes séquentielles avant toute action — Axel sent un parcours imposé
+**Ce qui ne fonctionne pas ❌**
+- Commentaire trompeur sur MODEL_HEAVY : le commentaire dit "Sonnet lors des synthèses Greffier" mais Sonnet est utilisé pour la RÉPONSE principale, Haiku pour la SYNTHÈSE. C'est l'inverse. Pas un bug bloquant, mais une confusion architecturale documentée à tort
+- `greffier.js` ignore MODEL_HEAVY — le modèle n'est pas passé en paramètre, le Greffier hardcode toujours Haiku
+- Race condition latente sur le quota — lecture → calcul → upsert sans transaction. Deux requêtes simultanées peuvent bypasser la limite
 
-**Ce qui le fera fuir en 30 secondes ⚠️ :**
-- Réponse Noema > 4 lignes en session 1, même si elle est belle
-- Une seule réponse trop littéraire sur un "jsais pas" — une suffit pour uninstall
-- Page "Aujourd'hui" en premier plan ou comme première expérience
-- Tout ce qui ressemble à un onboarding ou un formulaire
-- "Essai du jour terminé" après 3 échanges sans valeur perçue
+**Ce qui est techniquement fragile ⚠️**
+- Greffier bloque la réponse finale malgré le parallélisme apparent — `await greffierPromise` ligne 292 attend jusqu'à 5,9s après la réponse Sonnet
+- Prefill `{` dans le Greffier — parsing fragile si Haiku génère un commentaire avant l'accolade
+- `normalizeBloom` peut déclencher un bloom sur un blocage déjà en mémoire — la déduplication est demandée au modèle, pas garantie par le code
+- Sessions sans `session_id` → Greffier skip silencieux sans log
+- `inMemoryUserRateLimit` Map non bornée — fuite mémoire progressive en prod
 
-**Ma recommandation :** La règle des 5 mots est nécessaire mais pas suffisante. Le vrai problème d'Axel c'est la valeur perçue dans les 60 premières secondes. La session 1 doit lui donner une micro-révélation — Noema doit lui dire quelque chose de précis qu'il n'a pas formulé lui-même. "jsais pas" → observation acérée en 2 phrases. C'est ça qui retient, pas la douceur.
+**Ma recommandation :** Corriger le commentaire MODEL_HEAVY, borner la Map rate limit, logger un warning quand session_id est absent.
 
-**Mon verdict : 5/10** — La règle des 5 mots est le bon instinct, mais Noema est encore construite pour des gens qui cherchent déjà à se connaître.
+**Mon verdict : 6,5/10**
 
 ---
 
-## Agent 5 — L'Analyste Produit
+## Agent 4 — Analyste Produit (Rétention)
 
-**Profil :** Growth PM senior, 8 ans sur des apps à fort volume, lit les patterns de rétention dans le code.
+**Profil :** Growth PM senior, 8 ans sur des apps à fort volume.
 
-**Ce qui fonctionne ✅ :**
-- ChatV2 : mécanique de continuité solide (welcome/resume/restart) — pattern de rétention le plus fort
-- MappingV2 : surface de valeur accumulée — actif qui s'apprécie avec le temps, anti-churn classique
-- TodayV2 : buildReturnVisitState + daysSinceLastSession — friction positive au retour
-- JournalV2 : upsert par date propre (onConflict user_id,entry_date), favorise l'écriture récurrente
-- Landing : proposition de valeur honnête avec timeline S1/S3/S10, pas de dark pattern
+**Ce qui fonctionne ✅**
+- JournalV2 PastEntryCard : mémoire longitudinale enfin présente, bon emplacement (dans l'écran d'écriture)
+- TodayV2 Jour 0 : cold start traité, CTA clair
+- Messages de retour `daysSinceLastSession` : humains, non-culpabilisants, réduisent le non-retour après absence courte
+- MappingV2 CTA "Explorer en session →" sur Forces ET Blocages — bons endroits pour déclencher une session
+- Pricing "Personal value card" : stats personnalisées avant le paywall, levier de conversion réel
 
-**Ce qui ne fonctionne pas ❌ :**
-- JournalV2 sans mémoire longitudinale — aucune relecture des entrées passées, silo complet
-- TodayV2 est un hub de redirection, pas un espace propre — rien de ce qui est fait là n'est tracé
-- MappingV2 totalement passif — aucun bouton, aucun CTA, aucun lien vers Chat ("musée sans guide")
-- Quota bloquant sans "earn more" — mur payant brutal sans warmup ni mécanisme alternatif
-- App 100% pull — aucune notification ou signal de retour serveur
+**Ce qui ne fonctionne pas ❌**
+- "Ton parcours" sans empty state pour les nouveaux — disparaît silencieusement sans données
+- PastEntryCard inexistant au Jour 1 — le premier jour, l'utilisateur ne voit aucune promesse de mémoire
+- `daysSinceLastSession` calculé sur `lastJournalEntry?.entry_date` au lieu de `latestSession?.ended_at` — si l'utilisateur fait une session sans journal, le message de retour ne s'affiche jamais
+- Offre annuelle potentiellement bloquée si `VITE_STRIPE_PRICE_ANNUAL` non défini en prod
 
-**Risques de rétention ⚠️ :**
-- **Semaine 1** : 60-70% des trials abandonnent avant conversion (profil vide + mur quota brut)
-- **Mois 1** : Journal abandonné en premier — écrire sans jamais relire = écrire dans le vide
-- **Mois 6** : Saturation du profil — forces/blocages/ikigai complets = plus de raison articulée de revenir
+**Risques de rétention ⚠️**
+- **Semaine 2** : Mapping vide si < 3-4 sessions dans les 14 premiers jours — l'utilisateur ne comprend pas que c'est de sa faute
+- **Mois 1** : Journal déconnecté du Chat en navigation directe — devient un simple éditeur de texte sans contexte
+- **Mois 3** : Pas de nudge actif entre sessions — tout le mécanisme de retour est passif, l'utilisateur doit revenir seul
+- Paywall à J3-J5 sans "mur doux" (compteur de messages restants contextuel)
 
-**Ma recommandation :** Deux leviers à fort impact. Premier : le Journal a besoin de mémoire longitudinale (fil de relecture des 3 dernières entrées + connexion insights Journal → Mapping). Deuxième : rendre MappingV2 actionnable avec un seul CTA par section ("Explorer ce blocage en session") qui ouvre Chat avec contexte pré-rempli — ce lien manquant est le principal risque de rétention à 6 mois.
+**Ma recommandation :** Corriger daysSinceLastSession, ajouter empty state sur "Ton parcours", ajouter un message de réactivation dans le Journal.
 
-**Mon verdict : 6/10** — Excellente fondation technique, mais chaque surface vit en silo — le contraire de ce que la landing page promet.
+**Mon verdict : 6,5/10**
 
 ---
 
-## Agent 6 — L'Investisseur
+## Agent 5 — Analyste Prompt & Phases (NOUVEAU)
 
-**Profil :** Early-stage SaaS investor, spécialiste unit economics B2C.
+**Profil :** Expert en accompagnement thérapeutique et design de produits conversationnels. Références : CNV, ACT, questionnement socratique.
 
-**Ce qui fonctionne ✅ :**
-- Architecture hybride Haiku/Sonnet — coût réduit de ~67% vs tout-Sonnet
-- Cap tokens 1200 sortie — évite les réponses fleuve coûteuses
-- Quota journalier enforced backend — pas de dérive côté client
-- Prix 19€/mois bien positionné (coaching premium accessible, pas du freemium qui saigne)
+### Verdict de premier niveau
 
-**Calculs détaillés :**
+L'impression de l'utilisateur est **partiellement fondée**. Noema ne fait pas *que* poser des questions — il y a une architecture de progression réelle. Mais le prompt a des lacunes thérapeutiques significatives : il manque de **techniques d'intervention actives** pour le moment où un blocage est nommé. L'outil sait *cartographier*, mais pas encore *travailler*.
 
+**Ce qui fonctionne ✅**
+- Architecture de progression Phase 1/2 définie, ordre de travail logique
+- Accountability Phase 2 : "consolider", "confronter", "détecter" — verbes opérationnels présents
+- Règle 5 mots bien câblée
+- Bloc `<_ui>` : détection à 3 niveaux (racine / entretien / visible) — sophistiqué
+
+**Ce qui ne fonctionne pas ❌**
+
+**Problème central — Phase 1, étape 3 :**
 ```
-Tokens input estimés par requête :
-  Système NOEMA_SYSTEM : ~1 000 tokens
-  serverMemoryContext  : ~800 tokens (utilisateur actif)
-  Historique messages  : ~2 000 tokens (24 max)
-  Message utilisateur  : ~100 tokens
-  TOTAL INPUT          : ~3 900 tokens / Sortie : ~800 tokens
+"1. COMPRENDRE D'ABORD — Juste des questions et de l'écoute."
+"3. TRAVAILLER LES BLOCAGES — tu accompagnes la personne à les comprendre et les dépasser progressivement."
+```
+"Juste des questions et de l'écoute" est prescriptif et exclusif. Il n'y a **aucun verbe opérationnel** sur *comment* travailler un blocage. "Comprendre et dépasser progressivement" est une intention, pas une instruction thérapeutique.
 
-Haiku (2/3 des messages)  : 3 900×0.8$/M + 800×4$/M  = 0.00632$/msg
-Sonnet + Greffier (1/3)   : 3 900×3$/M + 800×15$/M + Greffier Haiku = 0.0317$/msg
+**Techniques absentes du prompt :**
+- Validation émotionnelle préalable avant d'explorer
+- Reflet confrontant (reformulation qui met la contradiction au centre)
+- Test de réalité / questionnement socratique dirigé sur une croyance identifiée
+- Distinction désir/besoin (CNV)
+- Projection temporelle (ACT)
+- Exercice en session (pas juste en clôture)
+- Permission de nommer une croyance limitante explicitement
 
-Coût moyen pondéré    : (2×0.00632 + 0.0317) / 3 = 0.01345$/message
-Abonné actif réaliste : 15 jours actifs × 25 msg = 5.04$/mois en API
-Revenu net            : ~19.6$/mois (après Stripe)
-Marge nette           : 19.6 - 5.04 - 0.75 = ~13.8$/mois → 67% marge brute
+**Différenciation des phases insuffisante :** Les phases se différencient dans le tempo et le ton, mais pas dans les techniques d'intervention. La Phase 1 n'a aucun verbe d'action concret sur les blocages contrairement à la Phase 2.
+
+**Règle de discrétion trop restrictive :** "Tu ne révèles pas tout ce que tu détectes" s'applique aussi aux croyances limitantes centrales — ce qui empêche le travail en profondeur.
+
+**5 blocs de prompt à implémenter :**
+
+**BLOC A — Remplacement étape 3 Phase 1 :**
+```
+3. TRAVAILLER LES BLOCAGES — Quand une racine est identifiée, tu n'enchaînes pas
+sur une nouvelle question. Tu travailles :
+   a) Tu valides d'abord l'état émotionnel sans l'analyser immédiatement.
+   b) Tu proposes un reflet confrontant : reformulation qui met la contradiction
+      au centre, sans juger. La personne répond au reflet, pas à une question.
+   c) Tu testes la croyance limitante en la nommant et posant UNE question de réalité.
+      ("Tu dis que tu n'as pas ta place là. Est-ce qu'il y a une seule situation
+      où ce n'était pas vrai ?")
+   d) Parfois tu proposes une micro-expérience en session : "Complète cette phrase :
+      'Ce que j'ai vraiment peur de perdre si j'avance, c'est...'" — sans analyse
+      immédiate.
 ```
 
-| Abonnés | MRR | Coûts API/mois | Profit mensuel |
-|---------|-----|----------------|----------------|
-| 100 | 1 900 € | ~504 $ | ~1 100 € |
-| 1 000 | 19 000 € | ~5 040 $ | ~11 000 € |
-| 10 000 | 190 000 € | ~50 400 $ | ~110 000 € |
-
-**Risques ⚠️ :**
-- Context window creep : coût monte avec la fidélité — les meilleurs clients coûtent le plus
-- Pas de tier annuel — 20-30% de revenus laissés sur la table
-- Churn B2C 5-8%/mois sans annuel → LTV médian 12-18 mois max
-- Pas de cap sur les tokens d'entrée à long terme
-
-**Ma recommandation :** Introduire un abonnement annuel (15€/mois × 12 = 180€) avec remise affichée. Surveiller le coût par utilisateur actif en DB. Le vrai risque n'est pas le prix du token aujourd'hui, c'est l'absence de plafond sur l'historique injecté.
-
-**Mon verdict : 7/10** — Modèle économiquement sain à 67% de marge mais le context window creep est le risque silencieux qui dégradera la marge sur les meilleurs utilisateurs.
-
----
-
-## Agent 7 — Audit Premium Design System
-
-**Profil :** Design System Lead — a construit des systèmes pour des produits à 500K+ utilisateurs. Références : Linear, Craft, Raycast, Arc Browser.
-
-**Score global de maturité design : 6,5/10**
-
-### Cohérence du système
-
-**Deux systèmes cohabitent sans pont — c'est la fissure principale.**
-
-`tokens.js` est bien construit (hiérarchie de 6 surfaces, typographie complète, motion tokens). Mais `app.css` (V1) définit un système radicalement différent — mode clair (#F7F8FC), accent #5B6CFF — qui contredit directement les tokens V2 (bg #0c0e13, accent #bdc2ff). Chargée globalement, cette CSS crée des conflits.
-
-**Valeurs hardcodées incohérentes :**
-- `Login.jsx` utilise `fontFamily: "'Newsreader', serif"` pour le logo — police non importée, différente d'Instrument Serif. **Bug d'identité le plus visible du produit**
-- `Login.jsx` redéfinit `const C = {...}` — 22 lignes qui doublonnent les tokens
-- `ShellV2.jsx` hardcode `backgroundColor: "#111318"` au lieu de `T.color.surface`
-- `MappingV2.jsx` utilise `fontSize: "0.56rem"`, `"0.52rem"`, `"0.5rem"`, `"0.46rem"` (7.36px = illisible)
-- **Bug `rgba(${accent}, 0.3)` dans ChatV2.jsx** — accent est hex (#bdc2ff), pas des triplets RGB → couleur hover cassée silencieusement sur les prompts de démarrage
-
-### Typographie
-
-L'échelle T.type est logique, Instrument Serif italic pour les messages Noema est juste.
-
-**Problèmes :**
-- L'échelle descend jusqu'à `caption: 0.625rem` mais le code va bien plus bas : 0.46rem (7.36px) non tokénisé
-- MappingV2 : textes Ikigai (0.9rem hardcodé), labels sections (0.85rem) — aucun token body/bodySm
-- `letterSpacing: "-0.04em"` sur H1 Landing vs `T.type.h1.ls = "-0.02em"` — dérive
-- `fontWeight: 300` sur le textarea du chat est premium — à documenter comme `T.type.input`
-
-### Espacement & Layout
-
-- `NAV_HEIGHT = 88` dupliqué dans ShellV2 ET ChatV2 — constante partagée manquante
-- JournalV2 `maxWidth: 640` vs ChatV2 et MappingV2 `maxWidth: 720` — incohérence inter-pages
-- Padding bottom varie : 120px (Mapping/Journal), 96px (Today), 200px (Chat) — non documenté
-
-### Couleurs & Phases
-
-Le système 3 phases est bien pensé, les PHASE_BG dans ShellV2 sont subtils et justes (transition 2.0s easeInOut = décision premium).
-
-**Problèmes :**
-- `T.color.warning = "#ffb68a"` = couleur phase guide — confusion sémantique : un warning en phase perdu s'affiche avec l'accent guide
-- `OrbPhase.jsx` définit sa propre `PHASE_PALETTE` indépendante des tokens (`core: "#6e5fff"` vs `T.color.accent.container = "#7886ff"`)
-- `accentStrong` non documenté dans tokens.js — vit uniquement dans phaseContext
-
-### Composants & États
-
-**Inputs :**
-- Textarea ChatV2 : `border: none`, `outline: none` — **aucun focus ring visible**. L'écriture est l'acte central du produit, il n'a pas de feedback
-- Inputs Login : `border: "none"`, pas de focus state — input visuellement mort au focus
-
-**Empty states :**
-- MappingV2 : juste un `<p fontStyle="italic">` — aucune illustration, aucun craft
-- État de chargement JournalV2 : `<div>Chargement…</div>` sans animation vs TodayV2 qui a un loading animé — incohérence
-
-### Animations & Micro-interactions
-
-**Ce qui est bien :**
-- OrbPhase est l'élément le plus abouti — 5 couches, morphing organique, burst de phase. Travail premium
-- `cinematic entrance` (blur 12px→0, scale 0.98→1 sur 0.9s) cohérent entre les 3 pages V2
-- Stagger sections MappingV2 (delay: i × 0.09) — juste
-
-**Ce qui manque :**
-- Transitions de page ShellV2 (`duration: 0.16s, x: 6`) trop rapides et trop subtiles — cible : `duration: 0.24s`, courbe `[0.16, 1, 0.3, 1]`, `x: 12`
-- Living atmosphere blobs dupliqués ~100 lignes × 3 pages — composant `<LivingAtmosphere>` à extraire
-- PhaseTransitionOverlay et OrbPhase burst non synchronisés (overlay 2.8s, orbe 1.8s)
-- Feedback save JournalV2 = juste changement de texte (aucune animation)
-
-### Navigation
-
-- Barre phase label (~27px) au-dessus des tabs crée une zone de clics confuse sur mobile
-- `fontSize: "0.58rem"` pour le navLabel = 9.28px (limite de lisibilité)
-- Tab indicator `borderRadius: 0` — aucun arrondi, pas premium
-- Pas de gestion des swipes horizontaux entre les tabs
-
-### Landing & Onboarding
-
-**Landing — point fort :** parallax scrollytelling, H1 serif italic impactant, OrbPhase hero, `clamp()` responsive. Seul bug : `letterSpacing: "-0.04em"` sur H1 vs token `-0.02em`.
-
-**Login — maillon faible :**
-1. Logo en `"'Newsreader', serif"` — police non chargée, fallback générique — **incohérence critique d'identité**
-2. Footer en anglais ("Privacy Policy", "© 2024") vs Landing en français ("© 2026")
-3. Palette `const C` dupliquée — 22 lignes qui doublonnent les tokens
-4. Inputs sans focus state visible
-5. Titre `fontSize: "3rem"` non tokénisé
-
-### Tokens manquants
-
-```js
-T.type.tiny  = { size: "0.625rem", lh: 1.3,  ls: "0.18em" }  // Remplacer les 0.46→0.56rem
-T.type.input = { size: "0.9375rem", lh: 1.6,  weight: 300 }   // Style textarea unifié
-T.color.accent.strong  // Documenté dans phaseContext, absent de tokens.js
-T.color.phase = {
-  perdu:    { accent: "#bdc2ff", bg: "#111318" },
-  guide:    { accent: "#ffb68a", bg: "#13100c" },
-  stratege: { accent: "#9adfc8", bg: "#0c1312" },
-}
-T.nav   = { height: 88, phaseBarH: 27 }
-T.focus = {
-  ring:  (accent) => `0 0 0 2.5px ${accent}55`,
-  input: (accent) => `0 0 0 3px ${accent}22`,
-}
+**BLOC B — Permission de nommer :**
+```
+Tu ne révèles pas tout ce que tu détectes — mais quand un blocage racine est clair
+et confirmé sur plusieurs échanges, tu le nommes. Pas comme un diagnostic, comme
+une observation partagée : "J'entends quelque chose qui revient souvent — est-ce
+que je peux le mettre en mots ?" Puis tu le nommes simplement. C'est un acte
+thérapeutique, pas une violation de discrétion.
 ```
 
-**10 améliorations design prioritaires :**
-1. **[CRITIQUE]** Corriger police logo Login → `T.font.serif` italic
-2. **[CRITIQUE]** Migrer Login.jsx vers tokens.js, supprimer `const C`, corriger footer (français, © 2026)
-3. **[CRITIQUE]** Corriger bug `rgba(${accent}, 0.3)` → `${accent}4d` ou fonction `hexToRgba()`
-4. **[IMPORTANT]** Extraire `<LivingAtmosphere glow={} />` en composant partagé (300 lignes × 3 pages)
-5. **[IMPORTANT]** Externaliser `NAV_HEIGHT` dans `T.nav.height`
-6. **[IMPORTANT]** Focus ring visible sur textarea ChatV2 — `box-shadow: 0 0 0 2px ${accent}66` au focus
-7. **[MOYEN]** Ajouter tokens manquants (T.type.tiny, T.type.input, T.focus, T.color.phase, T.nav)
-8. **[MOYEN]** Améliorer transitions de page : duration 0.16→0.24, x 6→12, courbe spring
-9. **[POLISH]** Arrondir tab indicator navbar : borderRadius 0 → T.radius.sm (8px)
-10. **[POLISH]** Empty states MappingV2 : OrbPhase + hint contextuel
+**BLOC C — Réponse aux blocages actifs (transversal) :**
+```
+Quand la personne exprime un blocage, une peur ou une résistance : tu ne sautes
+pas à une question d'exploration. Tu valides d'abord ("C'est un endroit difficile
+à regarder."), puis tu choisis entre :
+  — un reflet confrontant
+  — une question de réalité ciblée sur la croyance identifiée
+  — une micro-expérience en session
+  — le silence relatif (2 phrases max, tu laisses)
+"Qu'est-ce qui se passe pour toi avec ça ?" n'est pas du travail — c'est du
+remplissage. Ne jamais poser une question générale sur un blocage spécifique.
+```
 
-**Mon verdict : 6,5/10** — L'intention est premium et l'OrbPhase est du vrai craft, mais le Login brise l'identité au point d'entrée, le bug rgba(hex) est silencieux et visible, et la cohabitation V1/V2 sans pont crée une dette qui s'accumule à chaque PR.
+**BLOC D — Accountability Phase 2 renforcée :**
+```
+1. CONSOLIDER — Au début de chaque session Phase 2, tu reprends le blocage racine.
+Tu poses une question de vérification concrète : "La dernière fois, on avait
+identifié X comme frein central. Depuis, est-ce que tu as vu ce frein se
+manifester ?" Si oui, tu travailles le blocage avant de passer à l'action.
+Tu confrontes sans juger : "Tu m'as dit que tu allais faire X. Tu ne l'as pas
+fait. Qu'est-ce qui s'est passé exactement ?" Et tu restes là jusqu'à ce que
+la vraie raison soit nommée.
+```
 
----
+**BLOC E — Distinction désir/besoin :**
+```
+Quand tu explores les blocages liés aux choix de vie ou à l'identité
+professionnelle, tu distingues désir et besoin. Quand tu sens que la personne
+confond les deux, tu poses : "Si tu atteignais exactement ce que tu décris là —
+est-ce que tu te sentirais vraiment à ta place ?" La réponse est souvent la clé
+du blocage réel.
+```
 
-## Le Débat Final
+**Priorité d'implémentation :** C → A → B → D → E
 
-### Question 1 — Noema tient-elle sa promesse "Tu n'as pas raté ta vie" ?
-
-**Lucas :** "En session 1, non. Je n'ai pas le temps d'arriver à cette conviction — je touche le mur du quota avant d'avoir senti quoi que ce soit."
-
-**Camille :** "Après 10 sessions, oui — partiellement. Mais le Mapping ment avec ses pourcentages. Ce mensonge doux érode la confiance dans tout le reste."
-
-**Thomas :** "La promesse est dans le prompt système, pas dans l'architecture. Si le Greffier ne tourne pas sur les sessions courtes (< 3 messages), la mémoire ne se construit pas. La promesse dépend d'un bug de fréquence."
-
-**Axel :** "Elle ne se pose même pas pour moi. Je n'ai pas attendu assez longtemps pour y croire ou ne pas y croire."
-
-**Analyste Produit :** "La promesse est vraie à session 3+. Le problème c'est que 60-70% des utilisateurs ne la voient jamais — ils partent avant. La promesse est en retard de deux sessions sur l'expérience réelle."
-
-**Investisseur :** "La promesse est le meilleur actif du produit. C'est la seule proposition de valeur qui justifie 19€/mois dans ce segment. Il faut juste que l'utilisateur y arrive avant de se lasser."
-
-**Verdict :** Noema tient sa promesse **pour les utilisateurs qui arrivent à session 3**. Le problème n'est pas la promesse — c'est le funnel. Il faut réduire drastiquement le temps entre l'inscription et le premier "aha moment".
-
----
-
-### Question 2 — Quel est l'onglet le plus dispensable ?
-
-- **Lucas :** "Aujourd'hui — au Jour 1, c'est vide et incompréhensible."
-- **Camille :** "Journal — j'écris mais je ne relis jamais. Sans mémoire longitudinale, c'est une note perdue."
-- **Thomas :** "Aujourd'hui — techniquement un hub de redirection avec du contexte. Ce n'est pas un espace, c'est un panneau de direction."
-- **Axel :** "Aujourd'hui et Mapping ex-aequo — l'un sonne vieux, l'autre est incompréhensible."
-- **Analyste :** "Journal — il abandonne en premier à mois 1. Sans relecture, écrire dans le vide n'a pas de valeur."
-- **Investisseur :** "Le Journal coûte presque rien en API et ancre le comportement quotidien. Le garder."
-- **Agent 7 :** "Aujourd'hui est un hub de redirection habillé en espace de rituel. Sans push/widget pour le déclencher, il sera ignoré."
-
-**Verdict :** **"Aujourd'hui" est l'onglet le plus à risque.** Il survivra uniquement si la question du jour devient un vrai point d'entrée journalier (notification push, widget) plutôt qu'une destination à trouver seul. Le Journal survivra si on lui ajoute la relecture.
+**Mon verdict : BLOC C est la modification la plus impactante — effet immédiat sur toutes les sessions, toutes phases confondues.**
 
 ---
 
-### Question 3 — Quelle est la priorité absolue pour les 30 prochains jours ?
+## Agent 6 — Expert Sémantique
 
-**Lucas + Axel :** "L'expérience Jour 0 et Jour 1. TodayV2 vide + navigation non guidée + label PERDU visible = 60-70% d'abandon avant d'avoir touché la valeur."
+**Profil :** Expert NLP, pipelines embedding+pgvector en production sur Supabase.
 
-**Thomas :** "Corriger le Greffier sur les sessions courtes. Si la mémoire ne se construit pas sur les sessions de 2-4 messages, la promesse de continuité est une fiction."
+**Pertinence :** Réelle mais conditionnelle. La valeur est haute pour les utilisateurs >15 sessions, nulle pour les nouveaux. L'approche fréquence actuelle est suffisante jusqu'à ~15 sessions par utilisateur.
 
-**Camille + Analyste :** "Rendre MappingV2 actionnable. C'est la surface qui justifie l'abonnement long terme — si elle reste un musée sans guide, la rétention à 6 mois s'effondre."
+**Cas d'usage non couverts par la fréquence :**
+- Même blocage formulé différemment sur 2 sessions → zéro match actuel, similarité cosinus ~0.87
+- Ikigai fragmenté ("ce qui m'anime" / "ma passion" / "ce qui me fait vibrer") → 3 entrées séparées, non agrégées
+- Émergence thématique lente sur 4 mois → aucune session ne dépasse minCount seule
 
-**Investisseur :** "Ajouter un tier annuel. C'est la décision économique la plus simple avec le plus grand impact immédiat sur le LTV."
+**Architecture complète proposée :**
+- Table `session_embeddings` avec pgvector (1536 dims, index HNSW)
+- Modèle : `text-embedding-3-small` OpenAI ($0.02/M tokens, excellent en français)
+- Génération : fire-and-forget à la fin de chaque run Greffier
+- Intégration : `buildServerMemoryContextWithSemantic()` — requête cosinus sur le dernier message utilisateur, résultats injectés dans le contexte
 
-**Agent 7 :** "Corriger les 3 bugs critiques : police Login, bug rgba(), footer anglais. Ce sont les seuls bugs visibles par tout utilisateur dès le premier contact."
+**Complexité : 3/5 — Valeur : 3.5/5**
 
-**Verdict :** Les deux priorités absolues qui s'alignent sur tous les agents sont **(1) l'expérience Jour 0** et **(2) le Greffier sur sessions courtes**. L'une empêche l'abandon avant la valeur, l'autre construit la valeur qui justifie de rester.
+**Recommandation : PRÉMATURÉ maintenant. Implémenter en Q3/Q4 quand la base aura suffisamment de sessions par compte.**
 
----
-
-## Verdict Final — 10 actions dans l'ordre de priorité
-
-### Bloc 1 — Produit & Technique
-
-**1. [CRITIQUE / 48h] Corriger les 3 bugs Login**
-Police logo → Instrument Serif italic. Footer → français, © 2026. Supprimer `const C`, migrer vers tokens.js.
-*Impact : premier contact brisé pour 100% des nouveaux utilisateurs.*
-
-**2. [CRITIQUE / 48h] Corriger le bug rgba(hex) dans ChatV2**
-`rgba(${accent}, 0.3)` → `${accent}4d` ou fonction `hexToRgba(color, alpha)`.
-*Impact : couleur hover cassée silencieusement sur les prompts de démarrage.*
-
-**3. [CRITIQUE / 1 semaine] TodayV2 — état Jour 0 dédié**
-Si sessionCount === 0 : une phrase, un CTA vers Chat, rien d'autre. Masquer ou vider les sections vides au Jour 1. Masquer le label "PERDU" de l'interface — c'est une variable interne.
-*Impact : 60-70% d'abandon sur ce point en période d'essai.*
-
-**4. [URGENT / 1 semaine] Greffier sur sessions courtes**
-Ajouter un signal de fin de session côté frontend qui force une passe Greffier indépendamment de `userMsgCount % 3`. Ou baisser le seuil à `% 2`.
-*Impact : la mémoire ne se construit pas sur les sessions les plus probables en early adopter.*
-
-**5. [IMPORTANT / 2 semaines] Remplacer `body.user_memory` par `memRow` dans runGreffier**
-Une ligne dans claude.js — supprime le vecteur de contamination mémoire client vs serveur.
-*Impact : intégrité de la mémoire inter-sessions.*
-
-### Bloc 2 — Design System
-
-**6. [IMPORTANT / 2 semaines] Focus ring sur textarea ChatV2**
-`box-shadow: 0 0 0 2px ${accent}66` sur focus.
-*Impact : l'acte d'écriture central du produit n'a aucun feedback visuel.*
-
-**7. [IMPORTANT / 2 semaines] Extraire `<LivingAtmosphere />`**
-Composant partagé avec props `glow` — élimine ~300 lignes dupliquées dans 3 fichiers.
-*Impact : cohérence + maintenabilité.*
-
-**8. [IMPORTANT / 2 semaines] MappingV2 — rendre actionnable**
-CTA par section ("Explorer ce blocage en session") → ouvre ChatV2 avec contexte pré-rempli. Corriger ZenRing step/10 → step/6. Étendre session_note à 200 caractères.
-*Impact : rétention à 6 mois, passage du "musée" à l'"outil".*
-
-**9. [MOYEN / 3 semaines] Améliorer transitions de page + navbar**
-ShellV2 : duration 0.16→0.24s, x 6→12, courbe spring. Tab indicator : borderRadius 0→8px, whileTap sur les icônes. Externaliser NAV_HEIGHT dans T.nav.height.
-*Impact : perception de polish premium.*
-
-**10. [MOYEN / 1 mois] Ajouter tier annuel**
-180€/an (15€/mois apparent, -21% vs mensuel). Afficher sur Pricing.jsx avec remise calculée.
-*Impact : +20-30% de revenus, amélioration LTV significative.*
+**Alternative immédiate (Option B — 80% de la valeur, 0% d'infrastructure) :**
+Ajouter dans `GREFFIER_SYSTEM` :
+```
+RÈGLE DE DÉDUPLICATION :
+Avant d'ajouter une force, un blocage ou une contradiction aux listes existantes,
+vérifie si le concept est déjà présent sous une formulation différente.
+Si c'est sémantiquement équivalent, conserve la formulation la plus claire et
+n'ajoute pas de doublon. Tu es le gardien de la cohérence de la mémoire.
+```
+C'est 3 lignes dans le prompt Greffier, zéro infrastructure.
 
 ---
 
-## Maturité Design Actuelle
+## Agent 7 — Axel (Impatient, 19 ans)
 
-**Score global : 6,5/10**
+**Profil :** Sans emploi, attention span TikTok. Micro-révélation en 60 secondes ou il part.
 
-| Dimension | Score | Note |
-|-----------|-------|------|
-| Système de tokens | 7/10 | Bien construit mais pas universel (V1/V2 split) |
-| Typographie | 6/10 | Échelle correcte, valeurs non tokénisées < 0.625rem |
-| Couleurs & phases | 7/10 | Système 3 phases solide, confusion warning/phase |
-| Composants & états | 5/10 | Focus states manquants, bug rgba(), empty states pauvres |
-| Animations | 7/10 | OrbPhase excellent, transitions de page trop discrètes |
-| Navigation | 6/10 | Fonctionnelle, tab indicator sans arrondi, swipe absent |
-| Landing | 8/10 | Point fort, parallax, typographie ambitieuse |
-| Login | 3/10 | Police cassée, footer anglais, palette dupliquée |
-| Cohérence globale | 5/10 | V1/V2 sans pont, NAV_HEIGHT dupliqué, LivingAtmosphere × 3 |
+**Ce qui fonctionne ✅**
+- Règle 5 mots bien câblée — Axel tape "je sais pas", il ne reçoit pas un roman
+- Welcome message honnête : "Bonjour. / Dis-moi ce qui t'occupe l'esprit."
+- Starter prompts cliquables, directs, sur ce qui bloque vraiment
+- État Jour 0 épuré : une phrase, un sous-titre, un bouton
 
-**Référence cible :** Linear dark mode = 9/10. Noema a l'ambition, l'intention, et l'OrbPhase. Il manque l'exécution systématique — ce que Linear appelle "craft at every pixel".
+**Ce qui ne fonctionne pas ❌**
+- Onboarding 4 slides : trop long. Slide 2 = mur d'information (3 modes + 3 phases + labels)
+- "Ta première question t'attend" — du teasing sans livrable
+- "Commencer ma première session" — trop formel. "Parle à Noema maintenant" ferait le job
+- "Étape 1 sur 4" en footer — amplifie l'effort perçu dès le départ
+
+**Ce qui le ferait fuir en 30 secondes ⚠️**
+- Slide 2 de l'onboarding est le point de rupture — architecture avant valeur
+- Le mot "Mapping" dans Slide 2 — "bilan RH" pour Axel
+- Le mot "Rituel" dans TodayV2 header
+- Absence de micro-révélation dans les 30 premières secondes
+
+**Ma recommandation :** Supprimer la Slide 2 ou la réduire à 1 phrase. Changer le CTA Jour 0. Masquer le compteur d'étapes.
+
+**Mon verdict : 5,5/10**
+
+---
+
+## Agent 8 — Investisseur
+
+**Profil :** Early-stage SaaS investor, unit economics B2C.
+
+**Ce qui fonctionne ✅**
+- Marge brute défendable : 67-71% à toutes les échelles
+- Tier annuel : meilleur move de cette itération (+184% LTV si renouvellement tient)
+- Architecture hybride Haiku/Sonnet correcte
+
+**Risques économiques ⚠️**
+- **Coût trial × 3** : 15 msgs/jour + Greffier /2 → ~7 Greffiers/session trial. La session trial coûte ~$0,320 vs ~$0,274 pour un abonné. Si taux de conversion < 5%, le CAC explose
+- **50% des messages sur Sonnet** : chaque message pair déclenche MODEL_HEAVY pour la réponse principale → coût × 5-8x sur ces appels
+- **Prompt caching non implémenté** : le system prompt NOEMA + mémoire (~2 500 tokens) est renvoyé à chaque appel. Le cache Anthropic réduirait les coûts input de 60-80%
+- **Tier annuel trésorerie inversée** : 180€ encaissés, 12 mois de service à fournir avec coûts croissants
+
+**Calculs révisés :**
+
+| Composant | Coût/session abonné (12 msgs) |
+|---|---|
+| Haiku × 6 | $0,041 |
+| Sonnet × 6 | $0,207 |
+| Greffier Haiku × 6 | $0,026 |
+| **Total** | **~$0,274/session** |
+
+| Abonnés | MRR | Coûts | Marge brute |
+|---|---|---|---|
+| 100 | 1 900 € | ~620 € | 67% |
+| 1 000 | 19 000 € | ~5 800 € | 69% |
+| 10 000 | 190 000 € | ~55 000 € | 71% |
+
+**LTV mix cible (30% annuel / 70% mensuel) : 147,5 € vs 95 € en 100% mensuel → +55%**
+
+**Ma recommandation :**
+1. Limiter le Greffier à `/3` pour les trials, garder `/2` pour les abonnés
+2. Implémenter le prompt caching Anthropic — ROI immédiat le plus élevé disponible
+3. Mettre l'offre annuelle en position par défaut dans le toggle Pricing
+
+**Mon verdict : 6,5/10**
+
+---
+
+## Le Débat Final — Session 3
+
+### Question 1 — Le correctif le plus impactant de cette session ?
+
+- **Lucas :** "La limite à 15 messages. Je peux enfin tester quelque chose avant d'être bloqué."
+- **Camille :** "computeForceStrengths(). Le tableau de bord arrête de mentir sur les forces. Mais les blocages mentent encore."
+- **Thomas :** "memRow dans runGreffier. C'était le seul vrai bug d'intégrité — fermé proprement."
+- **Axel :** "Rien de visible pour moi. Tout ce qui a changé est sous le capot ou après la session 3."
+- **Analyste Produit :** "PastEntryCard. Le Journal a enfin une raison de revenir."
+- **Investisseur :** "Le tier annuel. +55% sur le LTV moyen si le mix se construit bien."
+- **Analyste Prompt :** "Aucun des correctifs ne touche au problème central — le prompt. Noema cartographie mieux mais ne travaille toujours pas."
+- **Expert Sémantique :** "La mémoire est plus intègre. La sémantique attendra."
+
+### Question 2 — Quelle est la prochaine modification la plus urgente ?
+
+- **Lucas + Axel :** "Le prénom dans le Jour 0 et le CTA renommé. Deux lignes."
+- **Thomas :** "Borner la Map rate limit. Une ligne. Et logger les sessions sans session_id."
+- **Camille :** "Les barres de blocage dynamiques. Le tableau de bord ment encore sur la moitié de ses données."
+- **Analyste Prompt :** "BLOC C dans le prompt. Effet immédiat, toutes sessions, zéro infra."
+- **Investisseur :** "Prompt caching Anthropic. ROI le plus élevé disponible maintenant."
+- **Analyste Produit :** "Corriger daysSinceLastSession sur latestSession.ended_at."
+
+### Question 3 — Noema est-elle prête pour la croissance ?
+
+**Lucas :** "Pour des gens comme moi qui cherchent déjà quelque chose — oui, si l'onboarding est raccourci."
+**Thomas :** "Techniquement quasi prête. La Map non bornée est le seul vrai risque de scalabilité."
+**Analyste Produit :** "Pas encore. Le produit retient les utilisateurs investis. Pas encore les hésitants."
+**Investisseur :** "Le modèle économique tient. Mais le coût trial non maîtrisé peut surprendre à 5 000 trials/mois."
+**Analyste Prompt :** "Tant que Noema pose des questions sans travailler les blocages, la rétention à M3 sera structurellement limitée. C'est le correctif prioritaire absolu."
+
+**Verdict final :** Noema est prête pour une croissance prudente. Les fondations techniques sont solides. Le prompt est le plafond de verre — c'est lui qui déterminera si les utilisateurs qui restent 30 jours restent 6 mois.
+
+---
+
+## Verdict Final — 10 actions Session 3
+
+### Bloc 1 — Prompt (impact immédiat, zéro infrastructure)
+
+**1. [CRITIQUE / 48h] BLOC C — Réponse aux blocages actifs**
+Ajouter dans "TA FAÇON DE PARLER" la règle sur comment répondre quand un blocage est exprimé : validation → reflet confrontant / question de réalité / micro-expérience / silence. Interdire "Qu'est-ce qui se passe pour toi avec ça ?" sur un blocage spécifique.
+*Impact : chaque session, toutes phases, immédiat.*
+
+**2. [CRITIQUE / 48h] BLOC A — Remplacement étape 3 Phase 1**
+Remplacer "tu accompagnes à comprendre et dépasser progressivement" par des verbes opérationnels : validation émotionnelle, reflet confrontant, test de croyance, micro-expérience.
+*Impact : Phase 1 cesse d'être un tunnel de questions.*
+
+**3. [CRITIQUE / 48h] BLOC B — Permission de nommer**
+Autoriser Noema à nommer un blocage racine confirmé sur plusieurs échanges.
+*Impact : débloque le travail en profondeur, construit la confiance.*
+
+### Bloc 2 — Dashboard & UX
+
+**4. [IMPORTANT / 1 semaine] Barres de blocage dynamiques**
+Même traitement que `computeForceStrengths()` — calculer les pourcentages depuis la fréquence réelle, pas les valeurs hardcodées 85%/50%/30%.
+*Impact : MappingV2 arrête de mentir sur les blocages.*
+
+**5. [IMPORTANT / 1 semaine] Titre "Harmonie détectée" conditionnel**
+Masquer ou renommer le titre quand `ikigaiFilledCount < 2`. "Ikigai en construction" ou masqué.
+*Impact : supprime un mensonge d'en-tête visible par tous les utilisateurs.*
+
+**6. [IMPORTANT / 1 semaine] Prénom + pré-amorce Chat depuis Jour 0**
+Injecter `firstName` dans l'écran Jour 0. Ouvrir le Chat avec un message de Noema déjà écrit quand on arrive depuis ce CTA.
+*Impact : premier contact personnalisé, promesse de Slide 4 tenue.*
+
+### Bloc 3 — Technique & Économie
+
+**7. [IMPORTANT / 1 semaine] Greffier /3 pour les trials**
+Garder `/2` pour les abonnés, passer à `/3` pour les trials. Réduction du coût trial de ~30%.
+*Impact : économique direct, réduit le risque si conversion basse.*
+
+**8. [IMPORTANT / 2 semaines] Prompt caching Anthropic**
+Activer le cache Anthropic sur le préfixe system + mémoire (~2 500 tokens renvoyés à chaque appel).
+*Impact : réduction 60-80% des coûts input — ROI le plus élevé disponible.*
+
+**9. [MOYEN / 2 semaines] Correctifs techniques mineurs**
+- Borner `inMemoryUserRateLimit` Map (> 10 000 entrées → clear)
+- Logger warning quand `session_id` absent et Greffier actif
+- Corriger `daysSinceLastSession` sur `latestSession.ended_at`
+- Corriger les accents dans `getStepLabel()` / `buildMovementSummary()`
+
+**10. [MOYEN / 1 mois] Déduplication sémantique Greffier (Option B)**
+Ajouter la règle de déduplication sémantique dans `GREFFIER_SYSTEM` — 3 lignes, zéro infrastructure, résout 80% du problème de doublon entre sessions.
+*Réserver la vraie recherche vectorielle pour Q3/Q4.*
+
+---
+
+## Maturité Produit Session 3
+
+**Score global : 7/10** (+0,5 vs Session 2)
+
+| Dimension | S2 | S3 | Delta |
+|---|---|---|---|
+| Prompt & Coaching | 5/10 | 5/10 | = (non touché) |
+| Backend & Mémoire | 6/10 | 7.5/10 | +1.5 |
+| Dashboard (Mapping) | 5/10 | 6.5/10 | +1.5 |
+| Expérience Jour 0 | 3/10 | 6.5/10 | +3.5 |
+| Rétention longitudinale | 4/10 | 6/10 | +2 |
+| Modèle économique | 6/10 | 7/10 | +1 |
+| Design System | 6.5/10 | 7/10 | +0.5 |
+
+**Plafond de verre identifié :** Le prompt système est la limite de croissance actuelle. La mémoire est intègre, le dashboard est honnête, l'onboarding est correct — mais si Noema ne fait que cartographier sans travailler les blocages, la rétention à M3 plafonnera structurellement. C'est la priorité absolue de la Session 4.

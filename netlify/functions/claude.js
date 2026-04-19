@@ -48,6 +48,7 @@ function enforceInMemoryRateLimit(userId) {
 
   timestamps.push(now)
   inMemoryUserRateLimit.set(userId, timestamps)
+  if (inMemoryUserRateLimit.size > 10000) inMemoryUserRateLimit.clear()
   return true
 }
 
@@ -226,18 +227,35 @@ export default async (request) => {
     const messages   = rawMessages
     const sessionId  = body.session_id || null
     const userMemory = body.user_memory && typeof body.user_memory === 'object' ? body.user_memory : {}
-    // Mini-sprint coût : Greffier toutes les 2 requêtes utilisateur — couvre les sessions courtes (1-2 messages).
+    // Mini-sprint coût : Greffier différencié — /3 pour les trials, /2 pour les abonnés.
     const userMsgCount = messages.filter(m => m.role === 'user').length
-    const shouldRunGreffier = userMsgCount > 0 && userMsgCount % 2 === 0
+    const greffierInterval = isTrialTier(accessTier) ? 3 : 2
+    const shouldRunGreffier = userMsgCount > 0 && userMsgCount % greffierInterval === 0
+    if (!sessionId && shouldRunGreffier) {
+      console.warn('[claude] Greffier actif mais session_id absent — historique session non mis à jour')
+    }
 
     // Whitelist des champs autorisés — ne jamais forwarder le body brut
     // Le system prompt est toujours NOEMA_SYSTEM + serverMemoryContext (chargé depuis DB ci-dessus)
     // Security layer 2: strict request shaping. Only a safe subset of the body reaches Anthropic.
     // Hybrid model: Haiku pour les échanges standard, Sonnet lors des synthèses Greffier.
+    // Prompt caching : les deux blocs system sont marqués ephemeral pour réduire les coûts d'entrée.
+    const systemBlocks = [
+      {
+        type: "text",
+        text: NOEMA_SYSTEM,
+        cache_control: { type: "ephemeral" }
+      },
+      ...(serverMemoryContext ? [{
+        type: "text",
+        text: serverMemoryContext,
+        cache_control: { type: "ephemeral" }
+      }] : [])
+    ]
     const allowed = {
       model:      shouldRunGreffier ? MODEL_HEAVY : MODEL_LIGHT,
       max_tokens: Math.min(body.max_tokens || 1100, isTrialTier(accessTier) ? MAX_TOKENS_TRIAL : MAX_TOKENS_SUBSCRIBER),
-      system:     NOEMA_SYSTEM + serverMemoryContext,
+      system:     systemBlocks,
       messages:   rawMessages,
       stream:     false,
     }
@@ -259,6 +277,7 @@ export default async (request) => {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'prompt-caching-2024-07-31',
       },
       body: JSON.stringify(allowed),
     })

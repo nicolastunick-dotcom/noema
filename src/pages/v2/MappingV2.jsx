@@ -30,10 +30,22 @@ function computeForceStrengths(forces, recentSessions) {
 }
 
 const BLOCAGE_CONFIG = {
-  racine:    { label: "Blocage Racine",    critLabel: "Critique", critColor: T.color.error,          barW: "85%", barColor: T.color.error },
-  entretien: { label: "Blocage Entretien", critLabel: "Modéré",   critColor: T.color.warning,         barW: "50%", barColor: T.color.warning },
-  visible:   { label: "Expression",        critLabel: "Surface",  critColor: T.color.accent.default,  barW: "30%", barColor: T.color.accent.default },
+  racine:    { label: "Blocage Racine",    critLabel: "Critique", critColor: T.color.error,          barColor: T.color.error },
+  entretien: { label: "Blocage Entretien", critLabel: "Modéré",   critColor: T.color.warning,        barColor: T.color.warning },
+  visible:   { label: "Expression",        critLabel: "Surface",  critColor: T.color.accent.default, barColor: T.color.accent.default },
 };
+
+// ── Blocage bar widths — calculées depuis recentSessions ─────────────────────
+function computeBlocageWidths(recentSessions) {
+  const defaults = { racine: 60, entretien: 40, visible: 25 };
+  if (!recentSessions?.length) return defaults;
+  const total = Math.max(recentSessions.length, 1);
+  const compute = (key) => {
+    const count = recentSessions.filter(s => s.insights?.blocages?.[key]).length;
+    return Math.min(95, Math.round((count / Math.min(total, 3)) * 75 + 20));
+  };
+  return { racine: compute("racine"), entretien: compute("entretien"), visible: compute("visible") };
+}
 
 // ── Stagger helper ────────────────────────────────────────────────────────────
 const stagger = (i) => ({
@@ -358,6 +370,7 @@ export default function MappingV2() {
   const { forces, blocages, contradictions } = insights ?? { forces: [], blocages: {}, contradictions: [] };
   const hasBlocages = blocages?.racine || blocages?.entretien || blocages?.visible;
   const forceStrengths = computeForceStrengths(forces, recentSessions);
+  const blocageWidths = computeBlocageWidths(recentSessions);
 
   // Ikigai completion — used for conditional Harmonie section
   const ikigaiFilledCount = [ikigai?.aime, ikigai?.excelle, ikigai?.monde, ikigai?.paie]
@@ -619,7 +632,7 @@ export default function MappingV2() {
               border: `1px solid ${accent}18`,
             }}>
               <h3 style={{ fontFamily: T.font.serif, fontStyle: "italic", fontSize: T.type.h3.size, color: T.color.text, marginBottom: 16 }}>
-                Harmonie détectée
+                {ikigaiFilledCount >= 2 ? "Harmonie détectée" : "Ikigai en construction"}
               </h3>
               {ikigaiFilledCount >= 2 ? (
                 <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -678,7 +691,7 @@ export default function MappingV2() {
                         <div style={{ height: 3, borderRadius: 9999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
                           <motion.div
                             initial={{ width: 0 }}
-                            animate={{ width: cfg.barW }}
+                            animate={{ width: `${blocageWidths[type]}%` }}
                             transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.3 + index * 0.1 }}
                             style={{ height: "100%", borderRadius: 9999, background: cfg.barColor }}
                           />

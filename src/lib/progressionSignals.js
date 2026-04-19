@@ -55,7 +55,7 @@ function getStepLabel(step) {
   if (typeof step !== "number") return "";
   if (step <= 2) return "Perdu";
   if (step <= 6) return "Guide";
-  return "Stratege";
+  return "Stratège";
 }
 
 function buildDominantThread(recurring) {
@@ -82,29 +82,29 @@ function buildDominantThread(recurring) {
 
 function buildMovementSummary({ stepDelta, recurring, stepMetrics }) {
   if (stepMetrics.total <= 1) {
-    return "Premiere lecture de la trajectoire: le miroir commence a se construire.";
+    return "Première lecture de la trajectoire : le miroir commence à se construire.";
   }
 
   if (stepDelta >= 3) {
-    return `Acceleration nette: la progression a gagne ${stepDelta} niveau(x) depuis la session precedente.`;
+    return `Accélération nette : la progression a gagné ${stepDelta} niveaux depuis la session précédente.`;
   }
 
   if (stepDelta === 2) {
-    return "Progression franche: le parcours prend visiblement de l'elan.";
+    return "Progression franche : le parcours prend visiblement de l'élan.";
   }
 
   if (stepDelta === 1) {
-    return "Progression continue: un cran de plus s'est dessine.";
+    return "Progression continue : un cran de plus s'est dessiné.";
   }
 
   if (stepDelta === 0) {
     if (recurring.recurringBlockages.length || recurring.recurringContradictions.length) {
-      return "Stabilisation active: les memes tensions reviennent, mais elles sont mieux nommees.";
+      return "Stabilisation active : les mêmes tensions reviennent, mais elles sont mieux nommées.";
     }
-    return "Exploration stable: la trajectoire reste ouverte sans rupture majeure.";
+    return "Exploration stable : la trajectoire reste ouverte sans rupture majeure.";
   }
 
-  return "Recalage en cours: le fil demande encore a se clarifier avant le prochain pas.";
+  return "Recalage en cours : le fil demande encore à se clarifier avant le prochain pas.";
 }
 
 function buildContinuitySummary({ recurring, openLoops, stepMetrics }) {
@@ -118,8 +118,8 @@ function buildContinuitySummary({ recurring, openLoops, stepMetrics }) {
   }
 
   const themesPart = recurringCount > 0
-    ? `${recurringCount} motif(s) recurrent(s)`
-    : "aucun motif recurrent net";
+    ? `${recurringCount} motif(s) récurrent(s)`
+    : "aucun motif récurrent net";
   const loopsPart = openLoops.length > 0
     ? `${openLoops.length} fil(s) encore ouvert(s)`
     : "aucun fil ouvert";
@@ -138,8 +138,8 @@ function buildRecurringThemes(sessions = []) {
   for (const session of sessions) {
     const insights = session?.insights || {};
     for (const force of insights.forces || []) pushCount(forceMap, "Force qui revient", force);
-    for (const contradiction of insights.contradictions || []) pushCount(contradictionMap, "Tension recurrente", contradiction);
-    if (insights.blocages?.racine) pushCount(blockageMap, "Blocage recurrent", insights.blocages.racine);
+    for (const contradiction of insights.contradictions || []) pushCount(contradictionMap, "Tension récurrente", contradiction);
+    if (insights.blocages?.racine) pushCount(blockageMap, "Blocage récurrent", insights.blocages.racine);
   }
 
   return {
@@ -214,7 +214,7 @@ export function buildProgressPromptContext({ sessions = [], journalEntry = null 
   const lines = [];
 
   if (signals.movementSummary) {
-    lines.push(`Trajectoire: ${signals.movementSummary}`);
+    lines.push(`Trajectoire : ${signals.movementSummary}`);
   }
 
   if (signals.dominantThread?.value) {
@@ -228,10 +228,10 @@ export function buildProgressPromptContext({ sessions = [], journalEntry = null 
   }
 
   for (const item of signals.recurringBlockages) {
-    lines.push(`Blocage recurrent (${item.count} sessions) : ${item.value}`);
+    lines.push(`Blocage récurrent (${item.count} sessions) : ${item.value}`);
   }
   for (const item of signals.recurringContradictions) {
-    lines.push(`Contradiction recurrente (${item.count} sessions) : ${item.value}`);
+    lines.push(`Contradiction récurrente (${item.count} sessions) : ${item.value}`);
   }
   for (const item of signals.recurringForces) {
     lines.push(`Force stable (${item.count} sessions) : ${item.value}`);
@@ -242,11 +242,11 @@ export function buildProgressPromptContext({ sessions = [], journalEntry = null 
   }
 
   if (signals.latestNote) {
-    lines.push(`Dernier point clarifie : ${signals.latestNote}`);
+    lines.push(`Dernier point clarifié : ${signals.latestNote}`);
   }
 
   if (journalEntry?.content) {
-    lines.push(`Derniere entree journal (${journalEntry.entry_date || "recente"}) : ${shortenText(journalEntry.content, 220)}`);
+    lines.push(`Dernière entrée journal (${journalEntry.entry_date || "récente"}) : ${shortenText(journalEntry.content, 220)}`);
   }
 
   if (lines.length === 0) return "";
@@ -256,7 +256,7 @@ export function buildProgressPromptContext({ sessions = [], journalEntry = null 
     "---",
     "SIGNAUX CROSS-SESSIONS :",
     ...lines,
-    "Quand c'est juste, reviens sur ces motifs de facon naturelle, concise et reliee a la trajectoire.",
+    "Quand c'est juste, reviens sur ces motifs de façon naturelle, concise et reliée à la trajectoire.",
     "---",
   ].join("\n");
 }
@@ -277,10 +277,10 @@ export function buildZenRitual({ phaseContext, progressSignals, intention, journ
   if (phaseName === "Perdu") {
     return {
       title: "Rituel de recentrage",
-      intro: movementHint || "Ne cherche pas a tout regler aujourd'hui. Reviens d'abord a ce qui compte vraiment.",
+      intro: movementHint || "Ne cherche pas à tout régler aujourd'hui. Reviens d'abord à ce qui compte vraiment.",
       prompt: primaryThread
-        ? `Assieds-toi deux minutes et termine cette phrase : "Ce que je n'ai plus envie d'eviter autour de ${primaryThread}, c'est..."`
-        : 'Assieds-toi deux minutes et termine cette phrase : "Ce que je n\'ai plus envie d\'eviter aujourd\'hui, c\'est..."',
+        ? `Assieds-toi deux minutes et termine cette phrase : "Ce que je n'ai plus envie d'éviter autour de ${primaryThread}, c'est..."`
+        : 'Assieds-toi deux minutes et termine cette phrase : "Ce que je n\'ai plus envie d\'éviter aujourd\'hui, c\'est..."',
       close: "Le but n'est pas de performer. Le but est de regarder en face avec douceur.",
     };
   }
@@ -288,20 +288,20 @@ export function buildZenRitual({ phaseContext, progressSignals, intention, journ
   if (phaseName === "Guide") {
     return {
       title: "Exercice de clarification",
-      intro: movementHint || "Observe ce qui revient. La repetition est souvent le vrai signal.",
+      intro: movementHint || "Observe ce qui revient. La répétition est souvent le vrai signal.",
       prompt: primaryThread
-        ? `Ecris trois lignes : 1) ce qui revient autour de ${primaryThread}, 2) ce que tu comprends mieux, 3) ce que tu veux tester concretement aujourd'hui.`
-        : "Ecris trois lignes : 1) ce qui revient, 2) ce que tu comprends mieux, 3) ce que tu veux tester concretement aujourd'hui.",
-      close: "Un petit mouvement juste vaut mieux qu'une resolution abstraite.",
+        ? `Écris trois lignes : 1) ce qui revient autour de ${primaryThread}, 2) ce que tu comprends mieux, 3) ce que tu veux tester concrètement aujourd'hui.`
+        : "Écris trois lignes : 1) ce qui revient, 2) ce que tu comprends mieux, 3) ce que tu veux tester concrètement aujourd'hui.",
+      close: "Un petit mouvement juste vaut mieux qu'une résolution abstraite.",
     };
   }
 
   return {
     title: "Alignement du jour",
-    intro: movementHint || "Tu n'es plus seulement dans l'exploration. Il s'agit maintenant de choisir avec clarte.",
+    intro: movementHint || "Tu n'es plus seulement dans l'exploration. Il s'agit maintenant de choisir avec clarté.",
     prompt: primaryThread
-      ? `Choisis une action simple et alignee autour de ${primaryThread}. Demande-toi : "Qu'est-ce qui ferait avancer ce fil sans me trahir ?" puis note ton engagement en une phrase.`
-      : 'Choisis une action simple et alignee. Demande-toi : "Qu\'est-ce qui ferait avancer ce fil sans me trahir ?" puis note ton engagement en une phrase.',
-    close: "L'alignement se mesure moins a l'intensite qu'a la coherence.",
+      ? `Choisis une action simple et alignée autour de ${primaryThread}. Demande-toi : "Qu'est-ce qui ferait avancer ce fil sans me trahir ?" puis note ton engagement en une phrase.`
+      : 'Choisis une action simple et alignée. Demande-toi : "Qu\'est-ce qui ferait avancer ce fil sans me trahir ?" puis note ton engagement en une phrase.',
+    close: "L'alignement se mesure moins à l'intensité qu'à la cohérence.",
   };
 }

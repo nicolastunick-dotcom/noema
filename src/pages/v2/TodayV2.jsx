@@ -84,7 +84,7 @@ export default function TodayV2() {
           .select("id", { count: "exact", head: true }).eq("user_id", user.id)
           .not("next_action", "is", null).neq("next_action", ""),
         sb.from("sessions")
-          .select("next_action, session_note, insights, step")
+          .select("next_action, session_note, insights, step, ended_at, created_at")
           .eq("user_id", user.id)
           .order("ended_at", { ascending: false }).limit(1).maybeSingle(),
       ]);
@@ -122,12 +122,13 @@ export default function TodayV2() {
 
   const daysSinceLastSession = useMemo(() => {
     if (!latestSession) return null;
-    if (!lastJournalEntry?.entry_date) return null;
-    const last = new Date(lastJournalEntry.entry_date);
+    const dateStr = latestSession.ended_at ?? latestSession.created_at;
+    if (!dateStr) return null;
+    const last = new Date(dateStr);
     const now = new Date();
     const diff = Math.floor((now - last) / 86400000);
     return diff;
-  }, [latestSession, lastJournalEntry]);
+  }, [latestSession]);
 
   const questionText   = todayHasEntry
     ? "Tu as déjà écrit aujourd'hui. Que retiens-tu de cette réflexion ?"
@@ -181,6 +182,7 @@ export default function TodayV2() {
             lineHeight: 1.5,
             maxWidth: 320,
           }}>
+            {firstName && firstName !== "toi" ? `Bonjour ${firstName}.` : "Bienvenue."}{" "}
             Ton espace se construit au fil des sessions.
           </div>
           <p style={{
@@ -193,7 +195,10 @@ export default function TodayV2() {
             Lance ta première conversation avec Noema — tout commence là.
           </p>
           <button
-            onClick={() => changeTab("chat")}
+            onClick={() => {
+              localStorage.setItem("noema_first_session", "true");
+              changeTab("chat");
+            }}
             style={{
               padding: "12px 28px",
               borderRadius: 9999,
@@ -206,7 +211,7 @@ export default function TodayV2() {
               fontFamily: T.font.sans,
             }}
           >
-            Commencer ma première session
+            Parle à Noema maintenant
           </button>
         </div>
       </div>

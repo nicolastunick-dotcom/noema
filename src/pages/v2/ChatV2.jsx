@@ -54,6 +54,20 @@ export default function ChatV2() {
   const mode       = chatContinuity?.mode ?? "welcome";
   const canSend    = Boolean(input.trim()) && !typing && !isBlocked;
 
+  // Pré-amorce Jour 0 : si l'utilisateur arrive depuis le CTA première session,
+  // envoyer automatiquement le premier prompt d'ouverture
+  useEffect(() => {
+    const isFirstSession = localStorage.getItem("noema_first_session") === "true";
+    if (isFirstSession && msgs.length === 0 && !typing && !isBlocked) {
+      localStorage.removeItem("noema_first_session");
+      const openingPrompt = PROMPTS.welcome[0];
+      // Délai court pour laisser le composant se monter complètement
+      const timer = setTimeout(() => send(openingPrompt), 400);
+      return () => clearTimeout(timer);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const prompts = mode === "resume"
     ? PROMPTS.resume(chatContinuity?.prompt)
     : mode === "restart"

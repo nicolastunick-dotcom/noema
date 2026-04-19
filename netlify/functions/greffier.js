@@ -86,7 +86,9 @@ Tâche concrète et simple que l'utilisateur peut faire avant la prochaine sessi
 Exemple : "Écrire 3 moments où il s'est senti pleinement lui-même."
 Si rien de concret n'a encore émergé dans la conversation, mets null.
 
-Ne renvoie ABSOLUMENT RIEN d'autre que l'objet JSON valide.`;
+Ne renvoie ABSOLUMENT RIEN d'autre que l'objet JSON valide.
+
+RÈGLE DE DÉDUPLICATION : Avant d'ajouter une force, un blocage ou une contradiction aux listes existantes, vérifie si le concept est déjà présent sous une formulation différente. Si sémantiquement équivalent, conserve la formulation la plus claire et n'ajoute pas de doublon.`;
 
 function withTimeout(promise, ms, label) {
   let timer = null
