@@ -138,7 +138,7 @@ function Row({ icon, label, onClick, color, disabled, sublabel }) {
         cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled ? 0.4 : 1,
         transition: "background 0.15s",
-        fontFamily: "'Plus Jakarta Sans', sans-serif",
+        fontFamily: "'Figtree', sans-serif",
       }}
       onMouseEnter={e => !disabled && (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}
       onMouseLeave={e => (e.currentTarget.style.background = "none")}
@@ -299,7 +299,7 @@ export default function AdminPanel({ user, sb, accessState, history, lastGreffie
           border: "1px solid rgba(189,194,255,0.2)",
           color: C.primary, fontSize: "0.6rem", fontWeight: 700,
           letterSpacing: "0.12em", textTransform: "uppercase",
-          cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif",
+          cursor: "pointer", fontFamily: "'Figtree', sans-serif",
           transition: "background 0.2s",
         }}
       >Admin{activeScenario ? ` · ${SCENARIOS.find(s => s.id === activeScenario)?.label.split("—")[0].trim()}` : ""}</button>
@@ -314,7 +314,7 @@ export default function AdminPanel({ user, sb, accessState, history, lastGreffie
           borderRadius: 16,
           boxShadow: "0 24px 48px rgba(0,0,0,0.6)",
           overflow: "hidden",
-          fontFamily: "'Plus Jakarta Sans', sans-serif",
+          fontFamily: "'Figtree', sans-serif",
           maxHeight: "80vh",
           overflowY: "auto",
         }}>
@@ -339,7 +339,7 @@ export default function AdminPanel({ user, sb, accessState, history, lastGreffie
                   padding: "4px 10px", borderRadius: 9999,
                   background: "rgba(189,194,255,0.12)", border: "1px solid rgba(189,194,255,0.25)",
                   color: C.primary, cursor: "pointer", fontSize: "0.65rem", fontWeight: 700,
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  fontFamily: "'Figtree', sans-serif",
                   textTransform: "uppercase", letterSpacing: "0.1em",
                 }}
               >
@@ -419,7 +419,7 @@ export default function AdminPanel({ user, sb, accessState, history, lastGreffie
                     <span style={{ fontSize: "0.72rem", color: C.primary, fontFamily: "monospace", letterSpacing: "0.08em" }}>{inv.token}</span>
                     <button
                       onClick={() => navigator.clipboard.writeText(inv.link).then(() => flash("✅ Lien copié !"))}
-                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.7rem", color: C.onSurfaceVariant, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.7rem", color: C.onSurfaceVariant, fontFamily: "'Figtree', sans-serif" }}
                     >
                       Copier
                     </button>

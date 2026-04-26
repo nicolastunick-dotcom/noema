@@ -147,7 +147,7 @@ export default function JournalPage({ user, sb, nextAction = "", proofState = nu
   };
 
   return (
-    <div style={{ backgroundColor: C.bg, minHeight: "100vh", fontFamily: "'Plus Jakarta Sans', sans-serif", color: C.onSurface, overflowX: "hidden", paddingBottom: 120 }}>
+    <div style={{ backgroundColor: C.bg, minHeight: "100vh", fontFamily: "'Figtree', sans-serif", color: C.onSurface, overflowX: "hidden", paddingBottom: 120 }}>
 
       {/* ── Ambient Blobs ── */}
       <div style={{ position:"fixed", inset:0, overflow:"hidden", pointerEvents:"none", zIndex:0 }}>
@@ -250,7 +250,7 @@ export default function JournalPage({ user, sb, nextAction = "", proofState = nu
                     resize:"none",
                     fontSize:"1.05rem", lineHeight:1.7,
                     color:C.onSurface,
-                    fontFamily:"'Plus Jakarta Sans', sans-serif",
+                    fontFamily:"'Figtree', sans-serif",
                     caretColor:C.primary,
                   }}
                 />
@@ -272,7 +272,7 @@ export default function JournalPage({ user, sb, nextAction = "", proofState = nu
                       border: saveState === "saved" ? "1px solid rgba(189,194,255,0.2)" : "none",
                       cursor: saveState === "saving" ? "default" : "pointer",
                       fontWeight:700, fontSize:"0.82rem",
-                      fontFamily:"'Plus Jakarta Sans', sans-serif",
+                      fontFamily:"'Figtree', sans-serif",
                       opacity: saveState === "saving" ? 0.7 : 1,
                     }}
                   >

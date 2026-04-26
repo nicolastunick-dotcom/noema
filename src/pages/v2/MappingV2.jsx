@@ -98,7 +98,7 @@ function PulseTile({ label, value, hint, accent, index = 0 }) {
 
 // ── Zen ring ──────────────────────────────────────────────────────────────────
 function ZenRing({ step, accent }) {
-  const pct = Math.min(step / 6, 1);
+  const pct = Math.min(step / 10, 1);
   const r = 56;
   const circ = 2 * Math.PI * r;
   return (

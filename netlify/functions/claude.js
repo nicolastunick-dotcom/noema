@@ -7,13 +7,21 @@ import { runGreffier } from './greffier.js'
 import { createClient } from '@supabase/supabase-js'
 
 const FULL_ACCESS_LIMIT_MSG = "La limite du jour est atteinte. Reviens demain pour continuer."
-const TRIAL_LIMIT_MSG = "Ton essai gratuit du jour est termine. Tu peux continuer avec Noema des maintenant."
+const TRIAL_LIMIT_MSG = "Ce que tu as partagé ici est précieux. Noema garde tout. Continue demain, ou garde ce fil vivant maintenant."
 const MODEL_HEAVY = 'claude-sonnet-4-6'         // synthèse (greffier)
 const MODEL_LIGHT = 'claude-haiku-4-5-20251001' // échanges standard
 const MAX_TOKENS_TRIAL      = 1200
 const MAX_TOKENS_SUBSCRIBER = 1800
 const MAX_MESSAGES_PER_REQUEST = 24
 const MAX_USER_REQUESTS_PER_MINUTE = 30
+const DISPOSABLE_EMAIL_DOMAINS = [
+  'mailinator.com',
+  'tempmail.com',
+  'guerrillamail.com',
+  '10minutemail.com',
+  'throwam.com',
+  'yopmail.com',
+]
 const inMemoryUserRateLimit = new Map()
 
 function getSupabaseAdmin() {
@@ -50,6 +58,11 @@ function enforceInMemoryRateLimit(userId) {
   inMemoryUserRateLimit.set(userId, timestamps)
   if (inMemoryUserRateLimit.size > 10000) inMemoryUserRateLimit.clear()
   return true
+}
+
+function isDisposableEmail(email) {
+  const domain = String(email || '').trim().toLowerCase().split('@').pop()
+  return DISPOSABLE_EMAIL_DOMAINS.some((blockedDomain) => domain === blockedDomain || domain.endsWith(`.${blockedDomain}`))
 }
 
 export default async (request) => {
@@ -148,6 +161,10 @@ export default async (request) => {
     hasInvite,
     hasSubscription,
   })
+
+  if (isTrialTier(accessTier) && isDisposableEmail(verifiedUser.email)) {
+    return json({ error: { message: "Adresse email non acceptée pour l'essai gratuit." } }, 403, request)
+  }
 
   // ── Chargement mémoire utilisateur (server-side) ─────────────
   // Sprint 3.1 : les deux queries tournent en parallèle pour éviter toute latence additionnelle.

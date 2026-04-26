@@ -91,7 +91,7 @@ function ShellPageFallback({ phaseContext }) {
         alignItems: "center",
         justifyContent: "center",
         color: "rgba(226,226,233,0.74)",
-        fontFamily: "'Plus Jakarta Sans', sans-serif",
+        fontFamily: "'Figtree', sans-serif",
       }}
     >
       <div
@@ -299,7 +299,7 @@ export default function ShellV2({ adminSlot }) {
 
                 <span style={{
                   fontSize:     "0.65rem",
-                  fontFamily:   "'Plus Jakarta Sans', sans-serif",
+                  fontFamily:   "'Figtree', sans-serif",
                   fontWeight:   isActive ? 600 : 400,
                   color:        isActive ? (phaseContext?.accent ?? "#bdc2ff") : "#454655",
                   letterSpacing: "0.03em",

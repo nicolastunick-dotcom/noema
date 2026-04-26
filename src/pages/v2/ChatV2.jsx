@@ -20,9 +20,12 @@ import { T, phaseButtonTextColor } from "../../design-system/tokens";
 
 const NAV_HEIGHT = 88;
 const TODAY = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+const QUOTA_LOW_THRESHOLD = 3;
 
 const PROMPTS = {
   welcome: [
+    "Je veux juste parler",
+    "Je ne sais pas encore pourquoi je suis là",
     "Je me sens bloqué sans savoir pourquoi",
     "J'ai du mal à prendre une décision importante",
     "Je veux comprendre ce qui me freine vraiment",
@@ -51,6 +54,9 @@ export default function ChatV2() {
   const [inputFocused, setInputFocused] = useState(false);
   const isBlocked  = Boolean(quotaState?.exhausted);
   const isTrial    = Boolean(quotaState?.isTrial);
+  const showQuotaHint = !isBlocked
+    && Number.isFinite(quotaState?.remaining)
+    && quotaState.remaining <= QUOTA_LOW_THRESHOLD;
   const mode       = chatContinuity?.mode ?? "welcome";
   const canSend    = Boolean(input.trim()) && !typing && !isBlocked;
 
@@ -366,11 +372,10 @@ export default function ChatV2() {
                     }} />
                     <div
                       style={{
-                        fontFamily:    T.font.serif,
-                        fontStyle:     "italic",
-                        fontSize:      m.isErr ? T.type.body.size : T.type.noema.size,
-                        lineHeight:    T.type.noema.lh,
-                        letterSpacing: T.type.noema.ls,
+                        fontFamily:    m.isErr ? T.font.sans : T.font.handwriting,
+                        fontSize:      m.isErr ? T.type.body.size : "1.22rem",
+                        lineHeight:    1.7,
+                        letterSpacing: "0.01em",
                         color:         m.isErr ? T.color.error : T.color.textSub,
                         position:      "relative",
                       }}
@@ -553,7 +558,7 @@ export default function ChatV2() {
             color: T.color.textOff,
             textAlign: "center", letterSpacing: "0.03em",
           }}>
-            La continuité reste visible d'une session à l'autre.
+            {showQuotaHint ? quotaState.remainingLabel : "La continuité reste visible d'une session à l'autre."}
           </p>
         </div>
       </div>
@@ -596,7 +601,7 @@ function UpgradeBar({ isTrial, onPricing }) {
           {isTrial ? "Essai du jour terminé" : "Limite atteinte"}
         </p>
         <p style={{ margin: "5px 0 0", fontSize: T.type.bodySm.size, lineHeight: 1.5, color: T.color.textSub }}>
-          Ton fil reste intact. Tu peux continuer maintenant, ou revenir demain.
+          Accès illimité · Mémoire complète · 19€/mois
         </p>
       </div>
       {isTrial && (
@@ -615,7 +620,7 @@ function UpgradeBar({ isTrial, onPricing }) {
             whiteSpace: "nowrap",
           }}
         >
-          Continuer
+          Garder ce fil vivant
         </button>
       )}
     </div>

@@ -255,7 +255,7 @@ export default function NoemaOrb({ size = 60, showText = false }) {
           fontSize:      "0.75rem",
           color:         "#bdc2ff",
           opacity:       0.75,
-          fontFamily:    "'Plus Jakarta Sans', sans-serif",
+          fontFamily:    "'Figtree', sans-serif",
           letterSpacing: "0.06em",
           transition:    "opacity 0.4s",
         }}>

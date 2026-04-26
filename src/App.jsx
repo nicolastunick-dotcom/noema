@@ -373,7 +373,7 @@ function LoadingScreen({ message }) {
         justifyContent: "center",
         backgroundColor: "#111318",
         color: "#e2e2e9",
-        fontFamily: "'Plus Jakarta Sans', sans-serif",
+        fontFamily: "'Figtree', sans-serif",
       }}
     >
       <div

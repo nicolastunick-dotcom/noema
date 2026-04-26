@@ -20,7 +20,7 @@ const inputStyle = {
   border: `1px solid ${C.outlineVariant}`,
   borderRadius: 12,
   color: C.onBackground,
-  fontFamily: "'Plus Jakarta Sans', sans-serif",
+  fontFamily: "'Figtree', sans-serif",
   fontSize: "0.875rem",
   outline: "none",
   boxSizing: "border-box",
@@ -61,7 +61,7 @@ export default function ResetPassword({ onNav }) {
             </p>
             <button
               onClick={() => onNav?.("/login")}
-              style={{ padding: "12px 28px", background: C.primaryContainer, color: "#fff", border: "none", borderRadius: 12, fontSize: "0.875rem", fontWeight: 600, cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+              style={{ padding: "12px 28px", background: C.primaryContainer, color: "#fff", border: "none", borderRadius: 12, fontSize: "0.875rem", fontWeight: 600, cursor: "pointer", fontFamily: "'Figtree', sans-serif" }}
             >
               Se connecter
             </button>
@@ -110,7 +110,7 @@ export default function ResetPassword({ onNav }) {
             <button
               onClick={handleSubmit}
               disabled={load}
-              style={{ width: "100%", padding: "12px", background: C.primaryContainer, color: "#fff", border: "none", borderRadius: 12, fontSize: "0.875rem", fontWeight: 600, cursor: load ? "not-allowed" : "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif", opacity: load ? 0.6 : 1 }}
+              style={{ width: "100%", padding: "12px", background: C.primaryContainer, color: "#fff", border: "none", borderRadius: 12, fontSize: "0.875rem", fontWeight: 600, cursor: load ? "not-allowed" : "pointer", fontFamily: "'Figtree', sans-serif", opacity: load ? 0.6 : 1 }}
             >
               {load ? "Mise à jour..." : "Mettre à jour le mot de passe"}
             </button>

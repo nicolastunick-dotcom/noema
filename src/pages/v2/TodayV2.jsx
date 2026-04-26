@@ -13,6 +13,7 @@ import LivingAtmosphere from "../../components/v2/LivingAtmosphere";
 
 const TODAY     = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
 const TODAY_ISO = new Date().toISOString().slice(0, 10);
+const MAPPING_REVEAL_STORAGE_KEY = "noema_mapping_reveal_shown";
 
 const PHASE_QUESTIONS = {
   perdu: [
@@ -56,6 +57,10 @@ export default function TodayV2() {
   const [journeyDay,          setJourneyDay]          = useState(null);
   const [sessionCount,        setSessionCount]        = useState(0);
   const [clarifiedIntentions, setClarifiedIntentions] = useState(0);
+  const [mappingRevealWasShown] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem(MAPPING_REVEAL_STORAGE_KEY) === "true";
+  });
 
   const accent        = phaseContext?.accent     ?? T.color.accent.default;
   const glow          = phaseContext?.glow       ?? T.color.accent.glow;
@@ -119,6 +124,13 @@ export default function TodayV2() {
     buildZenRitual({ phaseContext, progressSignals, intention: intentionSource, journalEntry: lastJournalEntry }),
     [intentionSource, lastJournalEntry, phaseContext, progressSignals]
   );
+  const shouldShowMappingReveal = Boolean(progressSignals?.hasRecurringThemes) && !mappingRevealWasShown;
+
+  useEffect(() => {
+    if (shouldShowMappingReveal) {
+      localStorage.setItem(MAPPING_REVEAL_STORAGE_KEY, "true");
+    }
+  }, [shouldShowMappingReveal]);
 
   const daysSinceLastSession = useMemo(() => {
     if (!latestSession) return null;
@@ -299,11 +311,7 @@ export default function TodayV2() {
           </motion.section>
 
           {loading ? (
-            <motion.div
-              animate={{ opacity: [0.4, 0.8, 0.4] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-              style={{ padding: "32px 0", color: T.color.textMuted, fontSize: T.type.bodySm.size, textAlign: "center" }}
-            >Chargement…</motion.div>
+            <TodaySkeleton />
           ) : (
             <>
               {/* Phase signal */}
@@ -318,6 +326,44 @@ export default function TodayV2() {
                   </span>
                   <span style={{ fontSize: T.type.caption.size, color: T.color.textSub }}>{phaseContext.paceLabel}</span>
                 </motion.div>
+              )}
+
+              {shouldShowMappingReveal && (
+                <motion.button
+                  {...stagger(3)}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => changeTab("mapping")}
+                  style={{
+                    ...card,
+                    padding: 24,
+                    border: `1px solid ${accent}33`,
+                    borderLeft: `2.5px solid ${accent}`,
+                    background: "rgba(12,14,20,0.88)",
+                    color: T.color.text,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    fontFamily: T.font.sans,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 18,
+                  }}
+                >
+                  <span style={{
+                    fontFamily: T.font.serif,
+                    fontStyle: "italic",
+                    fontSize: "1.2rem",
+                    lineHeight: 1.45,
+                    color: T.color.text,
+                  }}>
+                    Quelque chose prend forme dans ton profil.
+                  </span>
+                  <span className="material-symbols-outlined" style={{
+                    fontSize: "1.1rem",
+                    color: accent,
+                    fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24",
+                  }}>arrow_forward</span>
+                </motion.button>
               )}
 
               {/* Quota */}
@@ -502,6 +548,34 @@ export default function TodayV2() {
           )}
         </main>
       </motion.div>
+    </div>
+  );
+}
+
+function TodaySkeleton() {
+  const rows = [
+    { height: 50, width: "100%" },
+    { height: 120, width: "100%" },
+    { height: 190, width: "100%" },
+    { height: 112, width: "100%" },
+  ];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      {rows.map((row, index) => (
+        <motion.div
+          key={index}
+          animate={{ opacity: [0.35, 0.72, 0.35] }}
+          transition={{ duration: 1.45, repeat: Infinity, delay: index * 0.12 }}
+          style={{
+            ...T.glass.md,
+            width: row.width,
+            height: row.height,
+            borderRadius: index === 0 ? T.radius.lg : T.radius["2xl"],
+            background: "rgba(22,23,29,0.64)",
+          }}
+        />
+      ))}
     </div>
   );
 }

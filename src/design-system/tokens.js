@@ -69,8 +69,9 @@ export const T = {
 
   // ── Typographie ──────────────────────────────────────────────────────────
   font: {
-    sans:  "'Plus Jakarta Sans', sans-serif",
-    serif: "'Instrument Serif', serif",
+    sans:         "'Figtree', sans-serif",
+    serif:        "'Instrument Serif', serif",
+    handwriting:  "'Caveat', cursive",
   },
   type: {
     noema:   { size: "1.125rem",   lh: 1.85, ls: "0.005em"  },

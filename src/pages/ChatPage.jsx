@@ -93,7 +93,7 @@ export default function ChatPage({
     <div style={{
       backgroundColor: C.bg,
       height: "100vh",
-      fontFamily: "'Plus Jakarta Sans', sans-serif",
+      fontFamily: "'Figtree', sans-serif",
       color: C.onSurface,
       position: "relative",
       overflow: "hidden",
@@ -138,7 +138,7 @@ export default function ChatPage({
               background: "none", border: "none",
               color: C.outline, cursor: "pointer",
               fontSize: "0.75rem",
-              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontFamily: "'Figtree', sans-serif",
               padding: "6px 12px",
               borderRadius: 9999,
               transition: "color 0.2s",
@@ -152,7 +152,7 @@ export default function ChatPage({
               style={{
                 background: "none", border: "none",
                 color: C.outline, cursor: "pointer",
-                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                fontFamily: "'Figtree', sans-serif",
                 fontSize: "0.75rem",
                 padding: "6px 12px",
                 borderRadius: 9999,
@@ -402,7 +402,7 @@ export default function ChatPage({
                   fontSize: "0.8rem",
                   textAlign: "left",
                   cursor: "pointer",
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  fontFamily: "'Figtree', sans-serif",
                   transition: "all 0.2s",
                 }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(189,194,255,0.2)"; e.currentTarget.style.color = C.onSurface; }}
@@ -543,7 +543,7 @@ export default function ChatPage({
                   fontSize: "0.82rem",
                   color: "#332100",
                   background: "linear-gradient(135deg, #ffddb7 0%, #ffb68a 100%)",
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  fontFamily: "'Figtree', sans-serif",
                 }}
               >
                 Garder ce fil vivant
@@ -559,7 +559,7 @@ export default function ChatPage({
                   fontSize: "0.82rem",
                   color: C.onSurface,
                   background: "rgba(17,19,24,0.45)",
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  fontFamily: "'Figtree', sans-serif",
                 }}
               >
                 Relire aujourd'hui
@@ -611,7 +611,7 @@ export default function ChatPage({
                   outline: "none",
                   resize: "none",
                   color: C.onSurface,
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  fontFamily: "'Figtree', sans-serif",
                   fontSize: "0.875rem",
                   fontWeight: 300,
                   lineHeight: 1.6,

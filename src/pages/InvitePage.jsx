@@ -36,7 +36,7 @@ export default function InvitePage({ onNav, route }) {
   }, [route?.query?.token]);
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, fontFamily: "'Figtree', sans-serif" }}>
       <div style={{ textAlign: "center", maxWidth: 380, padding: "0 24px" }}>
         {status === "checking" && (
           <>
@@ -56,7 +56,7 @@ export default function InvitePage({ onNav, route }) {
             </p>
             <button
               onClick={() => onNav?.("/login")}
-              style={{ padding: "13px 32px", background: C.primaryContainer, color: "#fff", border: "none", borderRadius: 999, fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+              style={{ padding: "13px 32px", background: C.primaryContainer, color: "#fff", border: "none", borderRadius: 999, fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'Figtree', sans-serif" }}
             >
               Commencer l'exploration
             </button>
@@ -73,7 +73,7 @@ export default function InvitePage({ onNav, route }) {
             </p>
             <button
               onClick={() => onNav?.("/")}
-              style={{ padding: "11px 28px", background: "none", border: `1px solid ${C.border}`, borderRadius: 999, fontSize: "0.875rem", color: C.onSurfaceVariant, cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+              style={{ padding: "11px 28px", background: "none", border: `1px solid ${C.border}`, borderRadius: 999, fontSize: "0.875rem", color: C.onSurfaceVariant, cursor: "pointer", fontFamily: "'Figtree', sans-serif" }}
             >
               Retour à l'accueil
             </button>

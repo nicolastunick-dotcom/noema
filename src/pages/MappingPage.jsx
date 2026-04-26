@@ -354,7 +354,7 @@ export default function MappingPage({ insights, ikigai, step, phaseContext, prog
   const hasBlocages = blocages.racine || blocages.entretien || blocages.visible;
 
   return (
-    <div style={{ backgroundColor: C.bg, minHeight: "100vh", fontFamily: "'Plus Jakarta Sans', sans-serif", color: C.onSurface, overflowX: "hidden", paddingBottom: 96 }}>
+    <div style={{ backgroundColor: C.bg, minHeight: "100vh", fontFamily: "'Figtree', sans-serif", color: C.onSurface, overflowX: "hidden", paddingBottom: 96 }}>
 
       {/* Animated blobs */}
       <style>{`@keyframes float{0%{transform:translate(0,0) scale(1)}33%{transform:translate(30px,-50px) scale(1.1)}66%{transform:translate(-20px,20px) scale(0.9)}100%{transform:translate(0,0) scale(1)}}`}</style>

@@ -39,13 +39,16 @@ export default function JournalV2() {
   const [pastEntries,   setPastEntries]   = useState([]);
   const taRef = useRef(null);
 
+  const nextActionPrompt = nextAction
+    ? `Tu t'étais engagé à : ${nextAction}. Est-ce que tu l'as fait ? Comment ça s'est passé ?`
+    : null;
   const wordCount      = text.trim() ? text.trim().split(/\s+/).length : 0;
   const hasReflection  = text.trim().length > 0;
-  const altPrompts     = nextAction ? FALLBACK_PROMPTS : FALLBACK_PROMPTS.slice(1);
+  const altPrompts     = nextActionPrompt ? FALLBACK_PROMPTS : FALLBACK_PROMPTS.slice(1);
   const supportProof   = proofState?.items?.find((i) => i.label !== "Fil actif") || null;
   const journalReason  = supportProof
     ? `${supportProof.tag} — ${supportProof.value}`
-    : nextAction ? "Elle prolonge l'intention que tu avais laissée ouverte." : "";
+    : nextActionPrompt ? "Elle prolonge l'intention que tu avais laissée ouverte." : "";
   const journeyDayValue = journeyDay != null
     ? Math.max(1, journeyDay)
     : (nextAction || hasReflection ? 1 : null);
@@ -59,7 +62,7 @@ export default function JournalV2() {
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "auto";
-    setActivePrompt(nextAction || FALLBACK_PROMPTS[0]);
+    setActivePrompt(nextActionPrompt || FALLBACK_PROMPTS[0]);
 
     if (!sb || !user?.id) { setLoading(false); return; }
 
@@ -75,7 +78,7 @@ export default function JournalV2() {
       ]);
       if (entryRes.data) {
         if (entryRes.data.content) setText(entryRes.data.content);
-        if (!nextAction && entryRes.data.next_action) setActivePrompt(entryRes.data.next_action);
+        if (!nextActionPrompt && entryRes.data.next_action) setActivePrompt(entryRes.data.next_action);
       }
       if (countRes.count != null && countRes.count > 0) setJourneyDay(countRes.count);
 

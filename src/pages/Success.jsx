@@ -86,7 +86,7 @@ export default function Success({ onNav, user, sb }) {
         minHeight: "100vh",
         backgroundColor: COLORS.background,
         color: COLORS.onBackground,
-        fontFamily: "'Plus Jakarta Sans', sans-serif",
+        fontFamily: "'Figtree', sans-serif",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -205,7 +205,7 @@ export default function Success({ onNav, user, sb }) {
                 padding: "16px 40px",
                 fontSize: "1rem",
                 fontWeight: 700,
-                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                fontFamily: "'Figtree', sans-serif",
                 cursor: "pointer",
                 transition: "transform 0.2s, box-shadow 0.2s",
               }}
@@ -234,7 +234,7 @@ export default function Success({ onNav, user, sb }) {
                 padding: "14px 28px",
                 fontSize: "0.95rem",
                 fontWeight: 600,
-                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                fontFamily: "'Figtree', sans-serif",
                 cursor: refreshing ? "wait" : "pointer",
                 opacity: refreshing ? 0.7 : 1,
               }}
@@ -251,7 +251,7 @@ export default function Success({ onNav, user, sb }) {
               border: "none",
               padding: 0,
               fontSize: "0.85rem",
-              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontFamily: "'Figtree', sans-serif",
               cursor: "pointer",
             }}
           >

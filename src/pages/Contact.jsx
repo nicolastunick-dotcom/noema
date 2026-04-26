@@ -49,11 +49,11 @@ export default function Contact({ onNav }) {
   };
 
   return (
-    <div style={{ backgroundColor: C.bg, color: C.onBackground, fontFamily: "'Plus Jakarta Sans', sans-serif", minHeight: "100vh" }}>
+    <div style={{ backgroundColor: C.bg, color: C.onBackground, fontFamily: "'Figtree', sans-serif", minHeight: "100vh" }}>
       <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, background: "rgba(17,19,24,0.85)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderBottom: "1px solid rgba(69,70,85,0.1)" }}>
         <div style={{ maxWidth: 1280, margin: "0 auto", padding: "16px 32px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <button onClick={() => onNav?.("landing")} style={{ background: "none", border: "none", fontFamily: "'Instrument Serif', serif", fontStyle: "italic", fontSize: "1.5rem", color: C.onBackground, cursor: "pointer", padding: 0 }}>Noema</button>
-          <button onClick={() => onNav?.("landing")} style={{ background: "none", border: "1px solid rgba(69,70,85,0.3)", borderRadius: 9999, color: C.onSurfaceVariant, fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: "0.8rem", padding: "8px 18px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+          <button onClick={() => onNav?.("landing")} style={{ background: "none", border: "1px solid rgba(69,70,85,0.3)", borderRadius: 9999, color: C.onSurfaceVariant, fontFamily: "'Figtree', sans-serif", fontSize: "0.8rem", padding: "8px 18px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
             <span className="material-symbols-outlined" style={{ fontSize: "1rem" }}>arrow_back</span>
             Retour
           </button>
@@ -105,7 +105,7 @@ export default function Contact({ onNav }) {
                       value={form[key]}
                       onChange={e => upd(key, e.target.value)}
                       required
-                      style={{ width: "100%", background: "rgba(51,53,58,0.5)", border: "none", borderRadius: 10, padding: "12px 16px", color: C.onBackground, fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: "0.9rem", outline: "none", boxSizing: "border-box" }}
+                      style={{ width: "100%", background: "rgba(51,53,58,0.5)", border: "none", borderRadius: 10, padding: "12px 16px", color: C.onBackground, fontFamily: "'Figtree', sans-serif", fontSize: "0.9rem", outline: "none", boxSizing: "border-box" }}
                     />
                   </div>
                 ))}
@@ -117,7 +117,7 @@ export default function Contact({ onNav }) {
                     onChange={e => upd("message", e.target.value)}
                     required
                     rows={5}
-                    style={{ width: "100%", background: "rgba(51,53,58,0.5)", border: "none", borderRadius: 10, padding: "12px 16px", color: C.onBackground, fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: "0.9rem", outline: "none", resize: "vertical", boxSizing: "border-box" }}
+                    style={{ width: "100%", background: "rgba(51,53,58,0.5)", border: "none", borderRadius: 10, padding: "12px 16px", color: C.onBackground, fontFamily: "'Figtree', sans-serif", fontSize: "0.9rem", outline: "none", resize: "vertical", boxSizing: "border-box" }}
                   />
                 </div>
                 {error && (
@@ -126,7 +126,7 @@ export default function Contact({ onNav }) {
                 <button
                   type="submit"
                   disabled={sending}
-                  style={{ width: "100%", background: sending ? "rgba(189,194,255,0.3)" : "linear-gradient(135deg, #bdc2ff 0%, #7886ff 100%)", color: C.onPrimaryContainer, border: "none", borderRadius: 9999, padding: "14px", fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: "1rem", cursor: sending ? "not-allowed" : "pointer", transition: "background 0.2s" }}
+                  style={{ width: "100%", background: sending ? "rgba(189,194,255,0.3)" : "linear-gradient(135deg, #bdc2ff 0%, #7886ff 100%)", color: C.onPrimaryContainer, border: "none", borderRadius: 9999, padding: "14px", fontFamily: "'Figtree', sans-serif", fontWeight: 700, fontSize: "1rem", cursor: sending ? "not-allowed" : "pointer", transition: "background 0.2s" }}
                 >
                   {sending ? "Envoi en cours…" : "Envoyer"}
                 </button>
@@ -154,7 +154,7 @@ function Footer({ onNav }) {
         <div style={{ fontFamily: "'Instrument Serif', serif", fontStyle: "italic", fontSize: "1.125rem", color: C.onBackground }}>Noema</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 24 }}>
           {links.map(({ label, target }) => (
-            <button key={label} onClick={() => onNav?.(target)} style={{ background: "none", border: "none", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.1em", color: C.outlineVariant, cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif", transition: "color 0.2s", padding: 0 }}
+            <button key={label} onClick={() => onNav?.(target)} style={{ background: "none", border: "none", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.1em", color: C.outlineVariant, cursor: "pointer", fontFamily: "'Figtree', sans-serif", transition: "color 0.2s", padding: 0 }}
               onMouseEnter={e => e.currentTarget.style.color = C.primary}
               onMouseLeave={e => e.currentTarget.style.color = C.outlineVariant}
             >{label}</button>

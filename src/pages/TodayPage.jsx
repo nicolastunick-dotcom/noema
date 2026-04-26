@@ -172,7 +172,7 @@ export default function TodayPage({ user, sb, nextAction = "", sessionNote = "",
   };
 
   return (
-    <div style={{ backgroundColor: C.bg, minHeight: "100vh", fontFamily: "'Plus Jakarta Sans', sans-serif", color: C.onSurface, overflowX: "hidden", paddingBottom: 96 }}>
+    <div style={{ backgroundColor: C.bg, minHeight: "100vh", fontFamily: "'Figtree', sans-serif", color: C.onSurface, overflowX: "hidden", paddingBottom: 96 }}>
 
       {/* ── Ambient Blobs ── */}
       <div style={{ position:"fixed", width:"100vw", height:"100vh", top:0, left:0, zIndex:0, overflow:"hidden", pointerEvents:"none" }}>
@@ -349,7 +349,7 @@ export default function TodayPage({ user, sb, nextAction = "", sessionNote = "",
                       background:"linear-gradient(135deg, #bdc2ff 0%, #7886ff 100%)",
                       color:"#000965", fontWeight:700, fontSize:"0.875rem",
                       border:"none", cursor:"pointer",
-                      fontFamily:"'Plus Jakarta Sans', sans-serif",
+                      fontFamily:"'Figtree', sans-serif",
                       transition:"transform 0.15s, box-shadow 0.15s",
                     }}
                     onMouseEnter={e => { e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow="0 6px 20px rgba(120,134,255,0.35)"; }}
@@ -375,7 +375,7 @@ export default function TodayPage({ user, sb, nextAction = "", sessionNote = "",
                       background:"linear-gradient(135deg, #bdc2ff 0%, #7886ff 100%)",
                       color:"#000965", fontWeight:700, fontSize:"0.875rem",
                       border:"none", cursor:"pointer",
-                      fontFamily:"'Plus Jakarta Sans', sans-serif",
+                      fontFamily:"'Figtree', sans-serif",
                       transition:"transform 0.15s, box-shadow 0.15s",
                     }}
                     onMouseEnter={e => { e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow="0 6px 20px rgba(120,134,255,0.35)"; }}
@@ -434,7 +434,7 @@ export default function TodayPage({ user, sb, nextAction = "", sessionNote = "",
                   border:"none", cursor:"pointer",
                   display:"flex", alignItems:"center", justifyContent:"center", gap:8,
                   transition:"transform 0.15s",
-                  fontFamily:"'Plus Jakarta Sans', sans-serif",
+                  fontFamily:"'Figtree', sans-serif",
                 }}
                 onMouseEnter={e => e.currentTarget.style.transform = "scale(1.01)"}
                 onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
