@@ -60,6 +60,29 @@ function aggregateCosts(rows = []) {
   return { rows: normalizedRows, total };
 }
 
+async function resetNoemaForUser(sbAdmin, userId) {
+  const deletes = await Promise.all([
+    sbAdmin.from("sessions").delete().eq("user_id", userId),
+    sbAdmin.from("memory").delete().eq("user_id", userId),
+    sbAdmin.from("semantic_memory").delete().eq("user_id", userId),
+    sbAdmin.from("journal_entries").delete().eq("user_id", userId),
+    sbAdmin.from("rate_limits").delete().eq("user_id", userId),
+  ]);
+
+  const failedDelete = deletes.find((result) => result.error);
+  if (failedDelete?.error) {
+    throw failedDelete.error;
+  }
+
+  return {
+    sessions: true,
+    memory: true,
+    semantic_memory: true,
+    journal_entries: true,
+    rate_limits: true,
+  };
+}
+
 async function getVerifiedUser(request, sbAdmin) {
   const authHeader = request.headers.get("Authorization") || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
@@ -284,6 +307,21 @@ export default async function handler(request) {
       });
 
       return json({ ok: true, users, total: users.length });
+    }
+
+    case "reset-admin-self": {
+      try {
+        const reset = await resetNoemaForUser(sbAdmin, user.id);
+        return json({
+          ok: true,
+          reset,
+          user_id: user.id,
+          source: adminAccess.source,
+        });
+      } catch (resetError) {
+        console.error("[admin-tools] reset-admin-self error:", resetError.message);
+        return json({ error: "Impossible de remettre Noema a zero pour le compte admin." }, 500);
+      }
     }
 
     default:

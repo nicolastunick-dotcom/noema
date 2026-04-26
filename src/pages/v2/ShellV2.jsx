@@ -1,10 +1,7 @@
-import { useRef, useState, useEffect } from "react";
+import { Suspense, useRef, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNoemaRuntime } from "../../context/NoemaContext";
-import ChatV2    from "./ChatV2";
-import MappingV2 from "./MappingV2";
-import JournalV2 from "./JournalV2";
-import TodayV2   from "./TodayV2";
+import { lazyWithPreload, preloadWhenIdle } from "../../lib/lazyWithPreload";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ShellV2 — Layout shell V2 avec Framer Motion
@@ -27,11 +24,18 @@ import TodayV2   from "./TodayV2";
 const NAV_HEIGHT = 88;
 
 const NAV_TABS = [
+  { id: "today",   icon: "light_mode",     lbl: "Aujourd'hui" },
   { id: "chat",    icon: "forum",          lbl: "Chat" },
   { id: "mapping", icon: "psychology_alt", lbl: "Mapping" },
   { id: "journal", icon: "auto_stories",   lbl: "Journal" },
-  { id: "today",   icon: "light_mode",     lbl: "Aujourd'hui" },
 ];
+
+const TAB_COMPONENTS = {
+  today: lazyWithPreload(() => import("./TodayV2")),
+  chat: lazyWithPreload(() => import("./ChatV2")),
+  mapping: lazyWithPreload(() => import("./MappingV2")),
+  journal: lazyWithPreload(() => import("./JournalV2")),
+};
 
 // Variants pour les transitions de page
 const PAGE_VARIANTS = {
@@ -78,11 +82,48 @@ function PhaseTransitionOverlay({ phaseId, accent, glow, trigger }) {
   );
 }
 
+function ShellPageFallback({ phaseContext }) {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "rgba(226,226,233,0.74)",
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 14,
+        }}
+      >
+        <div
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: "50%",
+            border: `2px solid ${phaseContext?.border ?? "rgba(189,194,255,0.18)"}`,
+            borderTopColor: phaseContext?.accent ?? "#bdc2ff",
+            animation: "noemaShellSpin 0.9s linear infinite",
+          }}
+        />
+        <div style={{ fontSize: "0.88rem" }}>Preparation de votre espace...</div>
+        <style>{`@keyframes noemaShellSpin{to{transform:rotate(360deg)}}`}</style>
+      </div>
+    </div>
+  );
+}
+
 export default function ShellV2({ adminSlot }) {
   const { navTab, phaseContext, changeTab } = useNoemaRuntime();
 
   // navTab est géré par AppShell, exposé via NoemaContext
-  const activeTab = NAV_TABS.some((t) => t.id === navTab) ? navTab : "chat";
+  const activeTab = NAV_TABS.some((t) => t.id === navTab) ? navTab : "today";
 
   // ── Phase transition tracking ──
   const prevPhaseRef = useRef(phaseContext?.id);
@@ -96,19 +137,20 @@ export default function ShellV2({ adminSlot }) {
       setTransitionTrigger(t => t + 1);
     }
     prevPhaseRef.current = phaseContext.id;
-  }, [phaseContext?.id]);
+  }, [phaseContext?.accent, phaseContext?.glow, phaseContext?.id]);
 
   // Couleur de fond phase-aware
   const backgroundColor = PHASE_BG[phaseContext?.id] ?? "#111318";
+  const ActivePage = TAB_COMPONENTS[activeTab] ?? TAB_COMPONENTS.today;
 
-  // Toutes les pages V2 consomment useNoemaRuntime() directement — zéro props
-  const renderPage = () => {
-    switch (activeTab) {
-      case "mapping": return <MappingV2 />;
-      case "journal": return <JournalV2 />;
-      case "today":   return <TodayV2 />;
-      default:        return <ChatV2 />;
-    }
+  // Précharge Today + Chat au boot (idle) — les deux onglets les plus fréquents.
+  // Les autres onglets se préchargent au survol/focus du bouton nav.
+  useEffect(() => {
+    preloadWhenIdle([TAB_COMPONENTS.today, TAB_COMPONENTS.chat]);
+  }, []);
+
+  const preloadTab = (tabId) => {
+    TAB_COMPONENTS[tabId]?.preload?.();
   };
 
   return (
@@ -150,7 +192,9 @@ export default function ShellV2({ adminSlot }) {
           transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
           style={{ flex: 1 }}
         >
-          {renderPage()}
+          <Suspense fallback={<ShellPageFallback phaseContext={phaseContext} />}>
+            <ActivePage />
+          </Suspense>
         </motion.div>
       </AnimatePresence>
 
@@ -204,7 +248,12 @@ export default function ShellV2({ adminSlot }) {
             return (
               <button
                 key={tab.id}
-                onClick={() => changeTab(tab.id)}
+                onMouseEnter={() => preloadTab(tab.id)}
+                onFocus={() => preloadTab(tab.id)}
+                onClick={() => {
+                  preloadTab(tab.id);
+                  changeTab(tab.id);
+                }}
                 style={{
                   flex:           1,
                   display:        "flex",

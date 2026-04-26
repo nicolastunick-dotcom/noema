@@ -1,12 +1,12 @@
 const APP_TAB_PATHS = {
+  today: "/app/today",
   chat: "/app/chat",
   mapping: "/app/mapping",
   journal: "/app/journal",
-  today: "/app/today",
 };
 
 const INTERNAL_PATH_TO_TAB = {
-  "/app": "chat",
+  "/app": "today",
   "/app/chat": "chat",
   "/chat": "chat",
   "/app/mapping": "mapping",
@@ -31,7 +31,7 @@ const NAV_TARGETS = {
   invite: "/invite",
   "onboarding-preview": "/onboarding-preview",
   admin: "/admin",
-  app: APP_TAB_PATHS.chat,
+  app: APP_TAB_PATHS.today,
   chat: APP_TAB_PATHS.chat,
   mapping: APP_TAB_PATHS.mapping,
   journal: APP_TAB_PATHS.journal,

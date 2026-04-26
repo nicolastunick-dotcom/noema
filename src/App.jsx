@@ -1,21 +1,49 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { Suspense, useState, useEffect, useMemo, useCallback } from "react";
 import { sb } from "./lib/supabase";
-import Landing          from "./pages/Landing";
-import Login            from "./pages/Login";
-import Onboarding       from "./pages/Onboarding";
-import AppShell         from "./pages/AppShell";
-import Pricing          from "./pages/Pricing";
-import PrivacyPolicy    from "./pages/PrivacyPolicy";
-import TermsOfService   from "./pages/TermsOfService";
-import EthicalAI        from "./pages/EthicalAI";
-import Contact          from "./pages/Contact";
-import Success          from "./pages/Success";
-import ResetPassword    from "./pages/ResetPassword";
-import InvitePage       from "./pages/InvitePage";
-import AdminDashboard   from "./pages/AdminDashboard";
 import "./styles/app.css";
 import { buildLocation, getAppPath, parseNoemaLocation, resolveNoemaTarget } from "./lib/access";
 import { useSubscriptionAccess } from "./hooks/useSubscriptionAccess";
+import { lazyWithPreload } from "./lib/lazyWithPreload";
+
+const Landing = lazyWithPreload(() => import("./pages/Landing"));
+const Login = lazyWithPreload(() => import("./pages/Login"));
+const Onboarding = lazyWithPreload(() => import("./pages/Onboarding"));
+const AppShell = lazyWithPreload(() => import("./pages/AppShell"));
+const Pricing = lazyWithPreload(() => import("./pages/Pricing"));
+const PrivacyPolicy = lazyWithPreload(() => import("./pages/PrivacyPolicy"));
+const TermsOfService = lazyWithPreload(() => import("./pages/TermsOfService"));
+const EthicalAI = lazyWithPreload(() => import("./pages/EthicalAI"));
+const Contact = lazyWithPreload(() => import("./pages/Contact"));
+const Success = lazyWithPreload(() => import("./pages/Success"));
+const ResetPassword = lazyWithPreload(() => import("./pages/ResetPassword"));
+const InvitePage = lazyWithPreload(() => import("./pages/InvitePage"));
+const AdminDashboard = lazyWithPreload(() => import("./pages/AdminDashboard"));
+
+const ROUTE_COMPONENTS = {
+  landing: Landing,
+  pricing: Pricing,
+  login: Login,
+  onboarding: Onboarding,
+  privacy: PrivacyPolicy,
+  terms: TermsOfService,
+  "ethical-ai": EthicalAI,
+  contact: Contact,
+  success: Success,
+  "reset-password": ResetPassword,
+  invite: InvitePage,
+  "onboarding-preview": Onboarding,
+  app: AppShell,
+  admin: AdminDashboard,
+};
+
+function preloadRouteTarget(target) {
+  if (typeof window === "undefined") return;
+
+  const resolvedLocation = resolveNoemaTarget(target);
+  const nextUrl = new URL(resolvedLocation, window.location.origin);
+  const nextRoute = parseNoemaLocation(nextUrl.pathname, nextUrl.search);
+  ROUTE_COMPONENTS[nextRoute.page]?.preload?.();
+}
 
 // ─────────────────────────────────────────────────────────────
 // ROOT — Gestion navigation + auth + verrou abonnement
@@ -33,6 +61,8 @@ export default function App() {
     () => parseNoemaLocation(locationState.pathname, locationState.search),
     [locationState.pathname, locationState.search]
   );
+  const userId = user?.id;
+  const isAdminPreview = route.query?.adminpreview === "1";
   const access = useSubscriptionAccess(user);
 
   const syncLocation = useCallback(() => {
@@ -47,6 +77,8 @@ export default function App() {
     const currentLocation = `${window.location.pathname}${window.location.search}`;
     const method = options.replace ? "replaceState" : "pushState";
 
+    preloadRouteTarget(nextLocation);
+
     if (nextLocation !== currentLocation) {
       window.history[method]({}, "", nextLocation);
     }
@@ -58,11 +90,11 @@ export default function App() {
     navigate(target);
   }, [navigate]);
 
-  const currentAppPath = route.appTab ? getAppPath(route.appTab) : getAppPath("chat");
+  const currentAppPath = route.appTab ? getAppPath(route.appTab) : getAppPath("today");
   const requestedNextPath = route.nextPath || currentAppPath;
   const postAccessTarget = requestedNextPath.startsWith("/app")
     ? requestedNextPath
-    : getAppPath("chat");
+    : getAppPath("today");
 
   const routeNotice = useMemo(() => {
     if (route.reason === "auth_required") {
@@ -105,7 +137,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!user || !access.hasProductAccess) {
+    if (!userId || !access.hasProductAccess) {
       setNeedsOnboarding(false);
       setOnboardingReady(true);
       return;
@@ -124,7 +156,7 @@ export default function App() {
       const { data, error } = await sb
         .from("memory")
         .select("onboarding_done")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .maybeSingle();
 
       if (cancelled) return;
@@ -144,7 +176,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, access.hasProductAccess]);
+  }, [userId, access.hasProductAccess]);
 
   useEffect(() => {
     if (!authReady) return;
@@ -183,14 +215,14 @@ export default function App() {
 
       if (!onboardingReady) return;
 
-      if (!needsOnboarding) {
+      if (!needsOnboarding && !isAdminPreview) {
         navigate(postAccessTarget, { replace: true });
       }
 
       return;
     }
 
-    if (route.page === "login" && user) {
+    if (route.page === "login" && user && !isAdminPreview) {
       if (!onboardingReady) return;
 
       navigate(needsOnboarding ? buildLocation("/onboarding", { next: postAccessTarget }) : postAccessTarget, { replace: true });
@@ -207,7 +239,7 @@ export default function App() {
       // Nettoie le hash Supabase si présent (cas confirmation email)
       if (window.location.hash) window.history.replaceState({}, "", window.location.pathname);
 
-      navigate(needsOnboarding ? buildLocation("/onboarding", { next: getAppPath("chat") }) : getAppPath("chat"), { replace: true });
+      navigate(needsOnboarding ? buildLocation("/onboarding", { next: getAppPath("today") }) : getAppPath("today"), { replace: true });
     }
 
     // Login bypass adminpreview
@@ -225,12 +257,12 @@ export default function App() {
     onboardingReady,
     postAccessTarget,
     requestedNextPath,
+    isAdminPreview,
     route.page,
     user,
   ]);
 
   // Admin bypass : ?adminpreview=1 sur les pages qui redirigent les utilisateurs connectés
-  const isAdminPreview = route.query?.adminpreview === "1";
 
   // Sprint 1.1 : bloquer le rendu d'AppShell tant que l'entitlement n'est pas résolu (prod uniquement).
   // Sans ce garde, AppShell peut monter avec accessState.loading=true et déclencher openingMessage()
@@ -246,40 +278,42 @@ export default function App() {
     return <LoadingScreen message="Verification de votre acces..." />;
   }
 
+  let pageView = <LoadingScreen message="Preparation de Noema..." />;
+
   if (route.page === "landing") {
-    return <Landing onNav={handleNav} />;
+    pageView = <Landing onNav={handleNav} />;
   }
 
   if (route.page === "privacy") {
-    return <PrivacyPolicy onNav={handleNav} />;
+    pageView = <PrivacyPolicy onNav={handleNav} />;
   }
 
   if (route.page === "terms") {
-    return <TermsOfService onNav={handleNav} />;
+    pageView = <TermsOfService onNav={handleNav} />;
   }
 
   if (route.page === "ethical-ai") {
-    return <EthicalAI onNav={handleNav} />;
+    pageView = <EthicalAI onNav={handleNav} />;
   }
 
   if (route.page === "contact") {
-    return <Contact onNav={handleNav} />;
+    pageView = <Contact onNav={handleNav} />;
   }
 
   if (route.page === "success") {
-    return <Success onNav={handleNav} user={user} sb={sb} />;
+    pageView = <Success onNav={handleNav} user={user} sb={sb} />;
   }
 
   if (route.page === "reset-password") {
-    return <ResetPassword onNav={handleNav} />;
+    pageView = <ResetPassword onNav={handleNav} />;
   }
 
   if (route.page === "invite") {
-    return <InvitePage onNav={handleNav} route={route} />;
+    pageView = <InvitePage onNav={handleNav} route={route} />;
   }
 
   if (route.page === "onboarding-preview") {
-    return (
+    pageView = (
       <Onboarding
         user={null}
         sb={null}
@@ -289,25 +323,25 @@ export default function App() {
   }
 
   if (route.page === "pricing") {
-    return <Pricing onNav={handleNav} user={user} accessState={access} notice={pricingNotice} />;
+    pageView = <Pricing onNav={handleNav} user={user} accessState={access} notice={pricingNotice} />;
   }
 
   if (route.page === "login") {
-    return <Login onNav={handleNav} notice={routeNotice} checkingAccess={Boolean(user && access.loading)} />;
+    pageView = <Login onNav={handleNav} notice={routeNotice} checkingAccess={Boolean(user && access.loading)} />;
   }
 
   if (route.page === "onboarding") {
-    return (
-        <Onboarding
-          user={user}
-          sb={sb}
-          onComplete={() => { setNeedsOnboarding(false); navigate(postAccessTarget, { replace: true }); }}
-        />
-      );
+    pageView = (
+      <Onboarding
+        user={user}
+        sb={sb}
+        onComplete={() => { setNeedsOnboarding(false); navigate(postAccessTarget, { replace: true }); }}
+      />
+    );
   }
 
   if (route.page === "app") {
-    return (
+    pageView = (
       <AppShell
         onNav={handleNav}
         user={user}
@@ -319,10 +353,14 @@ export default function App() {
   }
 
   if (route.page === "admin") {
-    return <AdminDashboard user={user} onNav={handleNav} />;
+    pageView = <AdminDashboard user={user} onNav={handleNav} />;
   }
 
-  return <LoadingScreen message="Preparation de Noema..." />;
+  return (
+    <Suspense fallback={<LoadingScreen message="Preparation de Noema..." />}>
+      {pageView}
+    </Suspense>
+  );
 }
 
 function LoadingScreen({ message }) {

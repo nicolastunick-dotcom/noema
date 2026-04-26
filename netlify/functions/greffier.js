@@ -185,8 +185,13 @@ function normalizeGreffierPayload(parsed, safeUserMemory = {}) {
   }
 }
 
-export async function runGreffier({ apiKey, sb, userId, sessionId, history, userMemory = {} }) {
+export async function runGreffier({ apiKey = process.env.ANTHROPIC_API_KEY, sb, userId, sessionId, history, userMemory = {} }) {
   try {
+    if (!apiKey) {
+      console.warn("Greffier Anthropic key missing from environment.");
+      return null;
+    }
+
     // Prevent sending the whole history if it's too long (Haiku contextualizes quickly)
     // Send the last 6 messages to get context of the recent exchange
     const recentHistory = Array.isArray(history) ? history.slice(-6) : [];
@@ -335,12 +340,13 @@ export const handler = async (event) => {
   }
 
   try {
-    const { apiKey, token, userId, sessionId, history, userMemory } = parsedBody;
+    const { token, userId, sessionId, history, userMemory } = parsedBody;
+    const apiKey = process.env.ANTHROPIC_API_KEY;
 
     if (!apiKey || !userId) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: "Missing required fields: apiKey, userId" })
+        body: JSON.stringify({ error: "Missing server Anthropic key or userId" })
       };
     }
 

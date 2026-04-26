@@ -222,7 +222,7 @@ export default function TodayV2() {
     <div style={{
       backgroundColor: T.color.bg,
       minHeight: "100vh", fontFamily: T.font.sans,
-      color: T.color.text, overflowX: "hidden", paddingBottom: 96,
+      color: T.color.text, overflowX: "hidden", paddingBottom: 120,
     }}>
 
       {/* ── Living atmosphere ── */}
@@ -252,7 +252,7 @@ export default function TodayV2() {
       >
         <main style={{
           maxWidth: 640, margin: "0 auto",
-          padding: "48px 24px 80px",
+          padding: "48px 24px 120px",
           display: "flex", flexDirection: "column", gap: 32,
         }}>
 

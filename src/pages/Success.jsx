@@ -1,4 +1,3 @@
-/* eslint-disable */
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const COLORS = {
@@ -37,6 +36,9 @@ export default function Success({ onNav, user, sb }) {
     const { data } = await sb.from("subscriptions")
       .select("status")
       .eq("user_id", user.id)
+      .in("status", ["active", "trialing"])
+      .order("updated_at", { ascending: false })
+      .limit(1)
       .maybeSingle()
       .catch(() => ({ data: null }));
 

@@ -26,7 +26,7 @@ import AdminPanel from "../components/AdminPanel";
 //   9. RENDER
 // Session persistence → useNoemaSession hook
 // ─────────────────────────────────────────────────────────────
-export default function AppShell({ onNav, user, initialTab = "chat", onTabChange, accessState = null }) {
+export default function AppShell({ onNav, user, initialTab = "today", onTabChange, accessState = null }) {
   const NAV_HEIGHT = 88;
   // ── 1. STATE & REFS ──────────────────────────────────────────
   const [msgs,     setMsgs]     = useState([]);
@@ -72,11 +72,11 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
     setInsights, setIkigai, setStep, setNextAction,
     insightsRef, ikigaiRef, stepRef, nextActionRef,
     historyRef: history,
-    onNeedsOpeningMessage: () => openingMessage(),
+    onNeedsOpeningMessage: (openingContext) => openingMessage(openingContext),
   });
 
   useEffect(() => {
-    setNavTab(initialTab || "chat");
+    setNavTab(initialTab || "today");
   }, [initialTab]);
 
   useEffect(() => {
@@ -105,12 +105,18 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   );
 
   // ── 2. OPENING MESSAGE ───────────────────────────────────────
-  async function openingMessage() {
+  // Fonction normale (non-useCallback) : appelée une seule fois par session depuis un effect,
+  // jamais depuis le render — useCallback n'apporterait rien et créerait une TDZ avec applyUI.
+  async function openingMessage(openingContext = {}) {
     if (!user?.id) return;
     if (hasOpened.current) return;
     hasOpened.current = true;
     const q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
-    const trigger = `[SYSTÈME — ne pas afficher] Démarre la session. Ouvre avec cette citation de ${q.author} : "${q.text}" — intègre-la naturellement dans ton message d'accueil en créant un lien personnel avec l'utilisateur. Pose ensuite une première question ouverte pour commencer l'exploration.`;
+    const previousNextAction = openingContext.previousNextAction || lastSessionSnapshot?.next_action || nextActionRef.current || "";
+    const accountability = previousNextAction
+      ? `Reprends d'abord le fil de la dernière action concrète : "${previousNextAction}". Demande avec douceur si elle a été faite, sans culpabiliser, puis ouvre la suite.`
+      : "Pose ensuite une première question ouverte pour commencer l'exploration.";
+    const trigger = `[SYSTÈME — ne pas afficher] Démarre la session. Ouvre avec cette citation de ${q.author} : "${q.text}" — intègre-la naturellement dans ton message d'accueil en créant un lien personnel avec l'utilisateur. ${accountability}`;
     history.current.push({ role: "user", content: trigger });
     setTyping(true);
     try {
@@ -146,7 +152,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
   }, [msgs, typing]);
 
   // ── 4. API ───────────────────────────────────────────────────
-  async function callAPI(options = {}) {
+  const callAPI = useCallback(async (options = {}) => {
     if (!user?.id) {
       throw new Error("AUTH_REQUIRED");
     }
@@ -195,13 +201,13 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
       access: payload?._access || null,
       sessionLimit: Boolean(payload?._session_limit),
     };
-  }
+  }, [memoryRef, sessionIdRef, user?.id]);
 
   // ── 5. UI HANDLER ────────────────────────────────────────────
   // Sprint 3 : met à jour memoryRef.current en live après chaque réponse _ui.
   // Permet à buildMemoryContext() d'envoyer un contexte enrichi dès le message suivant
   // dans la même session, sans attendre saveSession() (5 min / beforeunload).
-  function updateMemoryRef(ui) {
+  const updateMemoryRef = useCallback((ui) => {
     if (!ui) return;
     const prev = memoryRef.current || {};
     memoryRef.current = {
@@ -226,9 +232,9 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
         : (prev.ikigai || {}),
       step: typeof ui.step === "number" ? Math.max(prev.step || 0, ui.step) : (prev.step || 0),
     };
-  }
+  }, [memoryRef]);
 
-  function applyUI(ui) {
+  const applyUI = useCallback((ui) => {
     if (!ui) return;
     if (ui.session_note) {
       lastSessionNote.current = ui.session_note;
@@ -264,13 +270,13 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
         mission: ui.ikigai.mission || p.mission,
       }));
     }
-  }
+  }, [lastSessionNote]);
 
   // ── 6. RATE LIMIT ────────────────────────────────────────────
   // Sprint 1 : le frontend ne lit/écrit plus rate_limits en Supabase.
   // Le quota produit (25/jour) est appliqué uniquement par claude.js côté backend.
   // Ce garde-fou local (30/minute) protège seulement contre le spam réseau immédiat.
-  function checkRateLimit() {
+  const checkRateLimit = useCallback(() => {
     const now = Date.now();
     minuteTimestamps.current = minuteTimestamps.current.filter(t => now - t < 60_000);
     if (minuteTimestamps.current.length >= 30) {
@@ -278,7 +284,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
     }
     minuteTimestamps.current.push(now);
     return null;
-  }
+  }, []);
 
   // ── 7. SEND ──────────────────────────────────────────────────
   const send = useCallback(async (text) => {
@@ -335,7 +341,7 @@ export default function AppShell({ onNav, user, initialTab = "chat", onTabChange
       console.error(e);
     }
     setTyping(false);
-  }, [quotaState, typing, user?.id]);
+  }, [applyUI, callAPI, quotaState, typing, updateMemoryRef, user?.id]);
 
   // ── 9. ACTIONS ───────────────────────────────────────────────
   function reset() {

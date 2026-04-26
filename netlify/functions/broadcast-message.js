@@ -47,7 +47,9 @@ async function getAdminAccess(sbAdmin, user) {
       .eq("id", user.id)
       .maybeSingle();
     if (data?.is_admin) return { isAdmin: true };
-  } catch {}
+  } catch (error) {
+    console.warn("[broadcast-message] Admin profile check failed:", error?.message || error);
+  }
   return { isAdmin: false };
 }
 

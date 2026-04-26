@@ -376,6 +376,84 @@ export default function MappingV2() {
   const ikigaiFilledCount = [ikigai?.aime, ikigai?.excelle, ikigai?.monde, ikigai?.paie]
     .filter(v => v && v.trim().length > 0).length;
 
+  if ((step || 0) < 2) {
+    return (
+      <div style={{
+        backgroundColor: T.color.bg,
+        minHeight: "100vh",
+        fontFamily: T.font.sans,
+        color: T.color.text,
+        overflowX: "hidden",
+        paddingBottom: 120,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "80px 24px 140px",
+      }}>
+        <LivingAtmosphere glow={glow} />
+        <motion.div
+          initial={{ opacity: 0, y: 16, filter: "blur(8px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          style={{
+            position: "relative",
+            zIndex: 1,
+            maxWidth: 420,
+            width: "100%",
+            textAlign: "center",
+            ...T.glass.md,
+            borderRadius: T.radius["2xl"],
+            border: `1px solid ${accent}22`,
+            padding: "36px 28px",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
+            <OrbPhase size={84} typing={false} phaseContext={phaseContext} />
+          </div>
+          <p style={{
+            margin: "0 0 10px",
+            fontSize: T.type.caption.size,
+            letterSpacing: T.type.caption.ls,
+            textTransform: "uppercase",
+            color: accent,
+            fontWeight: 700,
+          }}>
+            Mapping en construction
+          </p>
+          <h1 style={{
+            margin: "0 0 14px",
+            fontFamily: T.font.serif,
+            fontStyle: "italic",
+            fontSize: "clamp(2rem, 7vw, 2.8rem)",
+            lineHeight: 1.1,
+            color: T.color.text,
+          }}>
+            Il faut encore un peu de matière.
+          </h1>
+          <p style={{ margin: "0 0 24px", fontSize: T.type.body.size, lineHeight: 1.75, color: T.color.textSub }}>
+            Après quelques échanges, Noema fera émerger tes premières forces, tes fils récurrents et ce qui commence à se répéter.
+          </p>
+          <button
+            onClick={() => changeTab?.("chat")}
+            style={{
+              border: "none",
+              borderRadius: T.radius.md,
+              padding: "13px 18px",
+              background: `linear-gradient(135deg, ${accent} 0%, ${phaseContext?.accentStrong ?? T.color.accent.container} 100%)`,
+              color: T.color.bg,
+              fontFamily: T.font.sans,
+              fontSize: T.type.bodySm.size,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Ouvrir une session
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div style={{
       backgroundColor: T.color.bg,

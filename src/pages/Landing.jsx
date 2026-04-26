@@ -1,4 +1,3 @@
-/* eslint-disable */
 import { useEffect, useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import OrbPhase from "../components/v2/OrbPhase";

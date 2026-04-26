@@ -42,8 +42,13 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
   async function handleForgotPassword() {
     if (!f.email) { setMsg({ t: "Entre ton email d'abord.", e: true }); return; }
     setLoad(true); setMsg(null);
+    if (!sb) {
+      setLoad(false);
+      setMsg({ t: "Réinitialisation indisponible pour le moment.", e: true });
+      return;
+    }
     const { error } = await sb.auth.resetPasswordForEmail(f.email, {
-      redirectTo: "https://noemaapp.netlify.app/reset-password",
+      redirectTo: `${window.location.origin}/reset-password`,
     });
     setLoad(false);
     if (error) { setMsg({ t: errMsg(error.message), e: true }); }

@@ -70,6 +70,52 @@ ALTER TABLE rate_limits ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "rate_limits: user access" ON rate_limits
   FOR ALL USING (auth.uid() = user_id);
 
+-- Incrément atomique du quota journalier.
+-- Utilisé côté serveur pour éviter le double-spend lors de requêtes simultanées.
+CREATE OR REPLACE FUNCTION increment_rate_limit_if_allowed(
+  p_user_id uuid,
+  p_date date,
+  p_limit integer
+)
+RETURNS TABLE (
+  count integer,
+  allowed boolean
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  next_count integer;
+BEGIN
+  INSERT INTO rate_limits (user_id, date, count)
+  VALUES (p_user_id, p_date, 0)
+  ON CONFLICT (user_id, date) DO NOTHING;
+
+  UPDATE rate_limits
+  SET count = rate_limits.count + 1
+  WHERE user_id = p_user_id
+    AND date = p_date
+    AND rate_limits.count < p_limit
+  RETURNING rate_limits.count INTO next_count;
+
+  IF next_count IS NULL THEN
+    SELECT rate_limits.count INTO next_count
+    FROM rate_limits
+    WHERE user_id = p_user_id
+      AND date = p_date;
+
+    RETURN QUERY SELECT COALESCE(next_count, p_limit), false;
+    RETURN;
+  END IF;
+
+  RETURN QUERY SELECT next_count, true;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION increment_rate_limit_if_allowed(uuid, date, integer) FROM anon, authenticated;
+GRANT EXECUTE ON FUNCTION increment_rate_limit_if_allowed(uuid, date, integer) TO service_role;
+
 -- Codes d'accès temporaires
 CREATE TABLE IF NOT EXISTS access_codes (
   id         uuid DEFAULT gen_random_uuid() PRIMARY KEY,

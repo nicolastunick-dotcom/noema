@@ -98,6 +98,9 @@ export function useNoemaSession({
         if (last.next_action) setNextAction(last.next_action);
         setLastSessionSnapshot(last);
         setContinuityMode("resume");
+        if (!accessState?.quota?.exhausted) {
+          onNeedsOpeningMessage?.({ previousNextAction: last.next_action || "" });
+        }
       } else {
         setLastSessionSnapshot(null);
         setContinuityMode("welcome");

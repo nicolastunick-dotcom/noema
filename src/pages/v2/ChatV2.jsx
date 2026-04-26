@@ -486,72 +486,74 @@ export default function ChatV2() {
         paddingBottom: 10,
       }}>
         <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 20px" }}>
-          <div style={{
-            ...T.glass.input,
-            borderRadius: T.radius.xl,
-            display: "flex",
-            alignItems: "flex-end",
-            gap: 8,
-            padding: "10px 10px 10px 16px",
-            boxShadow: inputFocused
-              ? `0 0 0 1.5px ${accent}66, 0 0 16px ${accent}14, ${T.shadow.xl}`
-              : T.shadow.xl,
-            transition: "box-shadow 0.2s ease",
-          }}>
-            <textarea
-              ref={taRef}
-              rows={1}
-              placeholder={isBlocked ? "Essai du jour terminé" : "Partage ce qui t'occupe…"}
-              value={input}
-              disabled={typing || isBlocked}
-              onChange={handleInput}
-              onKeyDown={handleKey}
-              onFocus={() => setInputFocused(true)}
-              onBlur={() => setInputFocused(false)}
-              maxLength={2000}
-              style={{
-                flex: 1, background: "none", border: "none",
-                outline: "none", resize: "none",
-                color: T.color.text, fontFamily: T.font.sans,
-                fontSize: T.type.body.size, fontWeight: 300,
-                lineHeight: 1.6, padding: "8px 4px 8px 0",
-                maxHeight: 120, overflowY: "auto",
-                caretColor: accent,
-              }}
-            />
-            <motion.button
-              whileTap={canSend ? { scale: 0.91 } : {}}
-              onClick={() => send(input)}
-              disabled={!canSend}
-              style={{
-                width: 40, height: 40, flexShrink: 0,
-                borderRadius: T.radius.md,
-                background: canSend
-                  ? `linear-gradient(135deg, ${accent} 0%, ${phaseContext?.accentStrong ?? T.color.accent.container} 100%)`
-                  : "rgba(55,57,65,0.6)",
-                border: "none",
-                cursor: canSend ? "pointer" : "not-allowed",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                transition: "background 0.25s",
-              }}
-            >
-              <span className="material-symbols-outlined" style={{
-                fontSize: "1.125rem",
-                color: canSend ? btnTextColor : T.color.textOff,
-                fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24",
-              }}>arrow_upward</span>
-            </motion.button>
-          </div>
+          {isBlocked ? (
+            <UpgradeBar isTrial={isTrial} onPricing={() => onNav?.("pricing")} />
+          ) : (
+            <div style={{
+              ...T.glass.input,
+              borderRadius: T.radius.xl,
+              display: "flex",
+              alignItems: "flex-end",
+              gap: 8,
+              padding: "10px 10px 10px 16px",
+              boxShadow: inputFocused
+                ? `0 0 0 1.5px ${accent}66, 0 0 16px ${accent}14, ${T.shadow.xl}`
+                : T.shadow.xl,
+              transition: "box-shadow 0.2s ease",
+            }}>
+              <textarea
+                ref={taRef}
+                rows={1}
+                placeholder="Partage ce qui t'occupe…"
+                value={input}
+                disabled={typing}
+                onChange={handleInput}
+                onKeyDown={handleKey}
+                onFocus={() => setInputFocused(true)}
+                onBlur={() => setInputFocused(false)}
+                maxLength={2000}
+                style={{
+                  flex: 1, background: "none", border: "none",
+                  outline: "none", resize: "none",
+                  color: T.color.text, fontFamily: T.font.sans,
+                  fontSize: T.type.body.size, fontWeight: 300,
+                  lineHeight: 1.6, padding: "8px 4px 8px 0",
+                  maxHeight: 120, overflowY: "auto",
+                  caretColor: accent,
+                }}
+              />
+              <motion.button
+                whileTap={canSend ? { scale: 0.91 } : {}}
+                onClick={() => send(input)}
+                disabled={!canSend}
+                style={{
+                  width: 40, height: 40, flexShrink: 0,
+                  borderRadius: T.radius.md,
+                  background: canSend
+                    ? `linear-gradient(135deg, ${accent} 0%, ${phaseContext?.accentStrong ?? T.color.accent.container} 100%)`
+                    : "rgba(55,57,65,0.6)",
+                  border: "none",
+                  cursor: canSend ? "pointer" : "not-allowed",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "background 0.25s",
+                }}
+              >
+                <span className="material-symbols-outlined" style={{
+                  fontSize: "1.125rem",
+                  color: canSend ? btnTextColor : T.color.textOff,
+                  fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24",
+                }}>arrow_upward</span>
+              </motion.button>
+            </div>
+          )}
 
           <p style={{
             margin: "8px 4px 0",
             fontSize: "0.68rem", lineHeight: 1.5,
-            color: isBlocked ? T.color.warning : T.color.textOff,
+            color: T.color.textOff,
             textAlign: "center", letterSpacing: "0.03em",
           }}>
-            {quotaState
-              ? `${quotaState.label} · ${quotaState.remainingLabel}`
-              : "La continuité reste visible d'une session à l'autre."}
+            La continuité reste visible d'une session à l'autre.
           </p>
         </div>
       </div>
@@ -567,3 +569,55 @@ const ghostBtn = {
   padding: "6px 12px", borderRadius: T.radius.full,
   transition: "color 0.2s",
 };
+
+function UpgradeBar({ isTrial, onPricing }) {
+  return (
+    <div style={{
+      ...T.glass.input,
+      borderRadius: T.radius.xl,
+      padding: "14px 16px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 14,
+      border: "1px solid rgba(255,182,138,0.2)",
+      background: "rgba(255,182,138,0.08)",
+      boxShadow: T.shadow.xl,
+    }}>
+      <div>
+        <p style={{
+          margin: 0,
+          fontSize: T.type.caption.size,
+          letterSpacing: T.type.caption.ls,
+          textTransform: "uppercase",
+          color: T.color.warning,
+          fontWeight: 700,
+        }}>
+          {isTrial ? "Essai du jour terminé" : "Limite atteinte"}
+        </p>
+        <p style={{ margin: "5px 0 0", fontSize: T.type.bodySm.size, lineHeight: 1.5, color: T.color.textSub }}>
+          Ton fil reste intact. Tu peux continuer maintenant, ou revenir demain.
+        </p>
+      </div>
+      {isTrial && (
+        <button
+          onClick={onPricing}
+          style={{
+            border: "none",
+            borderRadius: T.radius.md,
+            padding: "11px 14px",
+            background: "linear-gradient(135deg, #ffddb7 0%, #ffb68a 100%)",
+            color: "#331a00",
+            fontFamily: T.font.sans,
+            fontSize: T.type.bodySm.size,
+            fontWeight: 700,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Continuer
+        </button>
+      )}
+    </div>
+  );
+}

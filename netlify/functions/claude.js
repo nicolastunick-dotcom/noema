@@ -25,12 +25,12 @@ function getSupabaseAdmin() {
   return createClient(url, key)
 }
 
-function json(body, status = 200) {
+function json(body, status = 200, request = null) {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       'Content-Type': 'application/json',
-      ...corsHeaders(),
+      ...corsHeaders(request),
     },
   })
 }
@@ -57,7 +57,7 @@ export default async (request) => {
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
-      headers: corsHeaders()
+      headers: corsHeaders(request)
     })
   }
 
@@ -73,24 +73,24 @@ export default async (request) => {
   if (!token) {
     return new Response(
       JSON.stringify({ error: { message: 'Non autorisé.' } }),
-      { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
+      { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders(request) } }
     )
   }
   let sbAdmin
   try {
     sbAdmin = getSupabaseAdmin()
   } catch (error) {
-    return json({ error: { message: error.message } }, 500)
+    return json({ error: { message: error.message } }, 500, request)
   }
   const { data: { user: verifiedUser }, error: authError } = await sbAdmin.auth.getUser(token)
   if (authError || !verifiedUser) {
-    return json({ error: { message: 'Session invalide ou expirée.' } }, 401)
+    return json({ error: { message: 'Session invalide ou expirée.' } }, 401, request)
   }
   const userId = verifiedUser.id
 
   // Security layer 1: reject unauthenticated public traffic before any model work starts.
   if (!enforceInMemoryRateLimit(userId)) {
-    return json({ error: { message: 'Trop de requêtes. Attends une minute avant de continuer.' } }, 429)
+    return json({ error: { message: 'Trop de requêtes. Attends une minute avant de continuer.' } }, 429, request)
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY
@@ -98,7 +98,7 @@ export default async (request) => {
     console.error('[claude] ANTHROPIC_API_KEY manquante dans process.env')
     return new Response(
       JSON.stringify({ error: { message: 'ANTHROPIC_API_KEY non configurée.' } }),
-      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
+      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders(request) } }
     )
   }
 
@@ -189,6 +189,12 @@ export default async (request) => {
   try {
     const body = await request.json()
     const rawMessages = Array.isArray(body.messages) ? body.messages.slice(-MAX_MESSAGES_PER_REQUEST) : []
+    const isOpeningRequest = body.consume_quota === false
+      && rawMessages.length === 1
+      && rawMessages[0]?.role === 'user'
+      && typeof rawMessages[0]?.content === 'string'
+      && rawMessages[0].content.startsWith('[SYSTÈME — ne pas afficher] Démarre la session.')
+    const shouldConsumeQuota = !isOpeningRequest
 
     // ── Quota produit (journalier) ────────────────────────────────
     // Unique source de vérité : backend seulement depuis Sprint 1.
@@ -196,7 +202,34 @@ export default async (request) => {
     const dailyLimit = getDailyLimitForTier(accessTier)
     let quotaUsed = 0
 
-    if (dailyLimit != null) {
+    if (dailyLimit != null && shouldConsumeQuota) {
+      const today = new Date().toISOString().slice(0, 10)
+      const { data: quotaRows, error: quotaError } = await sbAdmin
+        .rpc('increment_rate_limit_if_allowed', {
+          p_user_id: userId,
+          p_date: today,
+          p_limit: dailyLimit,
+        })
+
+      if (quotaError) {
+        console.error('[claude] Quota atomique indisponible:', quotaError.message)
+        return json({ error: { message: 'Quota indisponible. Réessaie dans un instant.' } }, 503, request)
+      }
+
+      const quotaResult = Array.isArray(quotaRows) ? quotaRows[0] : quotaRows
+      quotaUsed = quotaResult?.count || 0
+
+      if (!quotaResult?.allowed) {
+        return json({
+          content: isTrialTier(accessTier) ? TRIAL_LIMIT_MSG : FULL_ACCESS_LIMIT_MSG,
+          _greffier: null,
+          _quota: buildQuotaState({ tier: accessTier, used: quotaUsed }),
+          _access: { tier: accessTier },
+          _session_limit: true,
+          _trial_ended: isTrialTier(accessTier),
+        }, 200, request)
+      }
+    } else if (dailyLimit != null) {
       const today = new Date().toISOString().slice(0, 10)
       const { data: rl } = await sbAdmin
         .from('rate_limits')
@@ -205,24 +238,6 @@ export default async (request) => {
         .eq('date', today)
         .maybeSingle()
       quotaUsed = rl?.count || 0
-
-      if (quotaUsed >= dailyLimit) {
-        return json({
-          content: isTrialTier(accessTier) ? TRIAL_LIMIT_MSG : FULL_ACCESS_LIMIT_MSG,
-          _greffier: null,
-          _quota: buildQuotaState({ tier: accessTier, used: quotaUsed }),
-          _access: { tier: accessTier },
-          _session_limit: true,
-          _trial_ended: isTrialTier(accessTier),
-        })
-      }
-
-      quotaUsed += 1
-      // Incrément — seule écriture quota produit dans tout le système
-      await sbAdmin.from('rate_limits').upsert(
-        { user_id: userId, date: today, count: quotaUsed },
-        { onConflict: 'user_id,date' }
-      )
     }
     const messages   = rawMessages
     const sessionId  = body.session_id || null
@@ -285,7 +300,7 @@ export default async (request) => {
     if (!anthropicResponse.ok) {
       const errText = await anthropicResponse.text().catch(() => '')
       console.error('[claude] Anthropic HTTP error:', anthropicResponse.status, errText)
-      return json({ error: { message: `Anthropic HTTP ${anthropicResponse.status}` } }, anthropicResponse.status)
+      return json({ error: { message: `Anthropic HTTP ${anthropicResponse.status}` } }, anthropicResponse.status, request)
     }
 
     const data = await anthropicResponse.json()
@@ -315,10 +330,10 @@ export default async (request) => {
       _greffier: greffierResult,
       _quota: quota,
       _access: { tier: accessTier },
-    })
+    }, 200, request)
 
   } catch (err) {
-    return json({ error: { message: err.message } }, 500)
+    return json({ error: { message: err.message } }, 500, request)
   }
 }
 
@@ -364,9 +379,34 @@ function buildServerMemoryContext(memory, lastStep = null) {
   ].filter(Boolean).join('\n')
 }
 
-function corsHeaders() {
+function corsHeaders(request = null) {
+  const fallbackOrigin = process.env.NOEMA_APP_ORIGIN || process.env.URL || 'https://noemaapp.netlify.app'
+  const allowedOrigins = (process.env.NOEMA_ALLOWED_ORIGINS || fallbackOrigin)
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean)
+
+  // En développement local, autoriser automatiquement Vite + netlify dev
+  const isDev = process.env.NODE_ENV !== 'production' || process.env.NETLIFY_DEV === 'true'
+  const devOrigins = isDev ? ['http://localhost:5173', 'http://localhost:8888', 'http://localhost:3000'] : []
+  const allAllowed = [...allowedOrigins, ...devOrigins]
+
+  const requestOrigin = request?.headers?.get?.('Origin')
+
+  let allowedOrigin
+  if (!requestOrigin) {
+    // Requête sans Origin (ex: curl, Postman) — laisser passer en dev, bloquer en prod
+    allowedOrigin = isDev ? '*' : allowedOrigins[0]
+  } else if (allAllowed.includes(requestOrigin)) {
+    allowedOrigin = requestOrigin
+  } else {
+    console.warn(`[CORS] Origine refusée : ${requestOrigin} (attendu : ${allAllowed.join(', ')})`)
+    allowedOrigin = allowedOrigins[0] // fallback — le navigateur bloquera de son côté
+  }
+
   return {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Vary': 'Origin',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   }
