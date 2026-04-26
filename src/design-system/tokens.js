@@ -124,6 +124,23 @@ export const T = {
     tabRadius:  6,  // Border radius du tab indicator
   },
 
+  // ── Layout mobile ──────────────────────────────────────────────────────────
+  layout: {
+    pageMax:       720,
+    chatHeaderH:    57,
+    chatComposerH: 118,
+    gutter: {
+      mobile: 16,
+      default: 24,
+    },
+  },
+
+  breakpoints: {
+    sm: 640,
+    md: 768,
+    lg: 1024,
+  },
+
   // ── Motion ────────────────────────────────────────────────────────────────
   motion: {
     fast:   { duration: 0.12, ease: "easeOut" },

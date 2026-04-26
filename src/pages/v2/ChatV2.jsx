@@ -5,6 +5,8 @@ import { fmt, getTime } from "../../utils/helpers";
 import OrbPhase from "../../components/v2/OrbPhase";
 import { useNoemaRuntime } from "../../context/NoemaContext";
 import { T, phaseButtonTextColor } from "../../design-system/tokens";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
+import { useVisualViewportOffset } from "../../hooks/useVisualViewportOffset";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ChatV2 — Refonte complète du chat Noema
@@ -18,7 +20,7 @@ import { T, phaseButtonTextColor } from "../../design-system/tokens";
 //   • Top info simplifié (pas de 4 cartes empilées)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const NAV_HEIGHT = 88;
+const NAV_HEIGHT = T.nav.height;
 const TODAY = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
 const QUOTA_LOW_THRESHOLD = 3;
 
@@ -52,6 +54,8 @@ export default function ChatV2() {
 
   const feedEndRef = useRef(null);
   const [inputFocused, setInputFocused] = useState(false);
+  const isCompact = useMediaQuery("(max-width: 640px)");
+  const keyboardOffset = useVisualViewportOffset();
   const isBlocked  = Boolean(quotaState?.exhausted);
   const isTrial    = Boolean(quotaState?.isTrial);
   const showQuotaHint = !isBlocked
@@ -103,11 +107,17 @@ export default function ChatV2() {
   const glow       = phaseContext?.glow       ?? T.color.accent.glow;
   const accentSoft = phaseContext?.accentSoft ?? T.color.accent.soft;
   const btnTextColor = phaseButtonTextColor(phaseContext?.id);
+  const composerBottom = isCompact
+    ? `calc(${NAV_HEIGHT}px + env(safe-area-inset-bottom) + ${keyboardOffset}px)`
+    : `calc(${NAV_HEIGHT}px + env(safe-area-inset-bottom))`;
+  const feedBottomPadding = isCompact
+    ? `calc(190px + env(safe-area-inset-bottom) + ${keyboardOffset}px)`
+    : `calc(200px + env(safe-area-inset-bottom))`;
 
   return (
     <div style={{
       backgroundColor: T.color.surface,
-      height: "100vh",
+      height: "100dvh",
       fontFamily: T.font.sans,
       color: T.color.text,
       position: "relative",
@@ -157,22 +167,28 @@ export default function ChatV2() {
         borderBottom: "1px solid rgba(255,255,255,0.04)",
         borderRadius: 0,
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "14px 24px",
+        padding: isCompact ? "12px 16px" : "14px 24px",
       }}>
         <button
           onClick={() => onNav("landing")}
           style={{
             fontFamily: T.font.serif, fontStyle: "italic",
-            fontSize: "1.5rem", color: accent,
+            fontSize: isCompact ? "1.35rem" : "1.5rem", color: accent,
             letterSpacing: "-0.02em", background: "none",
             border: "none", cursor: "pointer", padding: 0,
             transition: "color 0.25s",
           }}
         >Noema</button>
 
-        <div style={{ display: "flex", gap: 6 }}>
-          <button onClick={newSession} style={ghostBtn}>Nouvelle session</button>
-          {sb && <button onClick={handleLogout} style={ghostBtn}>Déconnexion</button>}
+        <div style={{ display: "flex", gap: isCompact ? 2 : 6 }}>
+          <button onClick={newSession} style={{ ...ghostBtn, minHeight: 44, padding: isCompact ? "6px 8px" : "6px 12px" }}>
+            {isCompact ? "Nouvelle" : "Nouvelle session"}
+          </button>
+          {sb && (
+            <button onClick={handleLogout} style={{ ...ghostBtn, minHeight: 44, padding: isCompact ? "6px 8px" : "6px 12px" }}>
+              {isCompact ? "Sortir" : "Déconnexion"}
+            </button>
+          )}
         </div>
       </header>
 
@@ -183,8 +199,8 @@ export default function ChatV2() {
         overflowY: "auto", overflowX: "hidden", zIndex: 1,
       }}>
         <div style={{
-          maxWidth: 720, margin: "0 auto",
-          padding: "24px 20px 200px",
+          maxWidth: T.layout.pageMax, margin: "0 auto",
+          padding: isCompact ? `20px 16px ${feedBottomPadding}` : `24px 20px ${feedBottomPadding}`,
           display: "flex", flexDirection: "column", gap: 0,
         }}>
 
@@ -344,7 +360,7 @@ export default function ChatV2() {
                   display: "flex",
                   flexDirection: "column",
                   gap: 6,
-                  maxWidth: m.role === "user" ? "78%" : "90%",
+                  maxWidth: isCompact ? (m.role === "user" ? "88%" : "96%") : (m.role === "user" ? "78%" : "90%"),
                   alignSelf: m.role === "user" ? "flex-end" : "flex-start",
                   marginBottom: i < msgs.length - 1 ? 28 : 0,
                 }}
@@ -359,7 +375,7 @@ export default function ChatV2() {
                     backdropFilter: "blur(14px)",
                     WebkitBackdropFilter: "blur(14px)",
                     borderRadius: "2px 20px 20px 20px",
-                    padding:      "20px 22px",
+                    padding:      isCompact ? "16px 17px" : "20px 22px",
                     position:     "relative",
                     overflow:     "hidden",
                   }}>
@@ -372,12 +388,13 @@ export default function ChatV2() {
                     }} />
                     <div
                       style={{
-                        fontFamily:    m.isErr ? T.font.sans : T.font.handwriting,
-                        fontSize:      m.isErr ? T.type.body.size : "1.22rem",
-                        lineHeight:    1.7,
-                        letterSpacing: "0.01em",
+                        fontFamily:    T.font.sans,
+                        fontSize:      m.isErr ? T.type.body.size : T.type.noema.size,
+                        lineHeight:    m.isErr ? T.type.body.lh : T.type.noema.lh,
+                        letterSpacing: m.isErr ? T.type.body.ls : T.type.noema.ls,
                         color:         m.isErr ? T.color.error : T.color.textSub,
                         position:      "relative",
+                        overflowWrap:  "anywhere",
                       }}
                       dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(fmt(m.text)) }}
                     />
@@ -398,11 +415,12 @@ export default function ChatV2() {
                     ...T.glass.sm,
                     background: "rgba(38,40,46,0.80)",
                     borderRadius: "20px 2px 20px 20px",
-                    padding: "13px 18px",
+                    padding: isCompact ? "12px 15px" : "13px 18px",
                   }}>
                     <p style={{
                       fontSize: T.type.body.size, lineHeight: T.type.body.lh,
                       color: T.color.text, margin: 0,
+                      overflowWrap: "anywhere",
                     }}>{m.text}</p>
                   </div>
                 )}
@@ -484,13 +502,13 @@ export default function ChatV2() {
       {/* ── Input area ── */}
       <div style={{
         position: "fixed",
-        bottom: NAV_HEIGHT,
+        bottom: composerBottom,
         left: 0, right: 0, zIndex: 40,
         background: `linear-gradient(to top, ${T.color.surface} 52%, transparent)`,
-        paddingTop: 44,
+        paddingTop: isCompact ? 34 : 44,
         paddingBottom: 10,
       }}>
-        <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 20px" }}>
+        <div style={{ maxWidth: T.layout.pageMax, margin: "0 auto", padding: isCompact ? "0 12px" : "0 20px" }}>
           {isBlocked ? (
             <UpgradeBar isTrial={isTrial} onPricing={() => onNav?.("pricing")} />
           ) : (
@@ -500,7 +518,7 @@ export default function ChatV2() {
               display: "flex",
               alignItems: "flex-end",
               gap: 8,
-              padding: "10px 10px 10px 16px",
+              padding: isCompact ? "9px 9px 9px 14px" : "10px 10px 10px 16px",
               boxShadow: inputFocused
                 ? `0 0 0 1.5px ${accent}66, 0 0 16px ${accent}14, ${T.shadow.xl}`
                 : T.shadow.xl,
@@ -521,7 +539,7 @@ export default function ChatV2() {
                   flex: 1, background: "none", border: "none",
                   outline: "none", resize: "none",
                   color: T.color.text, fontFamily: T.font.sans,
-                  fontSize: T.type.body.size, fontWeight: 300,
+                  fontSize: "16px", fontWeight: 300,
                   lineHeight: 1.6, padding: "8px 4px 8px 0",
                   maxHeight: 120, overflowY: "auto",
                   caretColor: accent,
@@ -532,7 +550,7 @@ export default function ChatV2() {
                 onClick={() => send(input)}
                 disabled={!canSend}
                 style={{
-                  width: 40, height: 40, flexShrink: 0,
+                  width: 44, height: 44, flexShrink: 0,
                   borderRadius: T.radius.md,
                   background: canSend
                     ? `linear-gradient(135deg, ${accent} 0%, ${phaseContext?.accentStrong ?? T.color.accent.container} 100%)`

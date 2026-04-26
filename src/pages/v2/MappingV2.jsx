@@ -4,6 +4,7 @@ import { useNoemaRuntime } from "../../context/NoemaContext";
 import { T } from "../../design-system/tokens";
 import OrbPhase from "../../components/v2/OrbPhase";
 import LivingAtmosphere from "../../components/v2/LivingAtmosphere";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MappingV2 — Sanctuaire psychologique
@@ -203,8 +204,8 @@ function IkigaiDiagram({ ikigai, accent }) {
   ];
 
   return (
-    <div style={{ position: "relative", paddingBottom: "100%", width: "100%" }}>
-      <div style={{ position: "absolute", inset: 0 }}>
+    <div style={{ width: "100%" }}>
+      <div style={{ position: "relative", aspectRatio: "1 / 1", width: "100%" }}>
         {circles.map((c, i) => (
           <div
             key={i}
@@ -275,7 +276,7 @@ function IkigaiDiagram({ ikigai, accent }) {
         </div>
       </div>
       {/* Completion indicator */}
-      <p style={{ fontSize: T.type.label?.size ?? "0.62rem", color: T.color.textMuted, textAlign: "center", marginTop: 12, position: "relative", top: "100%" }}>
+      <p style={{ fontSize: T.type.label?.size ?? "0.62rem", color: T.color.textMuted, textAlign: "center", margin: "12px 0 0", lineHeight: 1.5 }}>
         {filledCount === 0 && "Ikigai à construire — commence par une session"}
         {filledCount === 1 && "1 dimension découverte sur 4"}
         {filledCount === 2 && "2 dimensions sur 4 — le profil prend forme"}
@@ -356,6 +357,7 @@ export default function MappingV2() {
     recentSessions,
     changeTab,
   } = useNoemaRuntime();
+  const isCompact = useMediaQuery("(max-width: 640px)");
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -380,15 +382,15 @@ export default function MappingV2() {
     return (
       <div style={{
         backgroundColor: T.color.bg,
-        minHeight: "100vh",
+        minHeight: "100dvh",
         fontFamily: T.font.sans,
         color: T.color.text,
         overflowX: "hidden",
-        paddingBottom: 120,
+        paddingBottom: "calc(120px + env(safe-area-inset-bottom))",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: "80px 24px 140px",
+        padding: isCompact ? "64px 16px calc(132px + env(safe-area-inset-bottom))" : "80px 24px calc(140px + env(safe-area-inset-bottom))",
       }}>
         <LivingAtmosphere glow={glow} />
         <motion.div
@@ -404,7 +406,7 @@ export default function MappingV2() {
             ...T.glass.md,
             borderRadius: T.radius["2xl"],
             border: `1px solid ${accent}22`,
-            padding: "36px 28px",
+            padding: isCompact ? "28px 20px" : "36px 28px",
           }}
         >
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
@@ -457,11 +459,11 @@ export default function MappingV2() {
   return (
     <div style={{
       backgroundColor: T.color.bg,
-      minHeight:       "100vh",
+      minHeight:       "100dvh",
       fontFamily:      T.font.sans,
       color:           T.color.text,
       overflowX:       "hidden",
-      paddingBottom:   120,
+      paddingBottom:   "calc(120px + env(safe-area-inset-bottom))",
     }}>
 
       {/* ── Living atmosphere ── */}
@@ -475,9 +477,9 @@ export default function MappingV2() {
         style={{ position: "relative", zIndex: 1 }}
       >
         <div style={{
-          maxWidth:      720,
+          maxWidth:      T.layout.pageMax,
           margin:        "0 auto",
-          padding:       "0 24px 80px",
+          padding:       isCompact ? "0 16px 72px" : "0 24px 80px",
           display:       "flex",
           flexDirection: "column",
         }}>
@@ -485,7 +487,7 @@ export default function MappingV2() {
           {/* ── Hero section — psychological sanctuary entrance ── */}
           <section style={{
             textAlign: "center",
-            padding: "72px 24px 56px",
+            padding: isCompact ? "44px 0 38px" : "72px 24px 56px",
             position: "relative",
           }}>
             {/* Orb as symbol */}
@@ -495,7 +497,7 @@ export default function MappingV2() {
               transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
               style={{ marginBottom: 32, display: "flex", justifyContent: "center" }}
             >
-              <OrbPhase size={130} typing={false} phaseContext={phaseContext} />
+              <OrbPhase size={isCompact ? 96 : 130} typing={false} phaseContext={phaseContext} />
             </motion.div>
 
             {/* Phase pill */}
@@ -556,7 +558,7 @@ export default function MappingV2() {
               <div style={{
                 ...T.glass.md,
                 borderRadius: T.radius["2xl"],
-                padding: 32,
+                padding: isCompact ? 22 : 32,
                 position: "relative",
                 overflow: "hidden",
                 border: `1px solid ${accent}22`,
@@ -570,7 +572,7 @@ export default function MappingV2() {
                     {progressSignals.movementSummary ?? "La trajectoire se précise session après session."}
                   </p>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 150px), 1fr))", gap: 12 }}>
                   <PulseTile label="Cap du moment"  value={progressSignals.trajectoryLabel ?? "Trajectoire en construction"} hint={progressSignals.continuitySummary ?? "Lecture en cours"} accent={accent} index={0} />
                   <PulseTile label="Motif dominant" value={progressSignals.dominantThread?.value ?? "Aucun motif dominant"} hint={progressSignals.dominantThread ? `${progressSignals.dominantThread.count} session(s)` : "Aucune récurrence nette"} accent={accent} index={1} />
                   <PulseTile label="Fils ouverts"   value={progressSignals.openLoops[0]?.value ?? "Aucun fil ouvert"} hint={progressSignals.openLoops.length > 1 ? `${progressSignals.openLoops.length} fils actifs` : "Un fil prioritaire"} accent={accent} index={2} />
@@ -601,7 +603,7 @@ export default function MappingV2() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.55, delay: 0.1 + i * 0.08, ease: [0.16, 1, 0.3, 1] }}
                     style={{
-                      display: "flex", alignItems: "center", gap: 24,
+                      display: "flex", alignItems: "center", gap: isCompact ? 14 : 24,
                       padding: "22px 0",
                       borderBottom: "1px solid rgba(255,255,255,0.04)",
                     }}
@@ -609,9 +611,9 @@ export default function MappingV2() {
                     {/* Giant serial number */}
                     <span style={{
                       fontFamily: T.font.serif, fontStyle: "italic",
-                      fontSize: "3.5rem", lineHeight: 1,
+                      fontSize: isCompact ? "2.45rem" : "3.5rem", lineHeight: 1,
                       color: `${accent}${Math.round((1 - i * 0.15) * 255).toString(16).padStart(2, "0")}`,
-                      flexShrink: 0, width: 72, textAlign: "right",
+                      flexShrink: 0, width: isCompact ? 50 : 72, textAlign: "right",
                       filter: i === 0 ? `drop-shadow(0 0 12px ${accent})` : "none",
                     }}>
                       0{i + 1}
@@ -671,7 +673,7 @@ export default function MappingV2() {
                 Raison d'être
               </p>
             </div>
-            <div style={{ position: "relative", maxWidth: 400, margin: "0 auto" }}>
+            <div style={{ position: "relative", maxWidth: isCompact ? 320 : 400, margin: "0 auto" }}>
               {/* Glow halo behind diagram */}
               <div style={{
                 position: "absolute", top: "50%", left: "50%",
@@ -706,7 +708,7 @@ export default function MappingV2() {
             {/* Harmonie detected — visible seulement si >= 2 dimensions remplies */}
             <div style={{
               ...T.glass.md, borderRadius: T.radius.xl,
-              padding: 28, marginTop: 32,
+              padding: isCompact ? 22 : 28, marginTop: 32,
               border: `1px solid ${accent}18`,
             }}>
               <h3 style={{ fontFamily: T.font.serif, fontStyle: "italic", fontSize: T.type.h3.size, color: T.color.text, marginBottom: 16 }}>
@@ -743,7 +745,7 @@ export default function MappingV2() {
               background: "rgba(10,11,16,0.8)",
               border: `1px solid ${T.color.error}22`,
               borderRadius: T.radius.xl,
-              padding: 28,
+              padding: isCompact ? 22 : 28,
               boxShadow: `inset 0 0 40px rgba(255,180,171,0.04)`,
             }}>
               {hasBlocages ? (
@@ -823,11 +825,11 @@ export default function MappingV2() {
             </div>
             <div style={{
               ...T.glass.md, borderRadius: T.radius["2xl"],
-              padding: 28, position: "relative", overflow: "hidden",
+              padding: isCompact ? 22 : 28, position: "relative", overflow: "hidden",
             }}>
               <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "70%", height: 80, background: accentSoft, filter: "blur(80px)", borderRadius: 9999, pointerEvents: "none" }} />
               {contradictions?.length > 0 ? (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14, position: "relative" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))", gap: 14, position: "relative" }}>
                   {contradictions.map((c, i) => (
                     <div key={i} style={{
                       background: "rgba(255,255,255,0.025)",
@@ -962,7 +964,7 @@ export default function MappingV2() {
             </div>
             <div style={{
               ...T.glass.md, borderRadius: T.radius["2xl"],
-              padding: "48px 32px", position: "relative", overflow: "hidden",
+              padding: isCompact ? "34px 22px" : "48px 32px", position: "relative", overflow: "hidden",
               border: `1px solid ${accent}22`,
               boxShadow: `0 0 60px ${glow}44, 0 20px 40px rgba(0,0,0,0.3)`,
               display: "flex", flexDirection: "column", alignItems: "center",
@@ -1000,8 +1002,8 @@ export default function MappingV2() {
                     {progressSignals.movementSummary ?? "Les motifs récurrents donnent une lecture longitudinale du parcours."}
                   </p>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  <div style={{ background: "rgba(17,19,24,0.6)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: T.radius.xl, padding: 24 }}>
+                <div style={{ display: "grid", gridTemplateColumns: isCompact ? "1fr" : "1fr 1fr", gap: 16 }}>
+                  <div style={{ background: "rgba(17,19,24,0.6)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: T.radius.xl, padding: isCompact ? 20 : 24 }}>
                     <p style={{ margin: "0 0 16px", fontSize: "0.56rem", letterSpacing: "0.18em", textTransform: "uppercase", color: T.color.textMuted, fontWeight: 700 }}>
                       Ce qui revient
                     </p>
@@ -1014,7 +1016,7 @@ export default function MappingV2() {
                       ))}
                     </div>
                   </div>
-                  <div style={{ background: "rgba(17,19,24,0.6)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: T.radius.xl, padding: 24 }}>
+                  <div style={{ background: "rgba(17,19,24,0.6)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: T.radius.xl, padding: isCompact ? 20 : 24 }}>
                     <p style={{ margin: "0 0 16px", fontSize: "0.56rem", letterSpacing: "0.18em", textTransform: "uppercase", color: T.color.textMuted, fontWeight: 700 }}>
                       Ce qui tient
                     </p>

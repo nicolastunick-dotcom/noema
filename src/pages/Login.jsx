@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { sb } from "../lib/supabase";
 import { GoogleSVG } from "../components/SVGs";
 import { T } from "../design-system/tokens";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 
 const TAB_TITLES = {
   login:  { h: "Bon retour",      sub: "Reconnectez-vous à votre espace de pensée." },
@@ -10,6 +11,7 @@ const TAB_TITLES = {
 };
 
 export default function Login({ onNav, notice = null, checkingAccess = false }) {
+  const isCompact = useMediaQuery("(max-width: 640px)");
   const [tab,       setTab]       = useState("login");
   const [f,         setF]         = useState({ name: "", email: "", password: "" });
   const [show,      setShow]      = useState(false);
@@ -163,7 +165,7 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
       backgroundColor: T.color.bg,
       color: T.color.text,
       fontFamily: T.font.sans,
-      minHeight: "100vh",
+      minHeight: "100dvh",
       display: "flex",
       flexDirection: "column",
     }}>
@@ -176,7 +178,7 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        padding: "16px 32px",
+        padding: isCompact ? "14px 16px" : "16px 32px",
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
         zIndex: 50,
@@ -208,7 +210,8 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
             fontWeight: 600,
             letterSpacing: "0.06em",
             textTransform: "uppercase",
-            padding: "10px 16px",
+            padding: isCompact ? "10px 12px" : "10px 16px",
+            minHeight: 44,
             cursor: "pointer",
           }}
         >
@@ -222,7 +225,7 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: "96px 24px 48px",
+        padding: isCompact ? "86px 16px 34px" : "96px 24px 48px",
         position: "relative",
         overflow: "hidden",
       }}>
@@ -248,14 +251,14 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
             WebkitBackdropFilter: "blur(24px)",
             border: `1px solid rgba(69,70,85,0.15)`,
             borderRadius: 16,
-            padding: "40px",
+            padding: isCompact ? "24px 18px" : "40px",
             boxShadow: "0 25px 50px rgba(0,0,0,0.4)",
           }}>
             {/* Header */}
             <header style={{ marginBottom: 32, textAlign: "center" }}>
               <h1 style={{
                 fontFamily: "'Instrument Serif', serif",
-                fontSize: "3rem",
+                fontSize: isCompact ? "2.35rem" : "3rem",
                 fontStyle: "italic",
                 color: T.color.accent.default,
                 lineHeight: 1.1,
@@ -302,7 +305,8 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
                   onClick={() => sw(t.id)}
                   style={{
                     flex: 1,
-                    padding: "8px 4px",
+                    padding: "10px 4px",
+                    minHeight: 44,
                     border: "none",
                     borderRadius: 9,
                     fontFamily: T.font.sans,
@@ -358,6 +362,7 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
                         fontSize: "0.625rem", textTransform: "uppercase",
                         letterSpacing: "0.1em", color: `rgba(189,194,255,0.7)`,
                         fontFamily: T.font.sans,
+                        minHeight: 44, padding: "0 2px",
                       }} onClick={handleForgotPassword}>Oublié ?</button>
                     )}
                   </div>
@@ -382,8 +387,14 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
                         transform: "translateY(-50%)", background: "none",
                         border: "none", cursor: "pointer", padding: 0,
                         color: T.color.textMuted, fontSize: "1.1rem",
+                        width: 44, height: 44,
+                        display: "flex", alignItems: "center", justifyContent: "center",
                       }}
-                    >{show ? "🙈" : "👁"}</button>
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: "1.15rem", fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>
+                        {show ? "visibility_off" : "visibility"}
+                      </span>
+                    </button>
                   </div>
                 </div>
 
@@ -449,7 +460,7 @@ export default function Login({ onNav, notice = null, checkingAccess = false }) 
         gap: 16,
         borderTop: "1px solid rgba(69,70,85,0.15)",
         backgroundColor: T.color.surface,
-        padding: "40px 32px",
+        padding: isCompact ? "28px 16px calc(28px + env(safe-area-inset-bottom))" : "40px 32px",
       }}>
         <div style={{
           fontFamily: T.font.serif,
@@ -552,7 +563,8 @@ const inputStyle = {
   padding: "14px 14px 14px 44px",
   color: "#e2e2e9",
   fontFamily: "'Figtree', sans-serif",
-  fontSize: "0.9rem",
+  fontSize: "16px",
+  minHeight: 48,
   outline: "none",
   boxSizing: "border-box",
   transition: "box-shadow 0.2s, border 0.2s",
@@ -579,6 +591,7 @@ const btnPrimaryStyle = (disabled) => ({
   border: "none",
   borderRadius: 9999,
   padding: "16px",
+  minHeight: 50,
   fontFamily: "'Figtree', sans-serif",
   fontWeight: 600,
   fontSize: "1rem",
@@ -597,6 +610,7 @@ const btnGoogleStyle = {
   border: "1px solid rgba(69,70,85,0.1)",
   borderRadius: 9999,
   padding: "14px",
+  minHeight: 48,
   color: "#e2e2e9",
   fontFamily: "'Figtree', sans-serif",
   cursor: "pointer",

@@ -2,6 +2,8 @@ import { Suspense, useRef, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNoemaRuntime } from "../../context/NoemaContext";
 import { lazyWithPreload, preloadWhenIdle } from "../../lib/lazyWithPreload";
+import { T } from "../../design-system/tokens";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ShellV2 — Layout shell V2 avec Framer Motion
@@ -21,7 +23,7 @@ import { lazyWithPreload, preloadWhenIdle } from "../../lib/lazyWithPreload";
 //   → Peut être swappé sans toucher AppShell (sauf le render final)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const NAV_HEIGHT = 88;
+const NAV_HEIGHT = T.nav.height;
 
 const NAV_TABS = [
   { id: "today",   icon: "light_mode",     lbl: "Aujourd'hui" },
@@ -86,7 +88,7 @@ function ShellPageFallback({ phaseContext }) {
   return (
     <div
       style={{
-        minHeight: "100vh",
+        minHeight: "100dvh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -121,6 +123,7 @@ function ShellPageFallback({ phaseContext }) {
 
 export default function ShellV2({ adminSlot }) {
   const { navTab, phaseContext, changeTab } = useNoemaRuntime();
+  const isCompact = useMediaQuery("(max-width: 420px)");
 
   // navTab est géré par AppShell, exposé via NoemaContext
   const activeTab = NAV_TABS.some((t) => t.id === navTab) ? navTab : "today";
@@ -158,7 +161,7 @@ export default function ShellV2({ adminSlot }) {
       animate={{ backgroundColor }}
       transition={{ duration: 2.0, ease: "easeInOut" }}
       style={{
-        minHeight:     "100vh",
+        minHeight:     "100dvh",
         display:       "flex",
         flexDirection: "column",
       }}
@@ -204,7 +207,8 @@ export default function ShellV2({ adminSlot }) {
         bottom:          0,
         left:            0,
         right:           0,
-        height:          NAV_HEIGHT,
+        height:          `calc(${NAV_HEIGHT}px + env(safe-area-inset-bottom))`,
+        paddingBottom:   "env(safe-area-inset-bottom)",
         backgroundColor: "#111318",
         borderTop:       `1px solid ${phaseContext?.border ?? "rgba(189,194,255,0.18)"}`,
         display:         "flex",
@@ -220,13 +224,13 @@ export default function ShellV2({ adminSlot }) {
           display:        "flex",
           alignItems:     "center",
           justifyContent: "space-between",
-          gap:            12,
-          padding:        "8px 16px 4px",
+          gap:            isCompact ? 8 : 12,
+          padding:        isCompact ? "7px 12px 3px" : "8px 16px 4px",
           borderBottom:   "1px solid rgba(255,255,255,0.04)",
         }}>
           <span style={{
-            fontSize:       "0.58rem",
-            letterSpacing:  "0.16em",
+            fontSize:       isCompact ? "0.54rem" : "0.58rem",
+            letterSpacing:  isCompact ? "0.12em" : "0.16em",
             textTransform:  "uppercase",
             color:          phaseContext?.accent ?? "#bdc2ff",
             fontWeight:     700,
@@ -234,7 +238,7 @@ export default function ShellV2({ adminSlot }) {
             {PHASE_DISPLAY[phaseContext?.id] ?? "Exploration · Phase 1"}
           </span>
           <span style={{
-            fontSize: "0.62rem",
+            fontSize: isCompact ? "0.56rem" : "0.62rem",
             color:    "#c5c5d8",
           }}>
             {phaseContext?.paceLabel ?? ""}
@@ -260,12 +264,13 @@ export default function ShellV2({ adminSlot }) {
                   flexDirection:  "column",
                   alignItems:     "center",
                   justifyContent: "center",
-                  gap:            4,
+                  gap:            isCompact ? 2 : 4,
                   border:         "none",
                   background:     "none",
                   cursor:         "pointer",
                   borderRadius:   0,
-                  padding:        "8px 4px",
+                  padding:        isCompact ? "6px 2px" : "8px 4px",
+                  minHeight:      44,
                   position:       "relative",
                   overflow:       "hidden",
                 }}
@@ -287,7 +292,7 @@ export default function ShellV2({ adminSlot }) {
                 <span
                   className="material-symbols-outlined"
                   style={{
-                    fontSize: "1.375rem",
+                    fontSize: isCompact ? "1.25rem" : "1.375rem",
                     color:    isActive ? (phaseContext?.accent ?? "#bdc2ff") : "#454655",
                     fontVariationSettings: isActive
                       ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24"
@@ -298,7 +303,7 @@ export default function ShellV2({ adminSlot }) {
                 >{tab.icon}</span>
 
                 <span style={{
-                  fontSize:     "0.65rem",
+                  fontSize:     isCompact ? "0.58rem" : "0.65rem",
                   fontFamily:   "'Figtree', sans-serif",
                   fontWeight:   isActive ? 600 : 400,
                   color:        isActive ? (phaseContext?.accent ?? "#bdc2ff") : "#454655",

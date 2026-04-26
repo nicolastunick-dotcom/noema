@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useNoemaRuntime } from "../../context/NoemaContext";
 import { T } from "../../design-system/tokens";
 import LivingAtmosphere from "../../components/v2/LivingAtmosphere";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // JournalV2 — Sanctuaire de réflexion
@@ -29,6 +30,7 @@ const SAVE_LABELS = {
 
 export default function JournalV2() {
   const { user, sb, nextAction, proofState, phaseContext } = useNoemaRuntime();
+  const isCompact = useMediaQuery("(max-width: 640px)");
 
   const [text,          setText]          = useState("");
   const [activePrompt,  setActivePrompt]  = useState("");
@@ -124,11 +126,11 @@ export default function JournalV2() {
   return (
     <div style={{
       backgroundColor: T.color.bg,
-      minHeight: "100vh",
+      minHeight: "100dvh",
       fontFamily: T.font.sans,
       color: T.color.text,
       overflowX: "hidden",
-      paddingBottom: 120,
+      paddingBottom: "calc(120px + env(safe-area-inset-bottom))",
     }}>
       {/* Placeholder style scoped */}
       <style>{`.nv2-ta::placeholder { color: rgba(69,70,85,0.45); white-space: pre-line; }`}</style>
@@ -143,7 +145,7 @@ export default function JournalV2() {
         backdropFilter: "blur(28px)",
         WebkitBackdropFilter: "blur(28px)",
         borderBottom: "1px solid rgba(255,255,255,0.04)",
-        padding: "14px 24px",
+        padding: isCompact ? "12px 16px" : "14px 24px",
         display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
         <span style={{
@@ -165,7 +167,7 @@ export default function JournalV2() {
       >
         <main style={{
           maxWidth: 640, margin: "0 auto",
-          padding: "48px 24px 80px",
+          padding: isCompact ? "34px 16px 72px" : "48px 24px 80px",
         }}>
 
           {/* Date + titre */}
@@ -173,7 +175,7 @@ export default function JournalV2() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            style={{ marginBottom: 48 }}
+            style={{ marginBottom: isCompact ? 34 : 48 }}
           >
             {/* Date as visual anchor */}
             <p style={{
@@ -210,7 +212,7 @@ export default function JournalV2() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.4, delay: 0.15 }}
-              style={{ display: "flex", flexDirection: "column", gap: 40 }}
+              style={{ display: "flex", flexDirection: "column", gap: isCompact ? 30 : 40 }}
             >
 
               {/* ── Intention du jour — generous padding, bigger quote ── */}
@@ -221,7 +223,7 @@ export default function JournalV2() {
                 style={{
                   ...T.glass.md,
                   borderRadius: T.radius["2xl"],
-                  padding: 36,
+                  padding: isCompact ? 22 : 36,
                   position: "relative", overflow: "hidden",
                   borderLeft: `2.5px solid ${accent}`,
                   borderTop: `1px solid ${border}`,
@@ -238,8 +240,9 @@ export default function JournalV2() {
                 </div>
                 <blockquote style={{
                   fontFamily: T.font.serif, fontStyle: "italic",
-                  fontSize: "1.45rem", color: T.color.text,
+                  fontSize: isCompact ? "1.18rem" : "1.45rem", color: T.color.text,
                   lineHeight: 1.55, margin: `0 0 16px`,
+                  overflowWrap: "anywhere",
                 }}>"{activePrompt}"</blockquote>
                 <p style={{ fontSize: T.type.body.size, color: T.color.textSub, lineHeight: 1.8, margin: 0 }}>
                   Prends un moment. Commence simplement par ce qui est le plus vivant pour toi maintenant.
@@ -283,9 +286,9 @@ export default function JournalV2() {
                     ? `0 0 60px ${glow}, inset 0 0 30px ${glow}22, 0 2px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.04)`
                     : `0 2px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.04)`,
                   transition: "box-shadow 0.5s ease",
-                  padding: 32,
+                  padding: isCompact ? 20 : 32,
                   position: "relative", overflow: "hidden",
-                  minHeight: 360,
+                  minHeight: isCompact ? 320 : 360,
                 }}>
                   <div style={{ position: "absolute", top: 0, right: 0, width: 120, height: 120, background: `radial-gradient(circle, ${glow} 0%, transparent 70%)`, opacity: isFocused ? 0.4 : 0.15, transform: "translate(30%, -30%)", pointerEvents: "none", transition: "opacity 0.5s ease" }} />
                   <p style={{ fontSize: T.type.bodySm.size, color: T.color.textSub, lineHeight: 1.8, margin: `0 0 20px` }}>
@@ -300,10 +303,10 @@ export default function JournalV2() {
                     onBlur={() => setIsFocused(false)}
                     placeholder={"Qu'as-tu fait aujourd'hui ?\nQu'as-tu ressenti ?\nQu'est-ce que tu comprends mieux maintenant ?"}
                     style={{
-                      width: "100%", minHeight: 260,
+                      width: "100%", minHeight: isCompact ? 230 : 260,
                       background: "transparent", border: "none", outline: "none",
                       resize: "none",
-                      fontSize: "1.0rem", lineHeight: 1.85,
+                      fontSize: "16px", lineHeight: 1.85,
                       color: T.color.text, fontFamily: T.font.sans,
                       caretColor: accent,
                       boxSizing: "border-box",
@@ -356,7 +359,7 @@ export default function JournalV2() {
                 style={{
                   ...T.glass.md,
                   borderRadius: T.radius["2xl"],
-                  padding: 32, position: "relative", overflow: "hidden",
+                  padding: isCompact ? 22 : 32, position: "relative", overflow: "hidden",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>

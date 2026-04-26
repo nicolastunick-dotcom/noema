@@ -5,6 +5,7 @@ import { buildZenRitual } from "../../lib/progressionSignals";
 import { useNoemaRuntime } from "../../context/NoemaContext";
 import { T, phaseButtonTextColor } from "../../design-system/tokens";
 import LivingAtmosphere from "../../components/v2/LivingAtmosphere";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TodayV2 — Rituel matinal / sanctuaire du jour
@@ -50,6 +51,7 @@ export default function TodayV2() {
     user, sb, nextAction, sessionNote, proofState, quotaState: quota,
     phaseContext, progressSignals, changeTab,
   } = useNoemaRuntime();
+  const isCompact = useMediaQuery("(max-width: 640px)");
 
   const [lastJournalEntry,    setLastJournalEntry]    = useState(null);
   const [latestSession,       setLatestSession]       = useState(null);
@@ -172,12 +174,12 @@ export default function TodayV2() {
   if (!loading && sessionCount === 0 && !latestSession && !lastJournalEntry) {
     return (
       <div style={{
-        minHeight: "100vh",
+        minHeight: "100dvh",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        padding: "40px 24px 120px",
+        padding: isCompact ? "32px 16px calc(120px + env(safe-area-inset-bottom))" : "40px 24px calc(120px + env(safe-area-inset-bottom))",
         gap: 32,
         textAlign: "center",
         backgroundColor: T.color.bg,
@@ -233,8 +235,8 @@ export default function TodayV2() {
   return (
     <div style={{
       backgroundColor: T.color.bg,
-      minHeight: "100vh", fontFamily: T.font.sans,
-      color: T.color.text, overflowX: "hidden", paddingBottom: 120,
+      minHeight: "100dvh", fontFamily: T.font.sans,
+      color: T.color.text, overflowX: "hidden", paddingBottom: "calc(120px + env(safe-area-inset-bottom))",
     }}>
 
       {/* ── Living atmosphere ── */}
@@ -246,7 +248,7 @@ export default function TodayV2() {
         background: "rgba(12,14,19,0.85)",
         backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
         borderBottom: "1px solid rgba(255,255,255,0.04)",
-        padding: "14px 24px",
+        padding: isCompact ? "12px 16px" : "14px 24px",
         display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
         <span style={{ fontFamily: T.font.serif, fontStyle: "italic", fontSize: "1.5rem", color: accent, letterSpacing: "-0.02em" }}>Noema</span>
@@ -264,8 +266,8 @@ export default function TodayV2() {
       >
         <main style={{
           maxWidth: 640, margin: "0 auto",
-          padding: "48px 24px 120px",
-          display: "flex", flexDirection: "column", gap: 32,
+          padding: isCompact ? "34px 16px 104px" : "48px 24px 120px",
+          display: "flex", flexDirection: "column", gap: isCompact ? 24 : 32,
         }}>
 
           {/* ── Greeting — dramatic ── */}
@@ -335,7 +337,7 @@ export default function TodayV2() {
                   onClick={() => changeTab("mapping")}
                   style={{
                     ...card,
-                    padding: 24,
+                    padding: isCompact ? 20 : 24,
                     border: `1px solid ${accent}33`,
                     borderLeft: `2.5px solid ${accent}`,
                     background: "rgba(12,14,20,0.88)",
@@ -369,7 +371,7 @@ export default function TodayV2() {
               {/* Quota */}
               {quota && (
                 <motion.div {...stagger(2)} style={{
-                  padding: "14px 18px", borderRadius: T.radius.lg,
+                  padding: isCompact ? "12px 14px" : "14px 18px", borderRadius: T.radius.lg,
                   background: quota.isTrial ? accentSoft : "rgba(22,23,29,0.6)",
                   border: `1px solid ${quota.isTrial ? border : "rgba(69,70,85,0.15)"}`,
                 }}>
@@ -384,7 +386,7 @@ export default function TodayV2() {
 
               {/* Return visit */}
               {returnVisitState?.hasData && (
-                <motion.div {...stagger(3)} style={{ ...card, padding: 28 }}>
+                <motion.div {...stagger(3)} style={{ ...card, padding: isCompact ? 22 : 28 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
                     <span className="material-symbols-outlined" style={{ fontSize: "0.875rem", color: accent, fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>history</span>
                     <h3 style={{ fontSize: T.type.caption.size, letterSpacing: "0.2em", textTransform: "uppercase", color: T.color.textSub, fontWeight: 700, margin: 0 }}>
@@ -404,14 +406,14 @@ export default function TodayV2() {
 
               {/* Stats — BIG numbers ── */}
               {impactStats.length > 0 && (
-                <motion.div {...stagger(4)} style={{ ...card, padding: 28 }}>
+                <motion.div {...stagger(4)} style={{ ...card, padding: isCompact ? 22 : 28 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
                     <span className="material-symbols-outlined" style={{ fontSize: "0.875rem", color: accent, fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>timeline</span>
                     <h3 style={{ fontSize: T.type.caption.size, letterSpacing: "0.2em", textTransform: "uppercase", color: T.color.textSub, fontWeight: 700, margin: 0 }}>Impact déjà visible</h3>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
                     {impactStats.map((stat) => (
-                      <div key={stat.label} style={{ borderRadius: T.radius.lg, padding: "20px 16px", background: "rgba(12,14,19,0.5)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                      <div key={stat.label} style={{ borderRadius: T.radius.lg, padding: isCompact ? "16px 14px" : "20px 16px", background: "rgba(12,14,19,0.5)", border: "1px solid rgba(255,255,255,0.06)" }}>
                         {/* Big serif italic number */}
                         <p style={{ margin: 0, fontSize: "2.5rem", color: accent, fontFamily: T.font.serif, fontStyle: "italic", lineHeight: 1.1 }}>{stat.value}</p>
                         <p style={{ margin: "10px 0 0", fontSize: T.type.bodySm.size, lineHeight: 1.65, color: T.color.text }}>{stat.label}</p>
@@ -424,7 +426,7 @@ export default function TodayV2() {
               {/* Intention — centerpiece ── */}
               <motion.div {...stagger(5)} style={{
                 ...card,
-                padding: 40,
+                padding: isCompact ? 24 : 40,
                 borderLeft: `2.5px solid ${accent}`,
                 borderTop: `1px solid ${border}`,
                 borderRight: `1px solid ${border}`,
@@ -438,7 +440,7 @@ export default function TodayV2() {
                 {hasData ? (
                   <>
                     {/* Big serif intention text */}
-                    <p style={{ fontFamily: T.font.serif, fontStyle: "italic", fontSize: "1.55rem", color: T.color.text, lineHeight: 1.5, margin: `0 0 16px` }}>
+                    <p style={{ fontFamily: T.font.serif, fontStyle: "italic", fontSize: isCompact ? "1.28rem" : "1.55rem", color: T.color.text, lineHeight: 1.5, margin: `0 0 16px`, overflowWrap: "anywhere" }}>
                       {intentionSource}
                     </p>
                     <p style={{ fontSize: T.type.bodySm.size, color: T.color.textSub, lineHeight: 1.8, margin: `0 0 24px` }}>
@@ -469,7 +471,7 @@ export default function TodayV2() {
 
               {/* Rituel Zen — most atmospheric ── */}
               <motion.div {...stagger(6)} style={{
-                ...card, padding: 32,
+                ...card, padding: isCompact ? 24 : 32,
                 background: "rgba(12,14,20,0.88)",
                 boxShadow: `0 0 80px ${glow}, 0 20px 40px rgba(0,0,0,0.3)`,
                 border: `1px solid ${accent}33`,
@@ -484,7 +486,7 @@ export default function TodayV2() {
               </motion.div>
 
               {/* Question du jour */}
-              <motion.div {...stagger(7)} style={{ borderRadius: T.radius["2xl"], background: T.color.container, padding: 28, display: "flex", flexDirection: "column", gap: 20 }}>
+              <motion.div {...stagger(7)} style={{ borderRadius: T.radius["2xl"], background: T.color.container, padding: isCompact ? 22 : 28, display: "flex", flexDirection: "column", gap: 20 }}>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                     <span className="material-symbols-outlined" style={{ fontSize: "0.875rem", color: T.color.warning, fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>psychology</span>
@@ -513,7 +515,7 @@ export default function TodayV2() {
 
               {/* Pas concret */}
               {hasData && (
-                <motion.div {...stagger(8)} style={{ borderRadius: T.radius["2xl"], background: T.color.elevated, border: "1px solid rgba(255,255,255,0.04)", padding: 28 }}>
+                <motion.div {...stagger(8)} style={{ borderRadius: T.radius["2xl"], background: T.color.elevated, border: "1px solid rgba(255,255,255,0.04)", padding: isCompact ? 22 : 28 }}>
                   <h3 style={{ fontSize: T.type.caption.size, letterSpacing: "0.2em", textTransform: "uppercase", color: T.color.textSub, fontWeight: 700, marginBottom: 14 }}>Un pas concret</h3>
                   <p style={{ fontSize: T.type.bodyLg.size, color: T.color.text, lineHeight: 1.8, margin: `0 0 14px` }}>
                     Choisis une action simple autour de cette intention. Quand tu auras avancé, reviens dans le journal.
@@ -527,7 +529,7 @@ export default function TodayV2() {
 
               {/* Récurrence */}
               {progressSignals?.hasRecurringThemes && (
-                <motion.div {...stagger(9)} style={{ ...card, padding: 28 }}>
+                <motion.div {...stagger(9)} style={{ ...card, padding: isCompact ? 22 : 28 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
                     <span className="material-symbols-outlined" style={{ fontSize: "0.875rem", color: accent, fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>cycle</span>
                     <h3 style={{ fontSize: T.type.caption.size, letterSpacing: "0.2em", textTransform: "uppercase", color: T.color.textSub, fontWeight: 700, margin: 0 }}>Ce qui revient vraiment</h3>
