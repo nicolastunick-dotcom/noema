@@ -388,10 +388,10 @@ export default function ChatV2() {
                     }} />
                     <div
                       style={{
-                        fontFamily:    T.font.sans,
-                        fontSize:      m.isErr ? T.type.body.size : T.type.noema.size,
-                        lineHeight:    m.isErr ? T.type.body.lh : T.type.noema.lh,
-                        letterSpacing: m.isErr ? T.type.body.ls : T.type.noema.ls,
+                        fontFamily:    m.isErr ? T.font.sans : T.font.handwriting,
+                        fontSize:      m.isErr ? T.type.body.size : "1.5rem",
+                        lineHeight:    1.65,
+                        letterSpacing: "0.01em",
                         color:         m.isErr ? T.color.error : T.color.textSub,
                         position:      "relative",
                         overflowWrap:  "anywhere",
@@ -418,7 +418,9 @@ export default function ChatV2() {
                     padding: isCompact ? "12px 15px" : "13px 18px",
                   }}>
                     <p style={{
-                      fontSize: T.type.body.size, lineHeight: T.type.body.lh,
+                      fontFamily: T.font.handwriting,
+                      fontSize: "1.35rem", lineHeight: 1.6,
+                      letterSpacing: "0.01em",
                       color: T.color.text, margin: 0,
                       overflowWrap: "anywhere",
                     }}>{m.text}</p>
